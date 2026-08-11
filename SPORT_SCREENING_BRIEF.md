@@ -58,6 +58,70 @@ break-even — no edge at all. `screen_market.py` reports both and labels which 
 believe. Keep `b/σ` as a diagnostic for cross-sport comparison; never as the
 decision.
 
+### Forecast bias is not betting bias
+
+`b` measures how wrong the line is. `edge_pp` measures whether you can be paid
+for it. These are different quantities, and a market can have a large, highly
+significant amount of the first and none of the second — because **a bet pays
+on which side of the line, not by how much.** An over by 25 pays exactly what
+an over by 1 pays.
+
+Both totals markets measured so far show this exactly:
+
+| market | b | t | central 80% | tail 20% | best side | edge @ −110 |
+|---|---|---|---|---|---|---|
+| NCAAB totals 23-24 | +0.864 | **3.93** | **−0.083** | +0.947 | 50.86% | −1.52pp |
+| NBA totals 8 seasons | +0.515 | **2.74** | **−0.152** | +0.667 | 50.38% | −2.00pp |
+
+Both have unambiguous forecast bias — `t` of 3.93 and 2.74 — and in both the
+central 80% leans slightly *under* while the mean says *over*. The entire
+signal is blowouts running over more often than they run under. This is the
+mechanism behind the `ratio` false positive, and it is why `ratio` reads 4.23
+on NCAAB, worse than the 2.28 it reads on the NBA.
+
+### ⚠ Do not build a second gate out of this
+
+The obvious move is to form `C = tail_contribution / total_bias` and reject
+cells with C near 1. **That statistic was built and tested here, and it does
+not work.** Three measured failures:
+
+- **No shape-independent threshold.** A pure level shift — the fully
+  payoff-relevant case — gives C = 0.64 on a normal residual but **C = 1.16 on
+  the actual CBB residual shape**. On a skewed residual, 1.16 is what a genuine
+  edge looks like, so "C near 1 is dead" would reject a real one.
+- **The denominator explodes.** On de-biased CBB data (mean ≈ 0) C ran to
+  **1.8 × 10¹⁵**. Every low-bias market — i.e. most of them — returns garbage.
+- **It does not separate.** Genuine +1.0 central shift → C = 1.16. The same
+  bias loaded entirely into a 2% tail → C = 1.56. CBB as observed → C = 1.10.
+  Too tight to threshold.
+
+A tail-inflation measure (normal-predicted over-rate minus actual) fails the
+same way: the de-biased CBB baseline already shows **+1.77pp** of inflation
+from skew alone, before any bias exists.
+
+**`edge_pp` already measures what these proxy for, and measures it correctly.**
+Report the central/tail split to *understand* a cell; never to accept or reject
+one. One gate, not two.
+
+### How many points do you actually need?
+
+`pp_per_point()` gives the exchange rate between a bias in points and a bias in
+win rate, measured locally rather than assumed normal:
+
+| market | pp per point | points of **central** bias to beat −110 | to beat −105 |
+|---|---|---|---|
+| NCAAB totals | 2.43 | **0.98** | 0.50 |
+| NCAAB sides | 4.07 | 0.58 | 0.30 |
+| NBA totals | 1.72 | 1.39 | 0.71 |
+| NBA sides | 2.58 | 0.92 | 0.47 |
+
+Two things fall out. **Sides need roughly half the points totals do**, because
+σ is smaller, so a point of spread is worth far more win rate than a point of
+total — worth remembering before assuming totals are the softer market. And the
+targets are large: about **a full point of genuine central bias** to beat −110.
+No cell measured in either project has more than a tenth of that. Compare
+`central b` against `pts needed` directly; `screen_market.py` reports both.
+
 ### Detection time is a hard constraint
 
 Games needed to detect a bias of the observed size at 80% power:
@@ -83,7 +147,17 @@ size needs ~8,800.
 **This must be read against decay.** In the prior project a genuine +3.0-point
 bias in mismatch games ran for six seasons and then vanished. A market needing
 eight seasons to confirm an edge cannot confirm one before it dies. **NFL is
-structurally unscreenable on this basis** despite being the most popular market.
+structurally unscreenable for marginal edges** despite being the most popular
+market.
+
+Note the scope of that claim: the table above fixes the bias at break-even size.
+*If* an NFL market carried twice that bias it would confirm in 2.0 seasons, and
+at three times, 0.9. No such bias has been measured — that conditional is
+algebra, not a finding, and NFL derivatives have not been screened here or in
+the prior project. What the arithmetic does establish is narrower: NFL cannot
+confirm an edge that only just clears the vig, and that is where most real edges
+live. Read "unscreenable" as "only worth screening for effects big enough to be
+obvious," not as "excluded" — and not as a hint that such effects are there.
 
 ---
 
@@ -91,9 +165,12 @@ structurally unscreenable on this basis** despite being the most popular market.
 
 In priority order.
 
-**1. Volume.** Drives everything. It is the only lever that shortens detection
-time, and detection time is what decides whether an edge is confirmable before
-it decays. This alone puts college basketball first.
+**1. Volume.** Fix this first. It is the lever you can verify before acquiring
+any data — you know a sport's games/season in advance, whereas you only learn
+its bias by screening it. Detection time is what decides whether an edge is
+confirmable before it decays, and volume is the half of it you can choose. This
+puts college basketball first. (It is not the *only* lever on detection time —
+see "Volume and asymmetry are not independent levers" below.)
 
 **2. Price.** The vig is the denominator and it varies more across sports than
 bias does. MLB and NHL moneylines quote dime lines — roughly 2% hold against
@@ -113,6 +190,53 @@ different quantities that both get called "low accuracy."
 
 **5. Data availability.** A market you cannot get five years of closing lines for
 cannot be screened, however attractive in theory.
+
+### Volume and asymmetry are not independent levers
+
+It is tempting to say volume is the only thing that shortens detection time. It
+is not, and the difference changes where you look.
+
+`n_required = 7.84 / (b/σ)²` does not contain volume at all. Volume converts a
+fixed `n_required` into calendar time — a **linear** effect. Attention asymmetry
+raises `b/σ` itself, and because the term is squared, it cuts `n_required`
+**quadratically**. A market with twice the bias needs a quarter of the games.
+
+Seasons to confirm, as a multiple of break-even-size bias:
+
+| sport | games/season | 1.0× | 1.5× | 2.0× | 3.0× |
+|---|---|---|---|---|---|
+| College basketball | ~5,500 | 0.4 | 0.2 | 0.1 | 0.0 |
+| MLB | 2,430 | 0.9 | 0.4 | 0.2 | 0.1 |
+| Soccer (top-5) | 1,752 | 1.3 | 0.6 | 0.3 | 0.1 |
+| NHL | 1,312 | 1.7 | 0.7 | 0.4 | 0.2 |
+| NBA | 1,230 | 1.8 | 0.8 | 0.4 | 0.2 |
+| College football | ~800 | 2.8 | 1.2 | 0.7 | 0.3 |
+| NFL | 272 | 8.1 | 3.6 | 2.0 | 0.9 |
+
+(games required: 2,198 / 977 / 549 / 244)
+
+⚠ **Provenance — no sport in this table has been screened.** The games/season
+column is arithmetic on league structure (NFL 32×17/2 = 272; NBA and NHL
+30/32×82/2; MLB 30×162/2; CFB ~134 FBS×12/2; NCAAB ~360 D-I×~31/2 ≈ 5,580;
+top-5 soccer 380×3 + 306×2 = 1,752). The body of the table is the
+`n_required` formula divided by that column. **The 1.5×–3.0× columns are
+hypothetical** — they show what detection time *would* be at those bias sizes,
+not a measured `b/σ` for any of these sports. Nothing here is evidence that any
+sport carries a bias above break-even size; establishing that is the entire
+job of Stage 1. Treat this table as a planning aid for where to spend screening
+effort, never as a result.
+
+The two levers **multiply**, so the ordering above is about which to fix first,
+not which is worth more. The best cell in the screen is the intersection: a
+high-volume sport's *thin* markets — NCAAB first halves, team totals, alternate
+lines, low-major conferences — where volume supplies the sample and asymmetry
+supplies the bias. Screening a high-volume sport's headline market optimises
+one lever and forfeits the other.
+
+**Practical consequence:** rank Stage 1 candidates on `seasons to detect`, which
+`screen_market.py` already computes from the *observed* `b/σ` per cell. That
+number combines both levers correctly. Do not rank on games/season, which is
+only the numerator of one of them.
 
 ### The structural tension
 
@@ -184,6 +308,10 @@ line (total and spread), final score. That is the whole requirement.
 Output the ranked table plus a by-season bias plot for each cell. Cheap, fast,
 no modelling. Most cells die here.
 
+**One gate: `edge_pp > 0` at a price you can obtain.** Report `central b`,
+`tail b` and `pts needed` alongside it so you can see *why* a cell passed or
+failed — but do not turn them into a second test (see the warning in §2).
+
 **Stage 2 — conditional bias.** For surviving cells only, test pre-registered
 conditional filters (large spreads, extreme totals, rest, travel, scheduling
 spots). Permutation-controlled. Pre-register the filter list **before** looking.
@@ -238,11 +366,24 @@ Use these to recognise what null and non-null look like.
 | feature families tested, all null | 21 |
 | best model R² on game totals | ~7.6% |
 | value of −110 → −105 | +1.16pp win rate |
+| **NCAAB totals bias vs close** (23-24, n=5,588) | **+0.864 pts on σ 16.44, t = 3.93** |
+| …as a win rate | best side 50.86% vs 52.38% → **no edge** |
+| …its central 80% contribution | **−0.083** (C = 1.10) |
+| NCAAB sides bias | +0.038, t = 0.25 → flattest cell yet measured |
+| price NCAAB totals would need | **−103.5** (95% CI: +101.8 to −109.1) |
 
-**The market is not unbiased — it is biased by about half a point, repeatably.
-The vig band is simply wider than the bias.** That is the correct mental model,
-and it means the screen's question is never "is there bias" but "is the bias
-bigger than the price."
+**The market is not unbiased — it is biased by about half a point in the NBA
+and nearly a full point in college basketball, repeatably and at high
+significance. The vig band is wider than the bias, and the bias is in the
+wrong part of the distribution.** That is the correct mental model. The
+screen's question is never "is there bias" but two questions in sequence:
+*is the bias bigger than the price*, and *is it in the middle or the tails*.
+
+College basketball is the useful case to hold in mind. It is roughly twice as
+biased as the NBA in sd units, exactly as the attention-asymmetry argument
+predicts — and it is still unbettable, because the extra bias arrived as
+blowouts rather than as games crossing the number. **Finding a more biased
+sport is not the same as finding a beatable one.**
 
 ---
 
@@ -262,6 +403,8 @@ bigger than the price."
 
 - No cell clears `edge_pp > 0` at an obtainable price → **report that and stop.**
   It is a legitimate and valuable result.
+- A cell clears `edge_pp` only at a price you cannot get → dead. NCAAB totals
+  clear at −102 and nowhere else; the market trades at −110.
 - A cell clears but needs > 4 seasons to confirm → deprioritise; decay will
   likely beat you.
 - A cell clears but limits are too small to matter → record it and move on.

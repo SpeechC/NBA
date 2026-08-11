@@ -621,3 +621,87 @@ unbiased. It is biased by ~0.5 points, measurably and repeatably. **The vig band
 is simply wider than the bias.** For any cross-sport screen the question is not
 "is there bias" but "is the bias more than 0.06 sd", since that is the price of
 −110.
+
+---
+
+## 17. CLV in points is the wrong metric — 88% of it is economically inert
+
+A point of CLV only pays when the total lands BETWEEN our entry and the close.
+Elsewhere the bet won, or lost, at both numbers: the line value is real and
+worthless. `clv_decompose.py`.
+
+⚠ Pushes are dropped at BOTH numbers. A first version dropped only pushes at the
+open, which scored a push at the CLOSE as a loss for over-bets and a win for
+under-bets. Given how imbalanced our sides turn out to be (below), that mattered.
+Figures here are the corrected ones.
+
+### Only ~5.5% of bets are decisive
+
+Spec A, holdout, |pred| > 1.25:
+
+| | n | share of bets | mean CLV | **share of total CLV** |
+|---|---|---|---|---|
+| decisive (move changed the outcome) | 19 | 5.5% | +3.921 | **11.6%** |
+| inert | 324 | 94.5% | +1.747 | **88.4%** |
+
+By distance from our number to the final total:
+
+| distance | n | mean CLV | share of CLV | decisive % |
+|---|---|---|---|---|
+| 0–2 | 23 | 1.543 | 5.5% | **43.5%** |
+| 2–5 | 50 | 1.870 | 14.6% | 16.0% |
+| 5–10 | 65 | 1.800 | 18.3% | 1.5% |
+| 10–20 | 106 | 1.203 | 19.9% | 0.0% |
+| **20+** | 99 | **2.697** | **41.7%** | **0.0%** |
+
+**Blowouts carry the highest CLV of any band and 41.7% of the total, with zero
+chance of mattering.** Same mechanism as the forecast-bias/betting-bias split in
+`SPORT_SCREENING_BRIEF.md`: a bet pays on which side, not by how much.
+
+### Use realised pp, not points
+
+`realised pp = win% at our number − win% at the close`.
+
+| spec | set | thr | CLV pts | win @open | win @close | **realised pp** | predicted pp |
+|---|---|---|---|---|---|---|---|
+| A | DEV | 1.25 | 1.963 | 54.81 | 51.01 | **+3.80** | +7.52 |
+| A | **HOLDOUT** | 1.25 | 1.867 | 49.85 | **44.90** | **+4.96** | +7.15 |
+| D | DEV | 1.25 | 1.969 | 53.76 | 49.78 | +3.98 | +7.54 |
+| D | **HOLDOUT** | 1.25 | 1.659 | 48.95 | **44.74** | +4.20 | +6.35 |
+
+**The +3.83pp-per-point conversion overstates by roughly 50%.** Retire it. The
+ceiling is the decisive rate (~5.5%), since that is the most games a move of this
+size can flip.
+
+### The side composition REVERSES between development and holdout
+
+Fixing the push bug required tracking which side we take, which exposed this:
+
+| spec | threshold | DEV % over | HOLDOUT % over |
+|---|---|---|---|
+| A | 0.00 | 44.9 | 52.5 |
+| A | 0.75 | 32.1 | 55.9 |
+| **A** | **1.25** | **23.7** | **59.5** |
+| **D** | **1.25** | **21.5** | **61.6** |
+
+**At the operating threshold the model bets ~77% UNDERS in development and ~60%
+OVERS in holdout.** Raising the threshold pushes dev further under (44.9 → 23.7)
+and holdout further over (52.5 → 59.5) — opposite directions.
+
+This is a mechanical account of the §11 confidence inversion. The model's
+high-conviction bets are **not the same kind of bet** in the two periods, so
+there is no reason the dev threshold's performance should carry over. It is not
+that the ranking degraded; the ranking is selecting a different population.
+
+### Revised diagnosis
+
+A bettor taking our exact sides **at the closing number wins 44.90%** in the
+holdout. We add a genuine +4.96pp by entering early and arrive at 49.85%. The
+arithmetic is consistent — **the problem is the baseline, not the conversion.**
+
+This replaces the §6 framing. We convert CLV efficiently onto sides that sit
+~5pp below fair at the close.
+
+⚠ 44.90% rests on 343 bets (SE 2.7pp), ~1.9 SE below 50%. Development shows
+51.01% at the close, so it does not replicate across the split — consistent with
+the side-composition reversal above rather than with a stable defect.
