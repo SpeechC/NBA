@@ -386,3 +386,55 @@ missing across-season effect because there is no within-season effect to erode.
 per half against 500+ for a pooled season, so they would look worse on precision
 alone. The across-season figure is therefore recomputed on half-seasons too, and
 still comes out at zero.
+
+### Concentrated team effects, not average ones (§13 follow-up 2)
+
+Valid objection to the tests above: a correlation across 30 teams and a
+permutation on the whole distribution both measure AVERAGE structure, and would
+read ~zero if the effect were real for four teams and absent for twenty-six.
+Different hypothesis, different test. `team_concentrated.py`.
+
+All figures use each team-season's deviation from that season's league mean,
+since league |move| drifts 2.04 → 2.80 across the sample.
+
+**No individual team survives correction:**
+
+| | count | expected by chance |
+|---|---|---|
+| raw p < 0.05 | 1 (San Antonio) | ~1.5 |
+| BH FDR q < 0.10 | **0** | — |
+| Bonferroni p < 0.05 | **0** | — |
+
+**Consistency at chance:** 2 teams at 7+/8 or 1−/8 seasons above the league
+mean, against ~2.1 expected.
+
+**Tail persistence — the most direct test of the hypothesis:**
+
+| | observed | chance |
+|---|---|---|
+| top-5 in t → still top-5 in t+1 | 6/35 = **17.1%** | 16.7% |
+| top-5 → still top-10 | 13/35 = 37.1% | 33.3% |
+
+Permutation null 5.9 ± 2.1, observed 6 — the **44th percentile**. Teams that
+stand out in one season are no likelier than random to stand out in the next.
+
+**Why: each team's swing exceeds its own effect.**
+
+| team | mean dev | sd | seasons above |
+|---|---|---|---|
+| Detroit | −0.225 | **0.312** | 1/8 |
+| Denver | +0.180 | **0.250** | 5/8 |
+| San Antonio | −0.176 | **0.205** | 1/8 |
+| Chicago | +0.157 | **0.269** | 6/8 |
+| Milwaukee | +0.134 | **0.374** | 5/8 |
+
+Teams DO stand out in individual seasons — Milwaukee's deviation swings ±0.37 —
+but the standing-out is not a property of the team.
+
+⚠ **Power limit:** with 8 seasons per team the minimum detectable effect is
+~0.21 points (~8% of the 2.5 mean). A smaller genuine per-team effect would be
+missed. This rules out effects large enough to trade, not all effects.
+
+⚠ The strongest candidates are Detroit and San Antonio on the LOW side, which is
+not a flow story even if real. The high side (Denver, Chicago, Milwaukee) again
+resembles pace rather than market attention.
