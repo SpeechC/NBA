@@ -19,3 +19,4 @@ rest_travel_games.csv
 !results_*.json
 !*_results.csv
 !sweep_*.csv
+paper_trades/
