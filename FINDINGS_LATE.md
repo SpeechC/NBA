@@ -297,3 +297,62 @@ adds nothing for later seasons that the expanding window does not already have.
 the games (scoring environment, pace, market behaviour) and let it apply to
 whichever seasons match. That is a feature and gets tested like any other.
 Selecting on a season label because its outcome is known is not.
+
+---
+
+## 13. Team-level line movement: real, unstable, and backwards
+
+Do some teams draw bigger moves — a market-attention / flow effect? Distinct
+from §7's team-identity test (which predicted the SIGNED move) and from the
+move-class test (which never stratified by team). `team_moves.py`.
+
+### A spread exists, barely above chance
+
+| top | mean \|move\| | bottom | mean \|move\| |
+|---|---|---|---|
+| Milwaukee | 2.687 | Detroit | 2.265 |
+| LA Lakers | 2.657 | San Antonio | 2.316 |
+| Denver | 2.655 | Portland | 2.357 |
+| Atlanta | 2.655 | Orlando | 2.379 |
+
+Spread 0.422 pts, sd across teams 0.1053. Permuting team labels 2,000×: null sd
+0.0856 ± 0.0111, so observed sits at the **95th percentile** — and the
+top-bottom spread only at the **86th**. Marginal on one measure, absent on the
+other.
+
+### It does not persist — the decisive result
+
+Year-over-year correlation of a team's mean |move|:
+
+| from → to | corr |
+|---|---|
+| 2017-18 → 2018-19 | −0.153 |
+| 2018-19 → 2020-21 | −0.440 |
+| 2020-21 → 2021-22 | −0.059 |
+| 2021-22 → 2022-23 | −0.086 |
+| 2022-23 → 2023-24 | +0.276 |
+| 2023-24 → 2024-25 | +0.300 |
+| 2024-25 → 2025-26 | +0.074 |
+| **mean** | **−0.013** |
+
+In any season some teams stand out; **which** teams changes every year, sign
+included. Nothing carries forward, so nothing is tradable.
+
+This also argues specifically against the FLOW explanation: attention would
+persist — the Lakers are always the Lakers. And the leaderboard is not a
+big-market list (Milwaukee, Denver, Atlanta). It resembles a high-scoring list,
+i.e. pace — which the model already carries, explaining why team dummies added
+nothing in §7.
+
+### The ranking is backwards for us anyway
+
+| tercile | mean \|move\| | CLV | win % | $won |
+|---|---|---|---|---|
+| low \|move\| | 2.697 | **1.396** | **53.52** | **+7,899** |
+| mid | 2.803 | 1.484 | 52.65 | +2,449 |
+| high \|move\| | 2.945 | 1.284 | 52.68 | +543 |
+
+The teams whose lines move most yield the LOWEST CLV, and nearly all profit sits
+in the low-movement tercile. Consistent with move magnitude being unpredictable
+(corr −0.036) while direction is not: a large move only helps if the sign was
+called right, and we do not call it better in those games.
