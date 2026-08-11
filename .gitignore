@@ -1,0 +1,21 @@
+# logs and scratch
+log_*.log
+nohup.out
+__pycache__/
+*.pyc
+catboost_info/
+
+# large intermediate data — regenerable from source, and the source lives in c:\NBA2
+*.parquet
+line_movement_games.csv
+movement_full_games.csv
+walkforward_games.csv
+totals_games.csv
+spread_best.csv
+matchup_games.csv
+rest_travel_games.csv
+
+# small result tables are kept (they are the record):
+!results_*.json
+!*_results.csv
+!sweep_*.csv
