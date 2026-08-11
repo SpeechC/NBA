@@ -241,3 +241,59 @@ Re-tuning the threshold on it would burn the holdout, which
 [PREREGISTRATION.md](PREREGISTRATION.md) explicitly forbids ("if 1.25 fails but
 1.5 works, that is noise, not a discovery"). Testing a lower threshold honestly
 needs a new pre-registration and a season nobody has looked at.
+
+---
+
+## 12. Season-specific models and ensembling: tested, rejected
+
+Proposal: 2022-23 lost money across every spec, so train a model on it
+separately and ensemble. Three checks, each fatal on its own.
+
+### 2022-23 is an ordinary bad draw, not a regime
+
+Simulating each season's P&L under a CONSTANT edge, using its own stakes and the
+pooled 52.94% win rate:
+
+| season | bets | win % | $won | sim mean | sim sd | z | pctile |
+|---|---|---|---|---|---|---|---|
+| 2018-19 | 117 | 56.41 | +460 | +113 | 1,028 | +0.34 | 62.9 |
+| 2020-21 | 309 | 52.10 | −129 | +422 | 2,340 | −0.24 | 40.9 |
+| 2021-22 | 380 | 52.63 | +508 | +568 | 2,916 | −0.02 | 48.9 |
+| **2022-23** | 367 | 49.59 | **−3,199** | +525 | 2,690 | **−1.38** | **8.2** |
+| **2023-24** | 394 | 53.05 | **+5,535** | +589 | 3,064 | **+1.61** | **94.5** |
+| 2024-25 | 443 | 54.85 | −817 | +722 | 3,465 | −0.44 | 32.8 |
+| 2025-26 | 428 | 53.97 | +3,204 | +697 | 3,434 | +0.73 | 76.5 |
+
+**Season sd is $2,700–$3,500** — larger than most seasons' entire result. z=−1.38
+is the 8th percentile; across seven seasons you expect one that low. 2023-24 is
+the mirror image at +1.61. **The good season is as much an outlier as the bad
+one**, so treating one as signal and the other as earned is incoherent.
+
+### The environment did not differ
+
+| season | over rate % | mean \|move\| | corr(pred,move) | mean open_total |
+|---|---|---|---|---|
+| 2021-22 | 51.46 | 2.671 | 0.252 | 220.7 |
+| **2022-23** | **49.87** | **2.410** | **0.227** | **228.7** |
+| 2023-24 | 49.27 | 2.622 | 0.359 | 228.2 |
+
+Every 2022-23 value sits inside the range spanned by other seasons. Nothing would
+have flagged it in advance — which is what a real regime requires.
+
+### A and D are the same model
+
+**corr(pred_A, pred_D) = 0.9711**; they call the same direction on **92.5%** of
+games. This is why the A+D ensemble only ever bought +2.6% CLV, and why all six
+specs share an identical season-by-season P&L pattern. There is nothing to
+diversify.
+
+### Also mechanically unnecessary
+
+The walk-forward **already trains on 2022-23** for every later prediction. A
+season-specific model cannot be applied to 2022-23 itself without leakage, and
+adds nothing for later seasons that the expanding window does not already have.
+
+**Legitimate version of the idea:** key a regime on something observable BEFORE
+the games (scoring environment, pace, market behaviour) and let it apply to
+whichever seasons match. That is a feature and gets tested like any other.
+Selecting on a season label because its outcome is known is not.
