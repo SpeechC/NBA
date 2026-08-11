@@ -25,9 +25,25 @@ from walkforward_pace import ALLV, EXT
 from walkforward_totals import build
 
 SEED = 42
-SCORE_MIN = 1500      # team-games (~750 games) before the score model predicts
-CAL_MIN = 300         # games before calibration is available
-MOVE_MIN = 500        # games before the movement model predicts
+
+# Burn-in, reduced 2026-08-11 so the panel starts inside the 2017-18 season.
+#
+# The lagged box-score features need 6 games per team, so no game before
+# 2017-10-25 can ever carry features -- that date is a hard floor. Only 481
+# games exist in calendar 2017 after it. The previous settings (1500 team-games
+# + 300 games = ~1050 games of burn-in) overshot that by more than double and
+# put the panel's first game at 2018-04-03, discarding the whole 2017-18 season.
+#
+# These values cost ~250 games instead, starting the panel in early December
+# 2017. The trade is real and one-directional: the score model's first
+# predictions are now trained on ~150 games rather than ~750, so `dis_open` is
+# noisier early in the sample. It is not leaky -- the walk-forward is intact and
+# no game ever sees a later one. Later games are unaffected in what they train
+# on; only the refit grid shifts.
+SCORE_MIN = 300       # team-games (~150 games) before the score model predicts
+CAL_MIN = 100         # games before calibration is available
+MOVE_MIN = 500        # games before the movement model predicts (pred_move only,
+                      # which specs A and D do not use -- see the write at the end)
 REFIT_DAYS = 7
 
 
@@ -175,7 +191,19 @@ def main():
              f"Seasons with positive CLV: **{int((ps['clv'] > 0).sum())} of {len(ps)}**.\n")
 
     open("MOVEMENT_FULL.md", "w").write("\n".join(L))
-    d.to_csv("movement_full_games.csv", index=False)
+
+    # Write `g`, not `d`. `d` has additionally dropped the MOVE_MIN=500 burn-in
+    # games needed by the XGBoost `pred_move` column -- but the frozen ridge
+    # specs A and D never use pred_move; they run their own walk-forward. Making
+    # them pay that burn-in cost 500 games off the front of the panel and pushed
+    # the development era's start from 2018-03 to 2019-01, losing all of 2017-18
+    # and half of 2018-19 for no reason.
+    #
+    # pred_move is retained as a column and is NaN for those 500 games; anything
+    # that consumes it must dropna, as the evaluation above already does.
+    g.to_csv("movement_full_games.csv", index=False)
+    print(f"\nwrote movement_full_games.csv: {len(g)} games from "
+          f"{g.date.min().date()} ({len(d)} of them carry pred_move)")
     print("\n" + tab.round(3).to_string())
     print("\n" + ps.round(2).to_string())
 

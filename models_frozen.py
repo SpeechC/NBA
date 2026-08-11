@@ -86,15 +86,21 @@ BACKTEST = {
           1.25: +3.13, 1.50: +0.92, 1.75: +3.64, 2.00: +20.36},
 }
 
-# Same specs, same walk-forward, DEVELOPMENT ONLY (2019-03-24 .. 2024-04-14,
-# 4,582 games) on the 2017-2026 export. Recomputed 2026-08-11.
-# Largest drift is at threshold 2.00 where n=139; the shape and sign of the
-# ladder are preserved throughout.
+# Same specs, same walk-forward, DEVELOPMENT ONLY (2018-02-22 .. 2024-04-14,
+# 5,976 scored games) on the 2017-2026 export with the reduced movement_full.py
+# burn-in that starts the panel in December 2017. Recomputed 2026-08-11.
+#
+# These differ from BACKTEST by more than the previous refresh did, and the
+# reason is not the specs -- it is that `dis_open` changed. Reducing the score
+# model's burn-in from ~750 games to ~150 makes dis_open noisier, which
+# attenuates the ridge and compresses the prediction distribution: the number of
+# games clearing threshold 1.25 falls from 820 to 453. Fewer, more extreme bets
+# at higher CLV per bet. See SPLIT.md.
 BACKTEST_CURRENT = {
-    "A": {0.0: -2.42, 0.25: -3.06, 0.50: -1.95, 0.75: -0.04, 1.00: +1.22,
-          1.25: +2.21, 1.50: +4.32, 1.75: +8.77, 2.00: +12.62},
-    "D": {0.0: -3.67, 0.25: -3.45, 0.50: -3.02, 0.75: -1.97, 1.00: +2.82,
-          1.25: +2.05, 1.50: +2.50, 1.75: +4.13, 2.00: +18.82},
+    "A": {0.0: -4.48, 0.25: -3.00, 0.50: -2.42, 0.75: -0.50, 1.00: +2.25,
+          1.25: +5.78, 1.50: +0.89, 1.75: +10.85, 2.00: +25.60},
+    "D": {0.0: -4.90, 0.25: -3.62, 0.50: -1.28, 0.75: -0.20, 1.00: +1.03,
+          1.25: +3.41, 1.50: +1.63, 1.75: +12.90, 2.00: +37.88},
 }
 OPERATING_THRESHOLD = 1.25   # peak expected profit per season, both specs
 

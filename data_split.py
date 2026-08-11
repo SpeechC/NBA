@@ -3,6 +3,12 @@
     DEVELOPMENT   2017-18 .. 2023-24   (everything on or before 2024-06-17)
     HOLDOUT       2024-25, 2025-26     (everything after)
 
+The panel begins 2017-12-06 and the first graded prediction is 2018-02-22 --
+the intervening ~500 games are the walk-forward's initial training window
+(`walk_forward(min_train=500)`), so they are used, just not scored. Nothing
+before 2017-10-25 can ever appear: the lagged box-score features need six games
+per team first. See SPLIT.md for why the panel cannot start at the season opener.
+
 Fixed 2026-08-11. The boundary is a DATE, not a season label, because the
 In-Season Tournament games carry their own labels ("NBA 2024 In-Season
 Tournament") and a label filter silently leaks them into the wrong side. That
