@@ -438,3 +438,70 @@ missed. This rules out effects large enough to trade, not all effects.
 ⚠ The strongest candidates are Detroit and San Antonio on the LOW side, which is
 not a flow story even if real. The high side (Denver, Chicago, Milwaukee) again
 resembles pace rather than market attention.
+
+---
+
+## 14. Mismatch games: the effect was real, backwards, and is now gone
+
+Hypothesis: a strong team facing a weak one is perceived as a blowout, but the
+favourite plays "just strong enough to win" — so games under-run expectations.
+Framed on the split between what the public sees (**W-L records**) and what the
+market prices (**the spread**). `mismatch.py`, `mismatch_oos.py`. Records are
+built walk-forward within season; both teams need 10+ games played.
+
+### The perception is true
+
+Mean total rises with mismatch: 223.13 in the closest games to 227.17 in the
+biggest. Blowouts really are higher-scoring.
+
+### For TOTALS the direction is the opposite of the hypothesis
+
+| \|spread\| quintile | actual − close | over % |
+|---|---|---|
+| 1 (1.8) | −0.716 | 46.69 |
+| 3 (6.0) | +0.390 | 51.78 |
+| 5 (12.8) | **+1.745** | **53.17** |
+
+Mismatches came in **over** the close, not under. The favourite does not coast
+enough to suppress scoring below the line; the market set these totals too LOW.
+
+### For SPREADS the hypothesis holds
+
+Favourites failed to cover in big mismatches — 47.7% at |spread| ≥ 10, 46.5% at
+W-L gap > 0.45. "Plays just strong enough" is a spread phenomenon, not a totals
+one.
+
+### W-L records add nothing beyond the spread
+
+corr(wl_gap, |spread|) = 0.4704. Orthogonalised against the spread, the W-L
+quintiles are flat noise (actual−close 0.49, 1.21, 0.06, 1.07, 0.23; over% 50.7,
+52.2, 48.2, 51.4, 50.3). **Perception and pricing do not diverge** — the market
+has already priced the mismatch, so the public-vs-market gap this test was built
+to find does not exist.
+
+### And it has decayed (the actual finding)
+
+| \|spread\| ≥ 12 | n | actual − close | over % | ROI −110 | fav cover % |
+|---|---|---|---|---|---|
+| **DEV 2017-2024** | 564 | **+3.006** | **55.81** | **+6.55** | **47.73** |
+| **HOLDOUT 2024-26** | 350 | +0.947 | 51.58 | −1.54 | **52.33** |
+
+| season | over % | | season | over % |
+|---|---|---|---|---|
+| 2017-18 | 55.26 | | **2024-25** | **51.55** |
+| 2018-19 | 52.17 | | **2025-26** | **51.60** |
+| 2020-21 | 58.06 | | | |
+| 2021-22 | 56.60 | | | |
+| 2022-23 | 57.75 | | | |
+| 2023-24 | 55.92 | | | |
+
+**Six of six development seasons above break-even; both holdout seasons below.**
+The spread side reverses simultaneously (47.73% → 52.33%). Both halves flip at
+the same time.
+
+⚠ 350 holdout games gives a CI of [46.3, 56.8] — wide enough to contain both the
+dev and holdout figures, so two seasons **cannot formally separate decay from a
+bad run**. But six-for-six then zero-for-two, on totals and spreads at once, is
+more than the noise story predicts comfortably. Consistent with
+[ALPHA_DECAY.md](ALPHA_DECAY.md): this is a well-known bias, and well-known
+biases are the ones that get arbitraged.
