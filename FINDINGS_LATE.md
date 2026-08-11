@@ -564,3 +564,60 @@ flattest result in the project.
 ⚠ Contrast with §14: the mismatch test found a real +3.0-point development effect
 that later decayed. This finds nothing anywhere — no development effect, no
 holdout effect, no signal to decay. Extreme totals are simply priced correctly.
+
+---
+
+## 16. Blind partition search: no exploitable region, but a real unconditional bias
+
+Every earlier angle was hypothesis-driven. This inverts it: let a depth-3 tree
+search 29 features for regions where **`actual_total − close_total`** departs
+from zero, with no basketball prior. `blind_partition.py`.
+
+Target is deliberately bias against the **CLOSE**, not the open-to-close move.
+Predicting the move front-runs a correction the market makes anyway — hence real
+CLV and no win rate (§11). Bias against the close is what actually pays.
+
+### The search found impressive structure. It is all noise.
+
+| leaf | n | bias | t |
+|---|---|---|---|
+| 5 | 290 | **−3.993** | −3.73 |
+| 11 | 313 | −3.805 | −3.88 |
+| 9 | 2,160 | **+2.272** | **+5.86** |
+| 4 | 288 | +2.623 | +2.55 |
+
+t = 5.86 on 2,160 games is p < 1e-8 conventionally, with bias double the
+break-even. **Refitting the identical tree on 400 shuffled residuals, the largest
+leaf bias found on pure noise is 4.179 ± 0.851** — the observed 3.993 sits at the
+**38th percentile of that null**. The search finds MORE structure on scrambled
+data than on real data.
+
+Holdout confirms: 3 of 7 leaves keep their sign (chance 50%), dev-to-holdout bias
+correlation **−0.462**. The strongest leaves reverse.
+
+⚠ **The permutation control is mandatory for any search-based method.** Without
+it that t = 5.86 leaf reads as a discovery. A tree evaluating thousands of splits
+returns an extreme order statistic; its best leaf is not a hypothesis test.
+
+### The unconditional bias IS real and replicates
+
+| set | n | bias | t | over % | ROI over |
+|---|---|---|---|---|---|
+| DEV 2017-2024 | 6,489 | **+0.531** | +2.37 | 50.37 | −3.83% |
+| HOLDOUT 2024-26 | 2,207 | **+0.579** | +1.53 | 50.75 | −3.11% |
+| pooled | 8,696 | **+0.543** | **+2.81** | 50.47 | −3.65% |
+
+Actual totals exceed the close by ~half a point, and the holdout estimate lands
+almost exactly on the development one. Among the cleanest replications here.
+
+### And it is still not enough
+
+**Break-even needs |bias| ≥ 1.08 points** — 0.0597 × 18.08, the sd of the TOTAL
+residual. (Not 12.7, which is one team's score; that error would understate the
+bar by 30%.) The real bias is about **half** what the vig costs.
+
+**Revises the standing description of market efficiency:** the market is not
+unbiased. It is biased by ~0.5 points, measurably and repeatably. **The vig band
+is simply wider than the bias.** For any cross-sport screen the question is not
+"is there bias" but "is the bias more than 0.06 sd", since that is the price of
+−110.
