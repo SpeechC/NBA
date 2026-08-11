@@ -43,9 +43,34 @@ Dropping the threshold to the only level that triggers at all:
 
 Losing, as expected: 0.158 points of CLV against a ~1.35-point requirement.
 
+## CORRECTION (2026-08-11, on the full 2017-2026 file)
+
+Two things in the original write-up were overstated.
+
+**1. The figure.** 92.4% was measured on the 346-bet subsample at the operating
+threshold. On the full file, with 4,202 games carrying opener + all three quotes
++ close, the cumulative capture is **83.8% by quote 1**, 89.8% by quote 2, 94.0%
+by quote 3. The direction is unchanged; the magnitude is lower.
+
+**2. The interpretation, which was wrong.** The quotes are ORDERED but NOT
+TIMESTAMPED. The file contains no time column for them -- the only time-named
+fields, `HALFTIME_H/R`, are second-half betting lines. So this measures position
+in a SEQUENCE of repricings, not elapsed clock time.
+
+  * supported: "most of the move has happened by the first repricing"
+  * NOT supported: "the execution window is minutes wide"
+
+The opener may sit for six hours before the first move, or six seconds. Nothing
+here distinguishes those cases. Most games show only 3-4 distinct line values
+across open/q1/q2/q3/close, so these are a handful of repricings rather than a
+dense sample of the day.
+
+How long the opener actually survives is unmeasured, and is precisely what live
+timestamped logging would establish.
+
 ## Verdict
 
-**The edge is real and essentially unreachable after the opener.**
+**The edge is real and concentrated in the first repricing.**
 
 Everything the model captures happens in the very first move. This reframes the
 project's central question. It was never "is the signal big enough?" — at the open
@@ -54,8 +79,9 @@ the opening number?"**
 
 That is now an execution and infrastructure question, not a modelling one:
 
-* how long the opener stays up before the first repost (unknown from this data —
-  the file has no timestamps, only ordered quotes)
+* **how long the opener stays up before the first repricing — completely unknown
+  from this data.** The quotes are ordered, not timestamped. This is the single
+  most important unmeasured quantity in the project.
 * what limit is available at the opener, which is typically the smallest of the day
 * whether an automated pipeline can price and fire before the first move
 * whether books tolerate an account that only ever bets openers
