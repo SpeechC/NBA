@@ -25,6 +25,24 @@ therefore tests whether the edge **still exists now**, not merely whether it
 existed in 2019-2024. Markets sharpen over time; if this signal has decayed, the
 latest season is where it shows.
 
+### Contamination status of each holdout season, recorded before the test
+
+| season | odds seen? | pbp seen? | status |
+|---|---|---|---|
+| 2024-25 | **no** — the odds file stops 2024-06-17 | yes (stints, ratings, RAPM) | **valid holdout** |
+| 2025-26 | no | no | **untouched in every respect** |
+
+2024-25 play-by-play was used in this project, so that season's possessions and
+scoring levels have been observed. It does not contaminate the test, for a
+structural reason rather than a judgement call: the frozen models reference
+exactly one data source (`dfMaster_OT.csv`, verified by import-closure trace),
+which stops in June 2024, and the target is **line movement** -- no 2024-25 line
+has ever been observed. Every pbp analysis touching 2024-25 returned null and
+none of its outputs feed spec A or D.
+
+Anyone preferring maximum purity should read 2025-26 alone, which is why both
+seasons are reported separately as well as pooled.
+
 **Run `accept_new_data.py` on the file before anything else.** It gates on nine
 checks, the critical one being that overtime games are present. An OT-stripped
 file already fooled this project once -- it looks entirely normal and silently
