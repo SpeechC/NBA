@@ -356,3 +356,33 @@ The teams whose lines move most yield the LOWEST CLV, and nearly all profit sits
 in the low-movement tercile. Consistent with move magnitude being unpredictable
 (corr −0.036) while direction is not: a large move only helps if the sign was
 called right, and we do not call it better in those games.
+
+### Within-season vs across-season (§13 follow-up)
+
+If team profiles change season to season, pooling across seasons is the wrong
+unit and a team effect could be real WITHIN a season while vanishing across
+them. That is falsifiable. `team_within.py`.
+
+| horizon | mean corr |
+|---|---|
+| **within season** (first half → second half, same roster) | **+0.089** |
+| **across seasons** (matched half-seasons) | **−0.008** |
+| null at this sample size | −0.003 ± 0.069 |
+
+Within-season does exceed across-season, which is the ordering roster turnover
+predicts — the mechanism is the right shape. But **+0.089 is the 91st percentile
+of its null, ~1.3 sd**: not significant. Per-season values run −0.259 to +0.362
+with three of eight negative, so even the within-season figure is unstable.
+
+The gap between horizons is +0.097 — the ceiling on what estimating team
+profiles fresh each season could recover, and it is inside the noise band before
+anything is built.
+
+**Conclusion is stronger than "pooling is the wrong unit": team-level move
+magnitude is noise at every horizon tested.** Roster turnover cannot explain the
+missing across-season effect because there is no within-season effect to erode.
+
+⚠ Sample-size trap this had to avoid: within-season correlations use ~36 games
+per half against 500+ for a pooled season, so they would look worse on precision
+alone. The across-season figure is therefore recomputed on half-seasons too, and
+still comes out at zero.
