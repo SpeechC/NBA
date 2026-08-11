@@ -131,3 +131,50 @@ improve the bet-the-opener strategy much — they support a *different* strategy
 **Cheaper substitute to price first: multi-book line divergence** (e.g. The Odds
 API, multi-book snapshots from ~mid-2020). Available at the moment you would bet,
 and directly measures where consensus is heading.
+
+---
+
+## 10. Spec re-check on the 2017-start panel — A and D survive
+
+The panel changed materially (7,335 → 8,696 games) and `dis_open` became noisier
+when its burn-in was cut, so the spec ranking was re-run rather than assumed.
+**Development only** — choosing a spec is selection.
+
+| spec | k | corr | bets | CLV | CLV lo | win% | ROI −110 |
+|---|---|---|---|---|---|---|---|
+| C (symmetric+pace, 41) | 41 | 0.2632 | 424 | **2.153** | 1.811 | 56.13 | +7.16 |
+| **A (frozen, 21)** | 21 | 0.2635 | 453 | 2.000 | 1.676 | 55.41 | +5.78 |
+| B (symmetric, 34) | 34 | 0.2610 | 501 | 1.987 | 1.673 | 55.09 | +5.17 |
+| **D (frozen, 15)** | 15 | **0.2687** | 456 | 1.976 | 1.667 | 54.17 | +3.41 |
+| D_nodis (14) | 14 | 0.2646 | 494 | 1.951 | 1.652 | 52.02 | −0.68 |
+| A_nodis (20) | 20 | 0.2612 | 445 | 1.818 | 1.501 | 54.38 | +3.82 |
+| market only (2) | 2 | 0.2121 | 35 | 3.757 | 2.257 | 57.14 | +9.09 |
+| open_total only (1) | 1 | 0.0108 | 0 | — | — | — | — |
+
+**The top six are statistically indistinguishable** — every CLV interval overlaps
+every other. C leads on CLV point estimate, D on correlation, A sits between.
+Switching to C on a 0.15 CLV gap with overlapping CIs would be exactly the
+noise-chasing pre-registration exists to prevent. **A and D stand**, and they are
+the specs with holdout results.
+
+### `open_total` alone predicts nothing
+
+Correlation **0.0108**, zero bets clearing the threshold. The line does not
+predict its own movement; all signal comes from the team-form features. This is
+a useful sanity check on where the edge originates.
+
+### `dis_open` is nearly free to remove from D
+
+| | CLV | corr | win% |
+|---|---|---|---|
+| D | 1.976 | 0.2687 | 54.17 |
+| D without `dis_open` | 1.951 | 0.2646 | **52.02** |
+
+CLV cost is 0.025 — noise. But `dis_open` is the **most expensive feature in the
+pipeline**: it requires an XGBoost score model plus a calibration stage, and its
+burn-in is the only reason the panel cannot start at the 2017-10-25 feature
+floor. Removing it would delete the most fragile component and recover ~250 games.
+
+⚠ It costs 2.1pp of realised win rate, which is the metric already failing (§6).
+Worth investigating, not worth acting on yet — and any such change is a new spec
+requiring its own pre-registration, not an edit to D.

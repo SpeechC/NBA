@@ -47,6 +47,43 @@ retained as a NaN-able column.
 Combined with the reduced `SCORE_MIN`/`CAL_MIN`, the panel went
 **7,335 → 8,696 games** and its start moved **2019-01-01 → 2017-12-06**.
 
+## What development actually contains
+
+"2017-18 through 2023-24" is **six seasons of data spanning seven season slots**.
+Counts from `diag_coverage.py`:
+
+| season | in source | panel (trainable) | scored | missing |
+|---|---|---|---|---|
+| 2017-18 | 1,230 | **878** | **365** | 352 |
+| 2018-19 | 1,230 | 1,165 | 1,165 | 65 |
+| **2019-20** | **0** | **0** | **0** | **whole season** |
+| 2020-21 | 1,080 | 1,015 | 1,015 | 65 |
+| 2021-22 | 1,230 | 1,166 | 1,166 | 64 |
+| 2022-23 | 1,230 | 1,163 | 1,163 | 67 |
+| 2023-24 | 1,162 | 1,098 | 1,098 | 64 |
+
+**Development panel 6,489 games; scored 5,976.**
+
+- **2019-20 is dropped intentionally** — the COVID/bubble season, no crowds and a
+  distorted schedule. It is absent from the source export, not lost in
+  processing.
+- **2017-18 is the worst-covered season**: it sits behind every burn-in at once,
+  contributing 878 trainable games but only 365 scored.
+- **~65 games per season** go to the 6-games-per-team feature lag. Structural and
+  uniform.
+- **707 playoff and play-in games are excluded by design** — lags within a series
+  are against the same opponent, so the regular-season feature construction does
+  not transfer.
+- **In-Season Tournament games mostly drop** (4 of ~64 per year survive).
+  ⚠ Unexplained. ~180 games in total, no effect on the holdout verdict, but it is
+  not a deliberate exclusion and nobody has traced it.
+
+The panel/scored distinction matters: the ~513-game difference is the ridge's
+initial training window. Those games are *used*, just not evaluated. And there is
+no single fitted model — `walk_forward` refits every 7 days on an expanding
+window, so it is ~300 fits, each seeing only games completed before the one it
+predicts.
+
 ## Why the boundary is a date, not a season label
 
 `SPLIT_DATE = 2024-07-01`. Matching season strings against
