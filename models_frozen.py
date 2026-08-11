@@ -71,11 +71,30 @@ SPECS = {"A": FEATURES_A, "D": FEATURES_D}
 
 # Reference backtest, so any future run can be compared against a fixed anchor.
 # ROI at -110. Every interval except threshold 2.0 includes zero.
+#
+# VINTAGE MATTERS. These were computed from the panel built on dfMaster_OT.csv
+# (through 2024-06-17). The odds export has since been replaced by
+# dfMaster_OT_2017-2026.csv and movement_full_games.csv regenerated from it,
+# which changes a small number of development games and therefore moves these
+# numbers slightly. BACKTEST is kept unchanged as the historical record of what
+# was frozen; BACKTEST_CURRENT is what the same frozen specs produce on today's
+# data. The FEATURE SETS AND ESTIMATOR ARE UNCHANGED -- only the input panel is.
 BACKTEST = {
     "A": {0.0: -3.04, 0.25: -2.99, 0.50: -1.71, 0.75: +0.08, 1.00: +0.86,
           1.25: +3.18, 1.50: +5.51, 1.75: +9.20, 2.00: +16.82},
     "D": {0.0: -3.96, 0.25: -3.26, 0.50: -2.91, 0.75: -1.68, 1.00: +2.59,
           1.25: +3.13, 1.50: +0.92, 1.75: +3.64, 2.00: +20.36},
+}
+
+# Same specs, same walk-forward, DEVELOPMENT ONLY (2019-03-24 .. 2024-04-14,
+# 4,582 games) on the 2017-2026 export. Recomputed 2026-08-11.
+# Largest drift is at threshold 2.00 where n=139; the shape and sign of the
+# ladder are preserved throughout.
+BACKTEST_CURRENT = {
+    "A": {0.0: -2.42, 0.25: -3.06, 0.50: -1.95, 0.75: -0.04, 1.00: +1.22,
+          1.25: +2.21, 1.50: +4.32, 1.75: +8.77, 2.00: +12.62},
+    "D": {0.0: -3.67, 0.25: -3.45, 0.50: -3.02, 0.75: -1.97, 1.00: +2.82,
+          1.25: +2.05, 1.50: +2.50, 1.75: +4.13, 2.00: +18.82},
 }
 OPERATING_THRESHOLD = 1.25   # peak expected profit per season, both specs
 

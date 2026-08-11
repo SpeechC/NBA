@@ -12,7 +12,13 @@ games of a team's season are dropped.
 import numpy as np
 import pandas as pd
 
-CSV = "/mnt/c/NBA2/dfMaster_OT.csv"  # complete file: includes overtime games
+# Complete odds file: includes overtime games AND the 2024-25 / 2025-26 holdout
+# seasons. Must stay in step with movement_full_games.csv -- if this points at
+# the older dfMaster_OT.csv (which stops 2024-06-17) while the movement file
+# carries 2026 games, every lagged form feature comes back NaN for the holdout
+# and the panel silently truncates to the development era. That happened once;
+# `python check_data_source.py` now detects it.
+CSV = "/mnt/c/NBA2/dfMaster_OT_2017-2026.csv"
 
 # paper Table 1 order: V1..V13
 VARS = ["2PA", "2P%", "3PA", "3P%", "FTA", "FT%", "ORB", "DRB",

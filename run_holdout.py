@@ -64,11 +64,14 @@ def main():
     G["pm"] = walk_forward(G[feats].values, G["move_total"].values.astype(float),
                            G["date"].values)
     d = G.dropna(subset=["pm"]).copy()
-    d["is_holdout"] = d["season"].astype(str).str.contains("|".join(HOLDOUT))
-    dev, ho = d[~d["is_holdout"]], d[d["is_holdout"]]
+    # Split by DATE, not by season label -- see data_split.py. A label filter
+    # drops any game whose season string is not one of the two literals (the
+    # In-Season Tournament labels are the known case) onto the development side.
+    dev, ho = data_split.split(d)
+    print(data_split.describe(d).to_string(index=False))
     print(f"development {len(dev):,}   holdout {len(ho):,}\n")
     if len(ho) == 0:
-        raise SystemExit("no holdout games found — check season labels")
+        raise SystemExit("no holdout games found — check the panel date range")
 
     def bets(x):
         s = x[(x["pm"].abs() > THRESH) & (x["actual_total"] != x["open_total"])]
