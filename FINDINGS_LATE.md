@@ -505,3 +505,62 @@ bad run**. But six-for-six then zero-for-two, on totals and spreads at once, is
 more than the noise story predicts comfortably. Consistent with
 [ALPHA_DECAY.md](ALPHA_DECAY.md): this is a well-known bias, and well-known
 biases are the ones that get arbitraged.
+
+---
+
+## 15. Extreme totals: correctly priced, and "3 SD" is untestable
+
+Claim: when a total sits ~3 sd from the season's typical total, neither side
+pays. `extreme_totals.py`. The season mean/sd are **walk-forward season-to-date**
+(expanding, min 100 games) — using the finished season's statistics would leak.
+
+Two readings, distinguished because they imply opposite trades:
+**efficiency** (over% ≈ 50, both sides lose to vig) vs **reversion** (high totals
+come in under, low totals over — one side pays).
+
+### 3 SD is too rare to evaluate
+
+| threshold | n | per season |
+|---|---|---|
+| \|z\| ≥ 2.0 | 549 | ~69 |
+| \|z\| ≥ 2.5 | 159 | ~20 |
+| **\|z\| ≥ 3.0** | **29** | **~4** |
+
+29 games in eight seasons → over-rate CI [40.7, 76.6]. **Nothing is concludable
+at 3 sd.**
+
+### "Both sides lose" is true — and true everywhere
+
+| band | n | over % | ROI over | ROI under |
+|---|---|---|---|---|
+| z < −2 | 206 | 50.49 | −3.62 | −5.47 |
+| −1.5..−1 | 766 | 53.00 | **+1.19** | −10.28 |
+| −0.5..0.5 | 2,944 | 50.07 | −4.42 | −4.68 |
+| 1..1.5 | 923 | 51.14 | −2.37 | −6.72 |
+| z > +2 | 343 | 51.31 | −2.04 | −7.05 |
+
+Both sides lose in **eight of nine bands, including the middle**. That is the
+vig, not a property of extremes. At −110 a side pays only if the over rate falls
+outside [47.62, 52.38]; no band clears it. The one that nominally does
+(−1.5..−1, 53.00%) has CI [49.47, 56.54], straddling break-even.
+
+**The claim is the default state of a vigged market, not a finding.**
+
+### Reversion is cleanly false
+
+| tail | n | actual − close | t | p |
+|---|---|---|---|---|
+| HIGH z ≥ +2 | 343 | **+0.370** | 0.39 | 0.70 |
+| LOW z ≤ −2 | 206 | **+0.461** | 0.40 | 0.69 |
+
+Both tails go slightly OVER, by nearly identical amounts. Reversion requires
+opposite signs; these share sign and magnitude.
+
+### |z| predicts nothing
+
+`resid ~ 1 + z + |z|` → multiple correlation **0.0082**, R² **0.00007**. The
+flattest result in the project.
+
+⚠ Contrast with §14: the mismatch test found a real +3.0-point development effect
+that later decayed. This finds nothing anywhere — no development effect, no
+holdout effect, no signal to decay. Extreme totals are simply priced correctly.
