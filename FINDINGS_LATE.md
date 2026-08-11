@@ -178,3 +178,66 @@ floor. Removing it would delete the most fragile component and recover ~250 game
 ⚠ It costs 2.1pp of realised win rate, which is the metric already failing (§6).
 Worth investigating, not worth acting on yet — and any such change is a new spec
 requiring its own pre-registration, not an edit to D.
+
+---
+
+## 11. Dollar P&L per bet, and the confidence inversion it exposed
+
+`staking.py` + `run_staking.py` write `staking_bets_{A,D}.csv` — one row per game
+with `stake_units`, `stake_$`, `won`, `push`, `$won`.
+
+⚠ **The staking formula was reconstructed, not recovered.** It was computed
+in-session originally and only its summary statistics were ever written down; no
+committed file held it. `min(pred², 3) × $100` matches the recorded $300 cap
+exactly but **not** the recorded mean ($52.89 observed vs $31) or median ($22.53
+vs $17) stake. The original panel and code are gone, so this cannot be
+reconciled. Read these as "this rule on this panel."
+
+### Spec A, $100 unit, priced at −110
+
+| set | bets | risked $ | **$won** | ROI % | win % |
+|---|---|---|---|---|---|
+| DEVELOPMENT | 5,976 | 273,698 | **+314.82** | 0.12 | 50.03 |
+| HOLDOUT 2024-25 | 1,106 | 79,069 | −1,154.67 | −1.46 | 52.80 |
+| HOLDOUT 2025-26 | 1,101 | 78,302 | +3,246.73 | +4.15 | 52.97 |
+| **HOLDOUT pooled** | 2,207 | 157,370 | **+2,092.07** | +1.33 | 52.89 |
+
+Spec D holdout pooled: **−$148.96** (−0.10%). At −105: A dev +$6,528, holdout
++$5,708; D dev +$5,365, holdout +$3,288.
+
+### Prediction magnitude is not stationary
+
+Mean |pred| by season: 0.274, 0.364, 0.571, 0.611, 0.593, 0.655, 0.704, 0.709.
+It climbs monotonically with training-set size, so **the frozen 1.25 threshold is
+not a fixed operating point** — it selects 0.3% of games in 2017-18 and 15–16% in
+the holdout. Dollar totals are dominated by later seasons for the same reason.
+
+### The confidence ranking inverts out of sample
+
+| thr | DEV n | DEV win% | HOLDOUT n | HOLDOUT win% |
+|---|---|---|---|---|
+| 0.00 | 5,946 | 50.03 | 2,199 | 52.89 |
+| 0.50 | 2,647 | 51.11 | 1,254 | 52.79 |
+| 0.75 | 1,581 | 52.12 | 871 | **54.42** |
+| 1.00 | 885 | 53.56 | 569 | 53.95 |
+| **1.25** | 453 | **55.41** | 345 | **50.14** |
+| 1.50 | 193 | 52.85 | 197 | 50.25 |
+
+In development, win rate rises monotonically with confidence — as designed. In
+the holdout it **peaks near 0.75 and reverses**, and the frozen threshold sits
+past the turn. Spec D shows the same shape (peak 53.45% at 0.75, 49.25% at 1.25).
+
+**This is the best explanation yet for §6.** The model's DIRECTION calls keep
+working out of sample — CLV holds at +1.877 — but its CONFIDENCE RANKING does
+not. CLV is earned on the sign; the win rate needs the ranking. That is precisely
+the pattern of a passing CLV alongside a failing win rate.
+
+It also reframes §11's holdout profit: the quadratic rule makes money **from the
+low-confidence games the threshold excludes**, not from the model's best picks.
+Not a vindication — the same inversion seen from the money side.
+
+⚠ **0.75 looking better is an observation on holdout data, not a recommendation.**
+Re-tuning the threshold on it would burn the holdout, which
+[PREREGISTRATION.md](PREREGISTRATION.md) explicitly forbids ("if 1.25 fails but
+1.5 works, that is noise, not a discovery"). Testing a lower threshold honestly
+needs a new pre-registration and a season nobody has looked at.
