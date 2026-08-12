@@ -23,7 +23,18 @@ Design, with the traps this project has already fallen into:
   That is leak-free and, unlike a running definition, does not let a player stop
   being the star merely because he is injured.
 
-  ABSENCE means the player records no event in the game.
+  ABSENCE means the player records no event in the game, and is split by TYPE:
+  TEMPORARY (the star plays again later that season -- injury, rest, load
+  management, the actual Ewing case) versus DEPARTED (the game falls after his
+  final appearance -- traded, season-ending injury, shutdown). 33.7% of absences
+  are DEPARTED and the market has had weeks to reprice those; they are not
+  overreaction candidates and are reported separately.
+
+  HOME/AWAY comes from HOMEDESCRIPTION, not from matching pbp-derived points to
+  the box score. That heuristic was wrong on 5.82% of team-games because the
+  points parsed from event descriptions match the box score exactly only 85.4%
+  of the time. HOMEDESCRIPTION flags exactly one team per game in all 9,513
+  games.
 
   Games where BOTH teams are missing a star are excluded from the directional
   test; there is no short-handed side.
@@ -77,8 +88,29 @@ def build_player_games():
     return d
 
 
+def home_team_map():
+    """Definitive home team per game: events carrying HOMEDESCRIPTION."""
+    con = duckdb.connect()
+    q = f"""
+    SELECT lpad(CAST(GAME_ID AS VARCHAR),10,'0') AS gid,
+           PLAYER1_TEAM_ID AS team,
+           sum(CASE WHEN HOMEDESCRIPTION IS NOT NULL THEN 1 ELSE 0 END) AS nh,
+           sum(CASE WHEN VISITORDESCRIPTION IS NOT NULL THEN 1 ELSE 0 END) AS na
+    FROM read_parquet('{PBP}')
+    WHERE SEASON_TYPE='RegularSeason'
+      AND PLAYER1_TEAM_ID BETWEEN {TEAM_LO} AND {TEAM_HI}
+    GROUP BY 1,2
+    """
+    d = con.execute(q).fetchdf()
+    d["is_home"] = d["nh"] > d["na"]
+    assert (d.groupby("gid")["is_home"].sum() == 1).all(), "home flag not unique"
+    return d[["gid", "team", "is_home"]]
+
+
 def main():
     pg = build_player_games()
+    hm = home_team_map()
+
     from prepare_data import CSV, season_label
     raw = pd.read_csv(CSV, low_memory=False)
     raw["season_lbl"] = season_label(raw).astype(str)
@@ -90,104 +122,90 @@ def main():
     games = raw.dropna(subset=["date", "close_spread", "PTS_H", "PTS_R"])
     games = games[["gid", "date", "season_lbl", "PTS_H", "PTS_R",
                    "close_spread", "close_total"]].drop_duplicates("gid")
-    pg = pg.merge(games[["gid", "date"]], on="gid", how="inner").sort_values("date")
-    print(f"player-games {len(pg):,}   odds games {len(games):,}")
 
-    # team-game ordering within season
+    pg = pg.merge(games[["gid", "date"]], on="gid", how="inner").sort_values("date")
     tg = pg[["season", "team", "gid", "date"]].drop_duplicates().sort_values("date")
     tg["tg_idx"] = tg.groupby(["season", "team"]).cumcount()
     pg = pg.merge(tg[["season", "team", "gid", "tg_idx"]],
                   on=["season", "team", "gid"], how="left")
 
-    # star fixed from the team's first DEFINE_WINDOW games
     early = pg[pg["tg_idx"] < DEFINE_WINDOW]
     cand = (early.groupby(["season", "team", "pid"])
                  .agg(apps=("pts", "size"), ppg=("pts", "mean")).reset_index())
     cand = cand[cand["apps"] >= MIN_APPEARANCES]
     star = (cand.sort_values("ppg", ascending=False)
                 .groupby(["season", "team"], as_index=False).first())
-    print(f"stars identified: {len(star):,} team-seasons, "
-          f"mean {star['ppg'].mean():.1f} ppg")
+    print(f"stars: {len(star):,} team-seasons, mean {star['ppg'].mean():.1f} ppg")
 
-    # test window: games 21+, did the star appear?
     test = tg[tg["tg_idx"] >= DEFINE_WINDOW].merge(
         star[["season", "team", "pid", "ppg"]], on=["season", "team"], how="inner")
     played = pg[["gid", "pid"]].drop_duplicates().assign(played=True)
     test = test.merge(played, on=["gid", "pid"], how="left")
     test["star_out"] = test["played"].isna()
-    print(f"team-games in test window: {len(test):,}   "
-          f"star absent in {100*test['star_out'].mean():.2f}%")
+    last = (test[~test["star_out"]].groupby(["season", "team"])["tg_idx"]
+            .max().rename("last_app"))
+    test = test.merge(last, on=["season", "team"], how="left")
+    test["absence"] = np.where(
+        ~test["star_out"], "present",
+        np.where(test["tg_idx"] > test["last_app"], "DEPARTED", "TEMPORARY"))
+    test = test.merge(hm, on=["gid", "team"], how="inner")
+    print(f"team-games tested: {len(test):,}   "
+          f"{100*test['star_out'].mean():.1f}% star absent "
+          f"({100*(test['absence']=='TEMPORARY').mean():.1f}% temporary, "
+          f"{100*(test['absence']=='DEPARTED').mean():.1f}% departed)")
 
-    # team points from pbp, to identify the home side
-    tp = pg.groupby(["gid", "team"])["pts"].sum().reset_index(name="team_pts")
-    test = test.merge(tp, on=["gid", "team"], how="left")
-    test = test.merge(games, on="gid", how="inner")
-    test["is_home"] = (test["team_pts"] - test["PTS_H"]).abs() < \
-                      (test["team_pts"] - test["PTS_R"]).abs()
-
-    # keep games where BOTH teams are in the test window
-    cnt = test.groupby("gid").size()
-    test = test[test["gid"].isin(cnt[cnt == 2].index)]
-    g = test.pivot_table(index="gid", columns="is_home",
-                         values=["star_out", "ppg"], aggfunc="first")
-    g.columns = [f"{a}_{'home' if b else 'away'}" for a, b in g.columns]
-    g = g.join(games.set_index("gid")).dropna(subset=["close_spread"])
-    g["margin"] = g["PTS_H"] - g["PTS_R"]
-    g["home_cover"] = g["margin"] + g["close_spread"]
-    g["total_resid"] = (g["PTS_H"] + g["PTS_R"]) - g["close_total"]
+    H = test[test["is_home"]][["gid", "absence"]].rename(columns={"absence": "home"})
+    A = test[~test["is_home"]][["gid", "absence"]].rename(columns={"absence": "away"})
+    g = games.merge(H, on="gid").merge(A, on="gid")
+    g["home_cover"] = (g["PTS_H"] - g["PTS_R"]) + g["close_spread"]
     g = g[g["home_cover"] != 0]
-    g["star_out_home"] = g["star_out_home"].astype(bool)
-    g["star_out_away"] = g["star_out_away"].astype(bool)
-
-    only_h = g["star_out_home"] & ~g["star_out_away"]
-    only_a = g["star_out_away"] & ~g["star_out_home"]
-    both = g["star_out_home"] & g["star_out_away"]
-    neither = ~g["star_out_home"] & ~g["star_out_away"]
-    print("\n" + "=" * 96)
-    print("EWING TEST — does the short-handed team beat the closing spread?")
-    print("=" * 96)
-    print(f"  games {len(g):,}   neither {neither.sum():,}   "
-          f"home star out {only_h.sum():,}   away star out {only_a.sum():,}   "
-          f"both {both.sum():,}")
-
-    sh = pd.concat([g[only_h].assign(sh_cover=g.loc[only_h, "home_cover"]),
-                    g[only_a].assign(sh_cover=-g.loc[only_a, "home_cover"])])
-    base = g[neither].assign(sh_cover=g.loc[neither, "home_cover"])
+    print(f"games with both sides classified: {len(g):,}")
+    print(pd.crosstab(g["home"], g["away"]).to_string())
 
     def blk(x, lab):
-        c = x["sh_cover"]
-        t, p = stats.ttest_1samp(c, 0.0)
+        c = x["cov"]
+        t, p = stats.ttest_1samp(c, 0)
         w = (c > 0).mean()
-        return {"set": lab, "n": len(x), "mean cover": round(c.mean(), 3),
-                "cover %": round(100 * w, 2), "t": round(t, 2), "p": round(p, 4),
+        se = np.sqrt(w * (1 - w) / len(c))
+        return {"situation": lab, "n": len(x), "mean cover": round(c.mean(), 3),
+                "cover %": round(100 * w, 2),
+                "95% CI": f"[{100*(w-1.96*se):.1f}, {100*(w+1.96*se):.1f}]",
+                "t": round(t, 2), "p": round(p, 4),
                 "ROI110 %": round(100 * (w * (100 / 110) - (1 - w)), 2)}
 
-    print()
-    print(pd.DataFrame([blk(sh, "SHORT-HANDED team ATS"),
-                        blk(base, "baseline: home, neither out")]).to_string(index=False))
+    rows, sets = [], {}
+    for kind in ("TEMPORARY", "DEPARTED"):
+        mh = (g["home"] == kind) & (g["away"] == "present")
+        ma = (g["away"] == kind) & (g["home"] == "present")
+        x = pd.concat([g[mh].assign(cov=g.loc[mh, "home_cover"]),
+                       g[ma].assign(cov=-g.loc[ma, "home_cover"])])
+        sets[kind] = x
+        rows.append(blk(x, f"short-handed: {kind}"))
+    bp = (g["home"] == "present") & (g["away"] == "present")
+    rows.append(blk(g[bp].assign(cov=g.loc[bp, "home_cover"]),
+                    "baseline: both present (home side)"))
 
-    print("\n--- totals ---")
-    for lab, x in (("star out (one side)", g[only_h | only_a]),
-                   ("neither out", g[neither])):
-        r = x["total_resid"]
-        t, p = stats.ttest_1samp(r, 0)
-        print(f"  {lab:22} n={len(x):5,}  actual-close {r.mean():+.3f}  "
-              f"over% {100*(r>0).mean():5.2f}  t={t:+.2f}  p={p:.3f}")
+    print("\n" + "=" * 104)
+    print("SHORT-HANDED TEAM ATS — corrected home/away, split by absence type")
+    print("=" * 104)
+    print(pd.DataFrame(rows).to_string(index=False))
 
-    print("\n--- by season (decay check) ---")
-    print(sh.groupby("season_lbl").apply(lambda x: pd.Series({
-        "n": len(x), "mean cover": round(x["sh_cover"].mean(), 3),
-        "cover %": round(100 * (x["sh_cover"] > 0).mean(), 2)}),
-        include_groups=False).to_string())
+    for kind, x in sets.items():
+        print(f"\n--- {kind}, by season ---")
+        print(x.groupby("season_lbl").apply(lambda y: pd.Series({
+            "n": len(y), "mean cover": round(y["cov"].mean(), 3),
+            "cover %": round(100 * (y["cov"] > 0).mean(), 2)}),
+            include_groups=False).to_string())
 
-    print("\n--- permutation null ---")
-    obs = sh["sh_cover"].mean()
-    pool = pd.concat([sh, base])["sh_cover"].values
-    null = np.array([RNG.choice(pool, len(sh), replace=False).mean()
+    x = sets["TEMPORARY"]
+    print("\n--- permutation null, TEMPORARY vs both-present ---")
+    pool = np.concatenate([x["cov"].values, g[bp]["home_cover"].values])
+    obs = x["cov"].mean()
+    null = np.array([RNG.choice(pool, len(x), replace=False).mean()
                      for _ in range(4000)])
     print(f"  observed {obs:+.3f}   null {null.mean():+.3f} +/- {null.std():.3f}"
           f"   percentile {100*np.mean(null < obs):.1f}")
-    sh.to_csv("ewing_bets.csv")
+    x.to_csv("ewing_bets.csv", index=False)
 
 
 if __name__ == "__main__":

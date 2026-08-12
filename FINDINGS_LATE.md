@@ -756,71 +756,75 @@ time (corr 0.26 between outputs) — genuinely different, and simply worse.
 
 ---
 
-## 19. The Ewing Theory: real, large, and dead since 2019
+## 19. The Ewing Theory: NOT supported (and a bug that faked it)
 
 Hypothesis: when a team's best player sits, the market over-adjusts and the
 short-handed team beats its number. `ewing.py`.
 
-Chosen because it has the four properties that separated §14 — the one edge that
-ever worked here — from the twenty-one nulls: it targets the **CLOSE**, it is
-**conditional**, it is **behavioural** rather than diffuse, and it makes a
-**directional** prediction.
+⚠ **An earlier version of this section reported 53.18% cover, t = 2.99,
+p = 0.0028 and a 99.4th-percentile permutation result, with cover rates of
+59.8% and 63.1% in 2017-19. All of it was a bug.** It is recorded here rather
+than deleted because the failure mode is worth keeping.
+
+**The bug.** Home/away was assigned by matching pbp-derived team points to the
+box score. Points parsed from event descriptions match exactly only **85.4%** of
+the time, so that assignment was wrong on **5.82%** of team-games. Worse, when
+both teams matched the same side the pivot produced NaN, and `.astype(bool)`
+turns NaN into **True** — i.e. "star absent" — injecting phantom absences.
+`HOMEDESCRIPTION` gives a definitive assignment (exactly one team flagged home
+in all 9,513 games) and is now used.
+
+### Corrected result: null
 
 Star fixed from the team's first 20 games (leading scorer, ≥10 appearances),
-tested on games 21+. Absence = no event recorded.
+tested on games 21+. Absence split by type, since 33.7% of absences fall after
+the star's final appearance and a permanently reorganised team is not an
+overreaction candidate.
 
-⚠ A first attempt picked each game's star from players appearing in that game,
-so by construction the star was never absent — 0 absences in 15,600 team-games.
-Star identification must not condition on playing.
-
-### Pooled, it looks like a strong live edge
-
-| | n | mean cover | cover % | t | p | ROI −110 |
+| situation | n | mean cover | cover % | 95% CI | t | p |
 |---|---|---|---|---|---|---|
-| **short-handed team ATS** | 2,629 | **+0.772** | **53.18** | 2.99 | **0.0028** | **+1.52%** |
-| baseline: home, neither out | 2,841 | −0.114 | 48.75 | −0.45 | 0.65 | −6.93% |
+| **short-handed: TEMPORARY** | 1,618 | −0.168 | **49.01** | [46.6, 51.4] | −0.49 | **0.63** |
+| short-handed: DEPARTED | 674 | −1.275 | 44.07 | [40.3, 47.8] | −2.54 | 0.011 |
+| baseline: both present | 3,284 | −0.152 | 48.69 | [47.0, 50.4] | −0.66 | 0.51 |
 
-Permutation null +0.311 ± 0.188, observed at the **99.4th percentile** — it
-survives the control that killed §16's blind search.
+Permutation null −0.164 ± 0.269 against an observed −0.168 — the **49.8th
+percentile.** By season: 47.40, 52.82, 44.39, 50.83, 48.12, 51.90, 47.46. No
+effect anywhere, and no 2017-19 spike.
 
-### The season breakdown destroys it
+**Temporary star absences produce no ATS edge in this data.**
 
-| season | n | mean cover | cover % |
-|---|---|---|---|
-| 2017-18 | 480 | **+2.971** | **59.79** |
-| 2018-19 | 406 | **+3.416** | **63.05** |
-| 2020-21 | 328 | −0.817 | 49.09 |
-| 2021-22 | 394 | −0.284 | 50.00 |
-| 2022-23 | 359 | +0.336 | 48.19 |
-| 2023-24 | 299 | −0.234 | 52.17 |
-| **2024-25** | 363 | **−1.251** | **46.28** |
+### The unexpected result: fade the DEPARTED team
 
-63.05% on 406 games is **5.4 SE above break-even** — a real ~+20% ROI edge, not
-noise. It then disappears completely. Last five seasons average **49.15%**.
+Teams playing after permanently losing their star cover only **44.07%**, so
+backing the opponent wins **55.93%** against a 52.38% break-even.
 
-**Plausible mechanism, and checkable:** the NBA tightened injury-reporting rules
-around 2019-20 and load management became scheduled, announced and modelled. An
-absence that was news became a line input.
-
-**Totals are null**: star out gives +0.556 (over% 49.79, p=0.114) against +0.663
-with nobody out. The market over-adjusted the SPREAD, not the total.
-
-### The methodological warning is worth as much as the finding
-
-**Pooled p = 0.0028 and a 99.4th-percentile permutation result, both entirely
-produced by two seasons that ended seven years ago.** Reported without the season
-breakdown this reads as a live edge. Both surviving controls — significance and
-permutation — are computed on pooled data and neither can detect decay.
-
-### Second confirmed decay
-
-| edge | alive | dead by |
+| season | departed cover % | fade wins % |
 |---|---|---|
-| §14 mismatch (\|spread\| ≥ 12) | 2017-2024, +3.0 pts, 55.8% overs | 2024-26 |
-| §19 Ewing (star out ATS) | 2017-2019, 59.8–63.1% cover | 2020-21 onward |
+| 2017-18 | 45.74 | 54.26 |
+| 2018-19 | 47.37 | 52.63 |
+| 2020-21 | 37.04 | 62.96 |
+| 2021-22 | 46.81 | 53.19 |
+| 2022-23 | 45.00 | 55.00 |
+| 2023-24 | 43.66 | 56.34 |
+| **2024-25** | 40.48 | **59.52** |
 
-Behavioural edges against the close **do exist here and can be large** — this is
-the second one confirmed. Both were arbitraged away. The constraint is not
-whether such effects exist but whether one can be found while still alive, which
-is the detection-vs-decay problem from `SPORT_SCREENING_BRIEF.md` in its sharpest
-form.
+**Seven of seven seasons below 50%, six of seven clearing break-even, and the
+two most recent are the second and third strongest.** Unlike §14 and every other
+edge found here, it does not decay. Plausible mechanism: teams that lose a star
+for the season also rest others, tank, and play out the string — the market
+prices the absence but not the organisational response.
+
+⚠ **Exploratory.** This is a post-hoc subgroup of a failed test, n = 674 total
+and ~70–130 per season. It needs its own pre-registration, an independent
+absence definition (RAPM-based rather than points-based), and a clean holdout
+before it means anything. Recorded as the most promising untested lead, not as
+a finding.
+
+### What this cost, and the lesson
+
+Two hours and a confidently-reported false positive, caught only because a
+follow-up question about the star definition prompted a check of the absence
+rate. **The permutation control did not catch it** — the bug corrupted the data
+before the control ran, so the control faithfully confirmed a real pattern in
+corrupted data. Controls validate inference, not data construction. Join keys
+and side assignments need their own assertions, which `home_team_map()` now has.
