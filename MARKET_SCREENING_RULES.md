@@ -18,9 +18,14 @@ Thresholds are calibrated on markets actually measured (NBA 8 seasons, NCAAB
 | 2 | **Totals decision** | `edge_pp` | > 0 |
 | 2′ | **Moneyline decision** | `ROI` | > 0 |
 | 3 | Detection | seasons to confirm | ≤ 4 |
-| 4 | Conditional | permutation null-of-max | > 95th pct |
+| 4 | Conditional bias | permutation null-of-max | > 95th pct |
+| 4c | **Conditional separability** | walk-forward bucket spread | > 95th pct |
 | 5 | Decay | recent 2 seasons | same sign |
-| 6 | Capacity | limit at that price | fundable |
+| 6 | **Profitability** | `lifetime_profit` at edge's 95% lower bound | ≥ hurdle |
+
+**Check the G6 floor first.** The minimum viable edge is knowable from
+games/season alone, before acquiring any data — it tells you what you are
+hunting for, and rules out sports where nothing findable would pay.
 
 ---
 
@@ -124,17 +129,135 @@ best cells are high-volume sports' *thin* markets.
   it cannot predict anything. One line of code; kills ideas faster than
   modelling.
 
+## G4c — Conditional separability
+
+**Unconditional bias and conditional separability are two different ways
+through the gate. Either one qualifies a sport.** G2/G2′ only see the first: a
+market can price correctly on average and still misprice systematically in the
+cross-section.
+
+Fit a small, economically motivated, **walk-forward** model (5–15 variables,
+one specification, no feature selection). Compute `ê = P̂(win) − P_BE`, sort
+games by it, and read realised win rate by bucket.
+
+| separable | nothing there |
+|---|---|
+| Q1 46% → Q5 56% | Q1 49.7% → Q5 50.3% |
+
+**Passing requires all three:**
+
+1. spread (top − bottom) above the **95th percentile** of a permutation null
+   that shuffles outcomes **within season × price strata** — a naive shuffle
+   breaks the price structure and inflates apparent separability
+2. the top bucket clears break-even at an obtainable price
+3. the top bucket's edge clears the **G6 floor**
+
+### ⚠ Walk-forward is not optional
+
+The prior project produced the attractive table in development — win rate rose
+monotonically 50.0% → 55.4% with model confidence — and in holdout it **peaked
+early and reversed**, 54.4% → 50.1%. Direction generalised; ranking did not.
+An in-sample bucket table is worthless. Reproduced on NCAAB:
+
+| bucket | in-sample | walk-forward |
+|---|---|---|
+| Q1 | 46.37% | 48.10% |
+| Q2 | 51.00% | 51.05% |
+| Q3 | 50.63% | 52.11% |
+| Q4 | 52.37% | 51.05% |
+| Q5 | **53.94%** | **51.05%** |
+| spread | **+7.57pp** | **+2.95pp** |
+
+In-sample looks like the separable column above. Walk-forward peaks at Q3 and
+flattens — 87.1st percentile of its own stratified null, and the top bucket
+(51.05%) is *below* the 52.38% break-even. **The gap between those two columns
+is the finding.**
+
+### ⚠ Moneylines need a different statistic
+
+On a fixed-price market the raw realised rate is right. On a moneyline it is
+not: sorting by `ê` is confounded with price level, because large predicted
+edges sit on longshots. On NCAAB this put fair-34% road favourites in the top
+bucket and produced a raw spread of **−34.83pp** that measures nothing but the
+sort. **Use the calibration deviation `realised − fair`**, which is
+price-neutral, and rank buckets on **ROI**.
+
 ## G5 — Decay
 
 Plot by season. **Reject if the recent two seasons are flat**, regardless of
 pooled significance. A real edge in the prior project ran six seasons then
 vanished; pooled over ten it still looks robust.
 
-## G6 — Capacity
+## G6 — Profitability
 
-Record the **limit** alongside the edge. Rank on `edge × limit`, never `edge`.
-Bias and liquidity run opposite, so an unranked table puts the unfundable
-markets on top.
+Capacity is not "is the limit big enough" — that is unfalsifiable. It is a
+dollar figure, and the gate is whether that figure clears your hurdle.
+
+```
+usable_seasons  = max(0, edge_life − seasons_to_confirm)
+ROI_per_bet     = 1.909 × edge_pp/100                    (at −110)
+bets_per_season = games_per_season × filter_fire_rate
+lifetime_profit = ROI_per_bet × limit × bets_per_season × usable_seasons
+```
+
+**GATE: `lifetime_profit ≥ hurdle`, computed at the LOWER 95% bound of
+`edge_pp`, never at the point estimate.** An edge inside its own confidence
+interval is a coin flip you are paying vig on.
+
+### The floor: minimum viable edge
+
+`usable_seasons` goes to zero when confirmation takes longer than the edge
+lives. That makes a **hard floor on edge size, below which no limit can rescue
+the market** — the money never arrives because you are still confirming when
+the edge dies. Assuming a 6-season edge life (the one real edge observed in the
+prior project):
+
+| sport | games/season | **min viable edge** | implied win rate |
+|---|---|---|---|
+| College basketball | 5,500 | **0.77pp** | 53.15% |
+| MLB | 2,430 | 1.16pp | 53.54% |
+| Soccer (top-5) | 1,752 | 1.36pp | 53.74% |
+| NHL | 1,312 | 1.57pp | 53.95% |
+| NBA | 1,230 | 1.62pp | 54.00% |
+| College football | 800 | 2.01pp | 54.39% |
+| NFL | 272 | **3.44pp** | 55.82% |
+
+Sensitivity to the assumed edge life:
+
+| sport | life 3 | life 6 | life 10 |
+|---|---|---|---|
+| College basketball | 1.09 | 0.77 | 0.60 |
+| NBA | 2.29 | 1.62 | 1.26 |
+| NFL | 4.85 | 3.44 | 2.67 |
+
+**This is the single most useful number in the framework.** It says what you
+are hunting for before you start, and it is knowable from games/season alone —
+no data required. Anything smaller is not worth finding.
+
+### Required limit
+
+Given an edge at the floor and a filter firing on 10% of games, the limit
+needed to clear a $100k/season hurdle:
+
+| sport | bets/season | limit needed |
+|---|---|---|
+| College basketball | 550 | **$12,400** |
+| MLB | 243 | $18,700 |
+| NBA | 123 | $26,200 |
+| NFL | 27 | **$56,000** |
+
+Low-volume sports are punished twice: they need a bigger edge *and* a bigger
+limit per bet to reach the same money. This is the structural tension made
+numeric — the markets whose limits are that deep are the ones everyone has
+already modelled.
+
+### Applied to NCAAB
+
+The best cell measured was **+0.36pp** (totals at −102). The floor is
+**0.77pp**. Confirming a 0.36pp edge needs ~151,000 games — **27.5 seasons**.
+
+**Unusable even if real, at any limit.** That is a stronger rejection than
+"not significant": it says the cell could be genuine and still never pay.
 
 ---
 
@@ -142,8 +265,11 @@ markets on top.
 
 1. Nothing clears G2 or G2′ at an obtainable price → **report and stop.** A
    clean null is the majority of the value.
-2. Clears but needs > 4 seasons → deprioritise.
-3. Clears but limits are trivial → record and move on.
+2. Edge below the G6 floor → **stop, regardless of significance.** It cannot be
+   confirmed before it dies, so it never pays at any limit.
+3. Clears the floor but `lifetime_profit` < hurdle at the 95% lower bound →
+   record the numbers and move on. This is a capital decision, not a
+   statistical one.
 4. **Never model to rescue a rejected gate.**
 
 ---

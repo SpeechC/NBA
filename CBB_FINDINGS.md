@@ -9,6 +9,34 @@ past Stage 1 until more seasons exist.
 
 ---
 
+## 0. Gate verdict
+
+`screen_cbb_gates.py` applies `MARKET_SCREENING_RULES.md` end to end. Rerun it
+to reproduce every number in this document.
+
+| gate | result | number |
+|---|---|---|
+| G0 data | **FAIL** | 1 season, rules require ≥5 |
+| G1 price — totals | pass | −110 median, IQR (−114, −108) |
+| G1 price — moneyline | **FAIL** | hold **4.65%** vs 4.5% threshold |
+| G2 totals `edge_pp` | **FAIL** | **−1.52pp** at −110; +0.36pp at −102 (t = 0.54) |
+| G2′ moneyline ROI | **FAIL** | **−2.24%**, 95% CI (−4.11, −0.37) |
+| G3 detection | **FAIL** | bettable edge needs **24.7 seasons** to confirm |
+| G4 conditional bias | **FAIL** | best cut at **93.0th** percentile of its null-of-max |
+| G4c separability — totals | **FAIL** | spread +2.95pp, **87.1st** pct; top bucket 51.05% < 52.38% |
+| G4c separability — moneyline | **FAIL** | all five buckets negative; best ROI **−3.21%** |
+| G5 decay | **n/a** | cannot be evaluated on one season — so cannot be passed |
+| G6 profitability | **FAIL** | +0.36pp is below the **0.73pp** floor → **0 usable seasons** |
+
+**VERDICT: not a modelling candidate.**
+
+The G6 failure is the decisive one and the least reversible. The best edge
+found is below the minimum viable edge for this sport, which means it would
+never pay **at any limit, even if it is genuine** — confirming it takes 24.7
+seasons and edges observed in this project last about 6.
+
+---
+
 ## 1. Headline result
 
 **The prior was right about the bias and wrong about the edge.**

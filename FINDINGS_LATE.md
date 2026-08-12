@@ -705,3 +705,51 @@ This replaces the §6 framing. We convert CLV efficiently onto sides that sit
 ⚠ 44.90% rests on 343 bets (SE 2.7pp), ~1.9 SE below 50%. Development shows
 51.01% at the close, so it does not replicate across the split — consistent with
 the side-composition reversal above rather than with a stable defect.
+
+---
+
+## 18. Target reframing: aligning the loss with the payoff buys nothing
+
+Every model here predicts `move_total` under squared loss, then gets thresholded
+on |pred| and bet by sign — three layers between objective and payoff, with
+squared loss treating a 6-point move 36× more seriously than a 1-point move when
+both pay identically. The aligned alternative is to train on whether the bet won,
+under logistic loss. `target_reframe.py`, development only, matched bet counts.
+
+| top % | model | CLV | win % | ROI −110 |
+|---|---|---|---|---|
+| 100 | logistic on OUTCOME | 0.356 | **51.24** | −2.17 |
+| 100 | ridge on MOVE | 0.597 | 50.03 | −4.48 |
+| 30 | logistic | 0.551 | 49.52 | −5.46 |
+| 30 | ridge | 1.309 | 52.22 | −0.32 |
+| 10 | logistic | 0.811 | 49.16 | −6.15 |
+| **10** | **ridge** | **1.827** | **55.22** | **+5.42** |
+
+**The logistic model's confidence is anti-informative** — 51.24% → 49.16% as it
+gets more selective, while ridge climbs 50.03% → 55.22%. Spec D matches
+(logistic peaks 51.68% vs ridge 54.38%).
+
+The mechanism is in one number: **`p_over` spans 0.430–0.580, sd 0.0196.**
+Cross-validated regularisation flattened the model almost completely, which is
+the correct response to a target with no learnable structure. "Did the over hit"
+is the quantity §16's permutation-controlled blind search found nothing in, and
+that the market prices without bias.
+
+**The trade-off, now priced:** the move is predictable (corr ~0.29) but
+front-runs a correction the market makes anyway; the outcome pays but cannot be
+predicted. Aligning the loss with the payoff does not help because there is
+nothing at the payoff end to learn.
+
+**Rules out loss misalignment as a cause of the project's shortfall.** The three
+layers of indirection cost nothing.
+
+⚠ Not a translation artefact: the two models agree on side only 59.1% of the
+time (corr 0.26 between outputs) — genuinely different, and simply worse.
+
+### Assessment of three techniques from an external CBB notebook
+
+| technique | verdict for NBA |
+|---|---|
+| Opponent-adjusted team quality (GLM team dummies) | **Inapplicable.** The rationale is unbalanced schedules; the NBA plays a balanced 82-game slate. Already tested as opponent-adjusted features (null), 60 team dummies (CLV 1.78→1.41, worse), and full RAPM (null). |
+| Spline margin → win probability | **Adopt, marginal.** The parametric version exists in `clv_probability.py`; empirical vs normal differ by 0.42pp at the operating threshold. Measurement accuracy, not edge. |
+| Cauchy / robust loss on blowouts | **Does not transfer** — `move_total` sd is 3.3 against 18.1 for the outcome residual, so there are no blowouts in move space. But its *logic* generated the test above, which is the value it had. |
