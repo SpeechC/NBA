@@ -753,3 +753,74 @@ time (corr 0.26 between outputs) — genuinely different, and simply worse.
 | Opponent-adjusted team quality (GLM team dummies) | **Inapplicable.** The rationale is unbalanced schedules; the NBA plays a balanced 82-game slate. Already tested as opponent-adjusted features (null), 60 team dummies (CLV 1.78→1.41, worse), and full RAPM (null). |
 | Spline margin → win probability | **Adopt, marginal.** The parametric version exists in `clv_probability.py`; empirical vs normal differ by 0.42pp at the operating threshold. Measurement accuracy, not edge. |
 | Cauchy / robust loss on blowouts | **Does not transfer** — `move_total` sd is 3.3 against 18.1 for the outcome residual, so there are no blowouts in move space. But its *logic* generated the test above, which is the value it had. |
+
+---
+
+## 19. The Ewing Theory: real, large, and dead since 2019
+
+Hypothesis: when a team's best player sits, the market over-adjusts and the
+short-handed team beats its number. `ewing.py`.
+
+Chosen because it has the four properties that separated §14 — the one edge that
+ever worked here — from the twenty-one nulls: it targets the **CLOSE**, it is
+**conditional**, it is **behavioural** rather than diffuse, and it makes a
+**directional** prediction.
+
+Star fixed from the team's first 20 games (leading scorer, ≥10 appearances),
+tested on games 21+. Absence = no event recorded.
+
+⚠ A first attempt picked each game's star from players appearing in that game,
+so by construction the star was never absent — 0 absences in 15,600 team-games.
+Star identification must not condition on playing.
+
+### Pooled, it looks like a strong live edge
+
+| | n | mean cover | cover % | t | p | ROI −110 |
+|---|---|---|---|---|---|---|
+| **short-handed team ATS** | 2,629 | **+0.772** | **53.18** | 2.99 | **0.0028** | **+1.52%** |
+| baseline: home, neither out | 2,841 | −0.114 | 48.75 | −0.45 | 0.65 | −6.93% |
+
+Permutation null +0.311 ± 0.188, observed at the **99.4th percentile** — it
+survives the control that killed §16's blind search.
+
+### The season breakdown destroys it
+
+| season | n | mean cover | cover % |
+|---|---|---|---|
+| 2017-18 | 480 | **+2.971** | **59.79** |
+| 2018-19 | 406 | **+3.416** | **63.05** |
+| 2020-21 | 328 | −0.817 | 49.09 |
+| 2021-22 | 394 | −0.284 | 50.00 |
+| 2022-23 | 359 | +0.336 | 48.19 |
+| 2023-24 | 299 | −0.234 | 52.17 |
+| **2024-25** | 363 | **−1.251** | **46.28** |
+
+63.05% on 406 games is **5.4 SE above break-even** — a real ~+20% ROI edge, not
+noise. It then disappears completely. Last five seasons average **49.15%**.
+
+**Plausible mechanism, and checkable:** the NBA tightened injury-reporting rules
+around 2019-20 and load management became scheduled, announced and modelled. An
+absence that was news became a line input.
+
+**Totals are null**: star out gives +0.556 (over% 49.79, p=0.114) against +0.663
+with nobody out. The market over-adjusted the SPREAD, not the total.
+
+### The methodological warning is worth as much as the finding
+
+**Pooled p = 0.0028 and a 99.4th-percentile permutation result, both entirely
+produced by two seasons that ended seven years ago.** Reported without the season
+breakdown this reads as a live edge. Both surviving controls — significance and
+permutation — are computed on pooled data and neither can detect decay.
+
+### Second confirmed decay
+
+| edge | alive | dead by |
+|---|---|---|
+| §14 mismatch (\|spread\| ≥ 12) | 2017-2024, +3.0 pts, 55.8% overs | 2024-26 |
+| §19 Ewing (star out ATS) | 2017-2019, 59.8–63.1% cover | 2020-21 onward |
+
+Behavioural edges against the close **do exist here and can be large** — this is
+the second one confirmed. Both were arbitraged away. The constraint is not
+whether such effects exist but whether one can be found while still alive, which
+is the detection-vs-decay problem from `SPORT_SCREENING_BRIEF.md` in its sharpest
+form.
