@@ -34,9 +34,13 @@ warnings.filterwarnings("ignore")
 PBP = "/home/dpope/data/pbp_lineups_all.parquet"
 
 
-def period_scores():
-    """Points per period per side, from the SCORE column ('visitor - home')."""
+def period_scores(season_type="RegularSeason"):
+    """Points per period per side, from the SCORE column ('visitor - home').
+
+    season_type: "RegularSeason", "Playoffs", or None for every game type.
+    """
     con = duckdb.connect()
+    st = "" if season_type is None else f"SEASON_TYPE='{season_type}' AND "
     q = f"""
     WITH s AS (
       SELECT lpad(CAST(GAME_ID AS VARCHAR),10,'0') AS gid,
@@ -45,7 +49,7 @@ def period_scores():
              row_number() OVER (PARTITION BY GAME_ID, PERIOD
                                 ORDER BY CAST(PCTIMESTRING AS INTEGER) DESC) AS rn
       FROM read_parquet('{PBP}')
-      WHERE SEASON_TYPE='RegularSeason' AND SCORE IS NOT NULL AND PERIOD <= 4
+      WHERE {st} SCORE IS NOT NULL AND PERIOD <= 4
     )
     SELECT gid, season, PERIOD, SCORE FROM s WHERE rn = 1
     """

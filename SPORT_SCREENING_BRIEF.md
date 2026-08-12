@@ -392,6 +392,49 @@ did.
 
 ## 5. Protocol
 
+### Stage 1.0 — THE KNOWABILITY AUDIT. Do this before any other test.
+
+**For every variable in the hypothesis, write down the moment it becomes
+knowable, then verify the code computes it from data available at that moment
+and no later.** One line per variable, written before the regression runs.
+
+This comes first because it is the only failure mode no statistical control
+detects. Significance, permutation nulls, FDR correction, season persistence and
+holdouts all validate *inference* — they assume the inputs were legitimately
+available. Feed them a contaminated variable and they will faithfully confirm a
+real pattern in impossible data.
+
+Three failures from the prior project, each of which produced the most impressive
+numbers on the screen before being caught, and none of which any control flagged:
+
+| variable | what it actually used | headline before | after |
+|---|---|---|---|
+| "star departed for the season" | that he never played again — hindsight | 55.9% ATS, **7 of 7 seasons**, survived permutation | ≤ break-even at every executable definition |
+| roster churn | players used in the CURRENT game — blowouts empty benches, so it is an outcome | Stage 1 **t = +8.55**, Stage 2 t = +3.59 | t = +1.92, t = −0.15 |
+| home/away side | pbp points matched to the box score, wrong on 5.82% of games; NaN coerced to `True` | 53.2% cover, **p = 0.0028**, 99.4th pct permutation | 49.0%, 49.8th pct — null |
+
+The pattern is not coincidence: **a variable contaminated by the outcome will
+always outperform a legitimate one.** Treat an unusually strong first result as a
+prompt to re-audit the inputs, not as a discovery.
+
+Two specific checks that would have caught all three:
+
+- **Timestamp every input.** If a variable is built from a rolling window,
+  confirm the window is `.shift(1)`-ed. If it is built from a season aggregate,
+  confirm the current game is excluded. If it encodes a state ("out for the
+  season", "eliminated", "traded"), confirm the state was *announced* before
+  tip-off rather than inferred from what followed.
+- **Re-derive the executable version.** For any state variable, write the rule a
+  bettor would actually apply at 7pm — "missed the last 12 straight" rather than
+  "never played again" — and test that instead. If the effect only exists under
+  the hindsight definition, there is no effect.
+
+Only after this audit passes do the remaining Stage 1 requirements apply: a
+strong out-of-sample coefficient, season persistence, monotone buckets, and a
+plausible mechanism.
+
+---
+
 **Stage 0 — acquire.** For each sport, get ≥5 seasons of: date, teams, closing
 line (total and spread), final score. That is the whole requirement.
 
