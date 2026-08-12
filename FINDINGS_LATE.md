@@ -828,3 +828,65 @@ rate. **The permutation control did not catch it** — the bug corrupted the dat
 before the control ran, so the control faithfully confirmed a real pattern in
 corrupted data. Controls validate inference, not data construction. Join keys
 and side assignments need their own assertions, which `home_team_map()` now has.
+
+---
+
+## 20. Live 2H totals: the rule IS mechanical, and its omissions are correct
+
+A Type-4 test — correct primary valuation translated too simplistically into a
+derivative market, the structure Voulgaris reportedly attacked. `half_totals.py`.
+4,090 games with both a live 2H total and a halftime score.
+
+### Step 1: the book's rule, recovered
+
+| term | coef | t |
+|---|---|---|
+| intercept | 4.620 | 5.27 |
+| **pre_total** | **0.4925** | **112.15** |
+| h1_total | −0.0330 | −8.94 |
+
+**R² = 0.7818.** The book halves its pregame total (coefficient 0.4925) and
+barely adjusts for the first half — 0.033 points per point, so a first half 30
+points above expectation moves the 2H line by one point. Adding |halftime margin|
+gains R² +0.0010 (coef −0.0265, t = −4.29). **This is a formula, not a per-game
+judgement.** The premise of the Type-4 hypothesis is confirmed.
+
+### Steps 2–3: both omissions are correct omissions
+
+**Blowout collapse runs the wrong way.** Predicted: blowout second halves score
+less. Observed: they score *more*.
+
+| \|halftime margin\| | n | residual | under % |
+|---|---|---|---|
+| 0–5 | 1,555 | +0.457 | 50.10 |
+| 11–15 | 769 | +0.636 | 48.37 |
+| 16–20 | 398 | +1.165 | 47.99 |
+| **21+** | 291 | +1.057 | 47.42 |
+
+Garbage time means poor defense and fast pace, not collapse. Permutation puts it
+at the **82.7th percentile** — not significant, not tradeable. The book's small
+downward nudge for margin is backwards but immaterial.
+
+**First-half pace carries no signal.** corr(first-half deviation, 2H residual)
+= **+0.0198**, slope +0.0225 points per point. The fastest decile shows over%
+53.10 (ROI +1.36%, n=420) but by season 50.5, 52.0, 58.4, 50.0, 50.0 — noise.
+**The book ignores first-half pace because it is right to.**
+
+### The refinement to the framework
+
+**Naming the shortcut is only half a hypothesis.** We proved the book uses a
+crude formula and then found that both discarded variables were worth
+discarding. A mechanical rule that throws away noise is a *correct* rule.
+
+The complete form is: **the book omits X, AND X predicts the residual.** Cheap to
+apply — regress the derivative price on its plausible inputs, then test omitted
+candidates against the residual before building anything.
+
+### Third instance of the skew pattern
+
+2H residual **+0.702, t = 3.41** — unambiguous forecast bias — with an over rate
+of ~50% and neither side paying. Same as the full-game close (+0.543, over
+50.47%) and NCAAB totals. **Totals residuals are right-skewed by overtime and
+blowout scoring, so the mean systematically overstates the betting edge.**
+Confirmed on three separate totals markets; belongs in
+`SPORT_SCREENING_BRIEF.md` as a stated property, not a per-market discovery.
