@@ -9,6 +9,82 @@ Thresholds are calibrated on markets actually measured (NBA 8 seasons, NCAAB
 
 ---
 
+## Framing — what question the screen is asking
+
+**Do not ask "what variable predicts outcomes?" Ask "what pricing
+transformation is the book simplifying, and where does that simplification
+become materially wrong?"**
+
+The first question requires out-predicting a line that already explains 21.3%
+of total variance and 39.4% of margin variance, to a tolerance of 0.56% R² on
+what it missed. Forty-one feature families have been tested across two projects
+against that bar. All null. It is the hard path and there is no evidence anyone
+on this project can walk it.
+
+The second question is different in kind. A book does not build a bespoke model
+per market — it builds one number and *transforms* it into the rest. Every
+transformation is a simplification: a fixed ratio, a constant σ, a lookup
+table, a distribution shape assumed from a single point. Simplifications are
+right in the middle of their range and wrong at the edges, and **finding the
+edge does not require predicting anything.** You compare two prices the book
+itself published and check whether the arithmetic between them holds. The book
+is the one making the falsifiable claim.
+
+### The transformation catalogue — basketball
+
+| # | transformation | typical simplification | testable with |
+|---|---|---|---|
+| 1 | power rating → spread | linear, fixed home constant | spread history |
+| 2 | **spread → moneyline** | fixed σ normal mapping | spread + ML ✓ *tested* |
+| 3 | spread + total → team totals | exact by construction — no error | — |
+| 4 | **full game → first half / quarters** | fixed ratio ~0.48–0.52 | 1H lines ✗ |
+| 5 | **main line → alternate lines** | one distribution shape, all points | alt lines ✗ |
+| 6 | margin σ assumed independent of total | constant σ | spread + total ✓ *tested* |
+
+### Two tested on NCAAB 2023-24 — both hold
+
+**#6 — margin variance vs total.** The premise of a σ error is that higher-total
+games have wider margins. They do not: `corr(total, |margin residual|) =
++0.0031, p = 0.83`, and σ across total quintiles runs 12.32 / 10.77 / 11.21 /
+10.84 / 11.45 — flat and non-monotone. **The book's constant-σ assumption is
+correct, so it isn't a simplification at all.**
+
+**#2 — spread → moneyline.** Mapping the closing spread through `Φ(−spread/σ)`
+with σ = 11.06 and comparing to the devigged moneyline, n = 4,924:
+
+| | spread-implied | moneyline |
+|---|---|---|
+| logloss | 0.57599 | 0.57590 |
+| Brier | 0.19628 | 0.19617 |
+
+Disagreement between them has sd of only **2.14pp** — and a half-point of
+spread is worth ~1.8pp of win probability at σ = 11, so most of that is the
+spread's own quantisation, not a pricing difference. Sorting by disagreement,
+the truth sits *between* the two in every bucket and neither dominates.
+**The transformation is internally consistent to within the granularity of the
+spread itself.**
+
+Both nulls are informative: they say the CBB book is coherent across its
+*primary* markets, which is where attention is thickest. That is exactly what
+attention asymmetry predicts, and it points the method at rows 4 and 5 of the
+catalogue — the derivative markets this file does not contain, where fixed
+ratios really are used and nobody is watching.
+
+### Why this belongs in the objective
+
+- It needs **no outcome model**, so it sidesteps the bar that has killed every
+  attempt so far.
+- A transformation error is **deterministic and repeatable**, not a statistical
+  tendency — it recurs every time the formula is applied, so it is far cheaper
+  to detect than a bias of the same size. You still need a permutation null to
+  price it, but not to see it.
+- It generates **pre-registered hypotheses for free.** "The book prices 1H
+  total at 0.48× full total; the true ratio in high-pace games is 0.51" is a
+  specific, falsifiable claim written before looking — which is what §G4
+  demands and what feature hunting can never supply.
+
+---
+
 ## The checklist
 
 | # | gate | statistic | pass |
@@ -30,6 +106,12 @@ hunting for, and rules out sports where nothing findable would pay.
 ---
 
 ## G0 — Data
+
+**Acquire for the transformation test, not just the outcome test.** A file with
+only main-line closes can answer G2/G2′ and nothing about the framing question
+above. Wherever possible also pull **first-half and quarter lines, team totals,
+and alternate lines** for the same games — those are rows 4 and 5 of the
+catalogue, and they cost nothing extra to screen once held.
 
 **Totals:** `date, closing_total, actual_total`
 **Moneyline:** `date, closing_ml_a, closing_ml_b, a_won` — **both sides are
