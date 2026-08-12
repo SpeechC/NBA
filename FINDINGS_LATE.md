@@ -890,3 +890,82 @@ of ~50% and neither side paying. Same as the full-game close (+0.543, over
 blowout scoring, so the mean systematically overstates the betting edge.**
 Confirmed on three separate totals markets; belongs in
 `SPORT_SCREENING_BRIEF.md` as a stated property, not a per-market discovery.
+
+---
+
+## 21. Omnibus detection: finding a missing variable without naming it
+
+If the close is optimal its residual is unpredictable from ANY pre-game
+function. That converts an unbounded search into bounded tests for STRUCTURE.
+`omnibus.py`, six tests on 9,489 games.
+
+| test | totals | sides |
+|---|---|---|
+| **1 Mincer-Zarnowitz** | slope 1.0027, χ²=7.55, **p=0.023** | **slope 0.9368**, χ²=13.01, **p=0.0015** |
+| 2 serial correlation (lag-1, same team) | +0.0150 (t=2.06) | −0.0069 (t=−0.94) |
+| **3 variance components** | **by month: 100th pctile** | team-season 97th |
+| 4 mixture (BIC) | 1-comp preferred | 1-comp preferred |
+| **5 conditional variance** | corr +0.021 (t=2.02) | **corr +0.057 (t=5.59)** |
+| 6 sign runs | t=−1.41 | t=−0.55 |
+
+**Three detections.**
+
+**Spread slope 0.9368** (t≈−3.4 from 1.0): the line OVERREACTS — a 10-point
+favourite behaves like a 9.37-point favourite, so underdogs are undervalued at
+the extremes. At |spread| 15 that is ~0.95 points ≈ 2.45pp, right at break-even.
+
+**|spread| predicts margin variance** (t=5.59). If books map spread→moneyline
+with homogeneous variance, big favourites' MLs are mispriced. This is the Type-3
+hypothesis, detected from the LINE rather than from team features — which is why
+earlier variance work missed it.
+
+**Monthly clustering in totals residuals**, 100th percentile, surviving at game
+level (sd 2.109 vs null 1.476) and after removing season means (2.055 vs 1.481).
+
+### Naming it: the end-of-season effect
+
+The omnibus flagged the month grouping BEFORE any month was inspected.
+
+| month | n | residual | over % | ROI over |
+|---|---|---|---|---|
+| Jan | 1,798 | −0.355 | 47.61 | −9.11 |
+| Mar | 1,815 | +0.108 | 48.32 | −7.75 |
+| **Apr** | **873** | **+2.731** | **54.52** | **+4.09** |
+
+April vs rest: **t = +3.75, p = 0.0002.** Over rate 54.52% [51.22, 57.83].
+**Last 7 days of each season: n=537, over 55.87%, ROI +6.65%.**
+
+| season | n | over % |
+|---|---|---|
+| 2017-18 | 88 | 54.55 |
+| 2018-19 | 79 | 55.70 |
+| **2020-21** | 240 | **49.58** |
+| 2021-22 | 80 | 53.75 |
+| 2022-23 | 70 | 60.00 |
+| 2023-24 | 115 | 59.13 |
+| 2024-25 | 105 | 54.29 |
+| 2025-26 | 96 | 57.29 |
+
+**7 of 8 clear break-even and the three most recent are among the strongest** —
+the opposite of §14 and §19, which decayed.
+
+**The single failure is the strongest evidence for it.** 2020-21 is the only
+season below break-even, and is the only season where April was NOT the end —
+that schedule ran to 2021-05-16. The mechanism predicts the effect should vanish
+when April is mid-season, and it does. A passed falsification test, not a caveat.
+
+**Mechanism:** end-of-season teams rest starters, tank, shorten effort and play
+bench units. The book prices announced absences but not organisational
+disengagement. Same shortcut as §19's departed-star result, which is also an
+end-of-season effect. **The market prices talent, not motivation.**
+
+⚠ ~109 games/season at 4% ≈ $450/season at $100 flat. Small. April was chosen
+post-hoc even though the omnibus flagged the grouping first. "Bet overs late" is
+a known angle. Needs pre-registration and a clean holdout before it is believed.
+
+### Why this method matters
+
+The other 21 families each tested a NAMED variable. This tests for the SIGNATURE
+of an omission — miscalibration, persistence, clustering, mixture,
+heteroskedasticity, regime structure — and can fire without knowing the cause.
+It found in one run what feature-hunting missed in months.
