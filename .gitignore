@@ -20,3 +20,6 @@ rest_travel_games.csv
 !*_results.csv
 !sweep_*.csv
 paper_trades/
+
+# regenerable analysis caches (rebuilt by their own scripts)
+liveball_sample.csv

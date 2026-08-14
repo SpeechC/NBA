@@ -1,0 +1,7 @@
+signal,window,bets,win_pct,roi,mean_e,dollars
+CrewShock,develop,943,54.67,4.37,1.953,4073
+CrewShock,holdout,375,54.01,3.11,0.372,1164
+CrewShock,all,1318,54.48,4.01,1.503,5236
+RefExposure,develop,934,54.77,4.57,1.963,4209
+RefExposure,holdout,380,54.09,3.26,0.354,1236
+RefExposure,all,1314,54.57,4.19,1.497,5445

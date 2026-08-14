@@ -1,0 +1,10 @@
+strategy,bets,win_pct,dollars,roi
+Frozen CrewShock Q85 Dev,998,55.07,5064,5.14
+Frozen CrewShock Q85 Holdout,405,54.21,1409,3.49
+Frozen CrewShock Q85 Pooled,1403,54.82,6473,4.66
+HIGH-ref Over Dev,1079,52.35,-73,-0.07
+HIGH-ref Over Holdout,295,56.61,2382,8.07
+HIGH-ref Over Pooled,1374,53.27,2309,1.7
+LOW-ref Over Dev,1115,48.01,-9236,-8.34
+LOW-ref Over Holdout,350,49.86,-1682,-4.82
+LOW-ref Over Pooled,1465,48.46,-10918,-7.49
