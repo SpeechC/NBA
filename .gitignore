@@ -23,3 +23,9 @@ paper_trades/
 
 # regenerable analysis caches (rebuilt by their own scripts)
 liveball_sample.csv
+
+# regenerable possession/lineup caches (rebuilt by their extractors from the
+# PBP parquet; oreb_possessions.csv alone is 107 MB)
+oreb_possessions.csv
+bonus_game_team.csv
+rotation_game_team.csv
