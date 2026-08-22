@@ -185,3 +185,29 @@ second line continues on spread + fees + shape + calendar.
   spec (this includes re-adding the mean over-bias, and any quarter/half-market
   quoting — `PREREG_q1q3_visalloc.md` governs those separately)
 - discretionary overrides of gates, alerts or kill-switches
+
+---
+
+## 11. Post-freeze external validation (2026-08, after tag nba-discovery-close-2026-08-22)
+
+`kalshi_mtm.py` tested the frozen MOVE_COMBINED signal (fully OOS for 2025-26,
+combiner weights trained through 2024-25, no Kalshi inputs) against the
+exchange's tip surface on 1,003 games:
+
+- `mu_Kalshi(T-1min) - open` on `m`: slope **+0.812 (t=+8.94)**, against the
+  sportsbook's own `close - open` slope of +0.868 — by one minute before tip
+  the exchange has incorporated **~93.5%** of the predictable movement, and the
+  **~6.5% shortfall (t=-2.66)** independently confirms the staleness residual
+  measured earlier from raw line moves (t=-8.24).
+- Location only: `sd_Kalshi` is unrelated to `m` and `|m|` (t=+0.87 / -1.39),
+  consistent with every variance null. The tradeable instrument, if execution
+  exists, is CENTRAL rungs (~2.2c per point of shift), not tails (~1.3c).
+- Counterfactual repricing value (SRV — NOT realized MTM: no early Kalshi
+  surface was observed; SRV assumes the early exchange sat at the opener):
+  +1.12c all games rising monotonically to **+3.65c at |m|>=1.5**
+  (game-clustered t 5.4-7.8).
+
+**What 2025-26 validates: the DESTINATION of the predicted move at T-1 minute.
+What it cannot identify: the timing of the repricing path or the passive-fill
+opportunity, because no earlier Kalshi quotes were captured.** The 2026-27
+capture plan and frozen analysis questions live in `KALSHI_CAPTURE_2026.md`.
