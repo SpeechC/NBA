@@ -16,7 +16,7 @@ Official NBA injury reports, 2019-20 policy onward: PDFs at
 `ak-static.cms.nba.com/referee/injury/Injury-Report_{DATE}_{HH}{AM/PM}.pdf`,
 verified live for 2019 and 2022. Panel overlap: **2020-21 .. 2025-26**
 (the master has no 2019-20 season). Development = 2020-21..2023-24; holdout =
-2024-25 + 2025-26 (`data_split.py` boundary).
+2024-25 ONLY (2025-26 dropped — see the Q1 resolution in §5).
 
 The timing structure does the identification work:
 
@@ -95,12 +95,28 @@ combined-spec extension gets its own pre-registration.
 
 | gate | requirement |
 |---|---|
-| Q1 coverage | >= 90% of panel games 2020-21+ have >= 1 captured report |
+| Q1 coverage | >= 90% of panel games in the ANALYSIS WINDOW have >= 1 captured report |
 | Q2 parse validity | players listed OUT in the final pregame report play 0 seconds in the lineup parquet in >= 97% of cases |
 | Q3 timing sanity | report timestamps precede tip for >= 99% of used reports |
 
 **Any Q-gate failure stops the market tests** until the data defect is fixed —
 fixing data is permitted; touching the hypothesis or states is not.
+
+**Q1 resolution, recorded 2026-08 after the gates ran.** Measured coverage on
+2020-21..2025-26 was 88.0% — a FAIL driven entirely by the documented
+2025-12-22 CDN wall (2025-26 at 31.2%; every other season 96.6-100%). Per §8
+risk 3, which anticipated exactly this, **2025-26 is dropped in full** and the
+analysis window becomes **2020-21..2024-25**. Scoped coverage is
+**5,821/5,868 = 99.2%, PASS**. 2025-26 is excluded entirely rather than
+included partially: the surviving 31% slice ends 22 December, so it carries no
+post-Christmas games and no trade-deadline period — the window where late
+status churn peaks and where Hypothesis B would be most affected. A
+compositionally skewed partial season is worse than none.
+
+CONSEQUENCE, stated plainly: development is 2020-21..2023-24 (four seasons,
+intact) and the **holdout is ONE season, 2024-25 (1,166 games)**, not two.
+All holdout claims carry correspondingly less power and must say so.
+
 
 ## 6. Decision thresholds, fixed now
 

@@ -34,15 +34,55 @@ import pdfplumber
 PDFS = "/home/dpope/data/injury_reports"
 OUT = "injury_status_panel.csv"
 STATUSES = {"Out", "Doubtful", "Questionable", "Probable", "Available"}
-# column boundaries (x0 midpoints from the fixed layout)
-BOUNDS = [(0, 110, "game_date"), (110, 190, "game_time"),
-          (190, 255, "matchup"), (255, 415, "team"),
-          (415, 575, "player"), (575, 655, "status")]
+DATE_RE = re.compile(r"\d{1,2}/\d{1,2}/\d{4}")
+
+# Column x-positions are NOT constant across the archive: the pre-Nov-2023
+# layout puts CurrentStatus at x0~498, the later one at x0~587, and the older
+# format writes headers as separate words ("Game Date" vs "GameDate").
+# Boundaries are therefore derived PER PAGE from the header row.
+HDR = {"matchup": ("Matchup",), "team": ("Team",),
+       "player": ("PlayerName", "Player"),
+       "status": ("CurrentStatus", "Current"), "reason": ("Reason",)}
 FN = re.compile(r"Injury-Report_(\d{4}-\d{2}-\d{2})_(\d{2}[AP]M)\.pdf$")
 
 
-def col_of(x0):
-    for lo, hi, name in BOUNDS:
+def page_bounds(words):
+    """Derive column boundaries from this page's header row. Returns a list of
+    (lo, hi, name) or None if the header cannot be located."""
+    # locate the header LINE first (the row carrying Matchup + Team + Reason),
+    # then read column starts from that line only
+    by_top = {}
+    for w in words:
+        by_top.setdefault(round(w["top"] / 3), []).append(w)
+    hdr_line = None
+    for _, ws in sorted(by_top.items()):
+        txt = {w["text"] for w in ws}
+        if {"Matchup", "Team", "Reason"} <= txt:
+            hdr_line = ws
+            break
+    if hdr_line is None:
+        return None
+    pos = {}
+    for key, cands in HDR.items():
+        for c in cands:
+            hits = [w["x0"] for w in hdr_line if w["text"] == c]
+            if hits:
+                pos[key] = min(hits)
+                break
+    if not {"matchup", "team", "player", "status", "reason"} <= set(pos):
+        return None
+    # data words sit a fraction LEFT of their header word (status data x0=498.0
+    # vs header "Current" x0=498.6), so pull each boundary back by a tolerance
+    T = 4.0
+    return [(0, pos["matchup"] - T, "date_area"),
+            (pos["matchup"] - T, pos["team"] - T, "matchup"),
+            (pos["team"] - T, pos["player"] - T, "team"),
+            (pos["player"] - T, pos["status"] - T, "player"),
+            (pos["status"] - T, pos["reason"] - T, "status")]
+
+
+def col_of(x0, bounds):
+    for lo, hi, name in bounds:
         if lo <= x0 < hi:
             return name
     return None
@@ -53,9 +93,12 @@ def parse_pdf(path):
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
             words = page.extract_words()
+            bounds = page_bounds(words)
+            if bounds is None:
+                continue                       # no header (cover/continuation)
             lines = {}
             for w in words:
-                c = col_of(w["x0"])
+                c = col_of(w["x0"], bounds)
                 if c is None:
                     continue
                 key = round(w["top"] / 3)          # cluster words into lines
@@ -65,8 +108,9 @@ def parse_pdf(path):
                 st = d.get("status", "")
                 if st not in STATUSES:
                     continue                       # header/wrap/footer lines
+                dm = DATE_RE.search(d.get("date_area", ""))
                 rows.append({
-                    "game_date": d.get("game_date", ""),
+                    "game_date": dm.group(0) if dm else "",
                     "matchup": d.get("matchup", ""),
                     "team": d.get("team", ""),
                     "player": d.get("player", ""),
