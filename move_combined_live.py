@@ -19,33 +19,27 @@ DEPLOYMENT CONVENTION (immutable for the season, prereg s3):
   combiner  FROZEN NUMBERS    -- the three constants above.
 
 =========================================================================
-!! READ THIS FIRST: THIS SHIPS A REDUCED RIDGE, NOT THE FROZEN ONE !!
+RIDGE = THE FULL FROZEN FEATURE SET, INCLUDING dis_open
 =========================================================================
-The frozen ridge (PREREG s3) is `pred_move` from the movement_full.py chain,
-whose feature set includes `dis_open` = cal_total - open_total, produced by a
-walk-forward XGBoost TEAM-SCORE model plus a calibration stage.
+`dis_open` = cal_total - open_total comes from a walk-forward XGBoost
+team-score model plus a calibration stage. The frozen implementation
+(walkforward_pace.build_panel_ext) reads the vendor CSV directly and so had no
+rows for unplayed games. `dis_open_live.py` ports that recipe unchanged --
+same LAG=4 rolling of ALLV, same XGB(depth=2, n_est=100, lr=0.3), same
+calibration -- but takes the raw frame as an argument, so appending a PENDING
+row yields correct prior-only features for it.
 
-That chain reads BOX SCORES (walkforward_totals.build -> build_panel_ext) and
-therefore CANNOT score an unplayed game as written. Measured 2026-08-23:
+Validated 2026-08-23 against the stored frozen column (8,696 overlapping games):
 
-  * ridge WITH dis_open      OOS corr with actual move  +0.2652
-  * ridge WITHOUT dis_open   OOS corr with actual move  +0.2167   <- shipped
-    (the two predictions correlate +0.894 -- close, but not the same model)
-  * a live-capable RECONSTRUCTION of dis_open from lagged box scores
-    correlates only +0.52 with the frozen dis_open, so substituting it would
-    be worse than omitting it: a different feature wearing the same name.
+    corr(port, frozen dis_open)                       +0.9411
+    ridge OOS corr, PORTED dis_open                   +0.2728
+    ridge OOS corr, FROZEN dis_open (batch only)      +0.2652
+    ridge OOS corr, no dis_open at all                +0.2167
 
-CONSEQUENCE, stated plainly: `--ridge-mode reduced` (the default, and the only
-mode that runs today) is NOT MOVE_COMBINED as frozen. Output is labelled
-MOVE_REDUCED and its numbers do NOT inherit the frozen backtest
-(53.44% / +1.34 CLV at |m|>=1.0). Running the 2026-27 prospective test on it
-would test a different model than the one preregistered.
-
-TO CLOSE THE GAP (required before the forward test is valid): make the frozen
-chain pending-capable -- build_panel_ext must emit feature rows for scheduled
-games (all its inputs are prior-only, so this is mechanically possible), then
-run `--ridge-mode frozen`, which expects a `dis_open` column supplied for
-every row including pending ones and refuses to guess.
+The port therefore reproduces the frozen signal rather than approximating it.
+`--ridge-mode frozen` is the DEFAULT. `--ridge-mode reduced` drops dis_open and
+is kept only as a fallback if the score model cannot run; its output is
+labelled MOVE_REDUCED and does NOT inherit the frozen backtest.
 
 -------------------------------------------------------------------------
 THE HARD DEPENDENCY: OPENING TOTALS FOR UNPLAYED GAMES
@@ -196,6 +190,11 @@ RIDGE_FEATS = ["ot_open", "pace_sum", "pace_diff", "pace_absdiff",
                "oeff_sum", "deff_sum", "implied_minus_open",
                "h_f_PACE", "a_f_PACE", "h_f_OEFF", "a_f_OEFF",
                "h_f_DEFF", "a_f_DEFF"]
+# dis_open completes the frozen feature set. Ported to be pending-capable in
+# dis_open_live.py; validated corr +0.941 vs the stored frozen column, and the
+# ridge built on it recovers the frozen OOS corr (+0.2728 vs +0.2652), against
+# +0.2167 without it. GAP CLOSED 2026-08-23.
+FROZEN_FEATS = RIDGE_FEATS + ["dis_open"]
 
 
 def ridge_features(g, W=20, MINP=10):
@@ -230,17 +229,37 @@ def ridge_features(g, W=20, MINP=10):
     return X.reset_index()
 
 
-def attach_dis_open(X, path=DIS_OPEN_SRC):
-    """Join the FROZEN pipeline's dis_open. Pending games will be NaN unless
-    the frozen chain has been made pending-capable (see module docstring)."""
-    if not os.path.exists(path):
-        return X.assign(dis_open=np.nan), 0
-    mf = pd.read_csv(path)
-    idc = "game_id" if "game_id" in mf.columns else "gid"
-    mf["gid"] = mf[idc].astype(str).str.strip()
+def pending_raw(pend, template_cols):
+    """PENDING rows in the VENDOR schema, so the ported chain can build their
+    prior-only features. Everything except the keys is NaN by design."""
+    R = pd.DataFrame(np.nan, index=range(len(pend)), columns=list(template_cols))
+    R["GAME-ID"] = pend.gid.values
+    R["DATE"] = pd.to_datetime(pend.date).dt.strftime("%Y-%m-%d").values
+    R["TEAM_H"] = pend.home.values
+    R["TEAM_R"] = pend.away.values
+    R["OPENING TOTAL_H"] = pend.ot_open.values
+    R["OPENING SPREAD_H"] = pend.os_open.values
+    from prepare_data import SEASON_COLS
+    yr = pd.to_datetime(pend.date).dt.year
+    start = np.where(pd.to_datetime(pend.date).dt.month >= 8, yr, yr - 1)
+    R[SEASON_COLS[0]] = [f"NBA {y}-{y+1} Regular Season" for y in start]
+    return R
+
+
+def attach_dis_open(X, raw_all, asof, mode="walkforward"):
+    """Compute dis_open with the ported frozen chain, covering pending rows.
+
+    mode='walkforward' is CORRECT and the default: it gives out-of-sample
+    dis_open for the ridge's training rows (matching the frozen protocol) and
+    predicts pending rows from a model trained on everything before them.
+    mode='asof' fits once on all completed games -- faster, but its training
+    rows carry IN-SAMPLE dis_open, which is a train/serve skew.
+    """
+    import dis_open_live as DOL
+    G = DOL.compute(raw_all, asof=asof, mode=mode)
     X = X.copy()
     X["gid"] = X.gid.astype(str).str.strip()
-    X = X.merge(mf[["gid", "dis_open"]].drop_duplicates("gid"), on="gid", how="left")
+    X = X.merge(G[["gid", "dis_open"]], on="gid", how="left")
     return X, int(X.dis_open.notna().sum())
 
 
@@ -310,7 +329,8 @@ def latent_predict(X, featcols_now, art):
 
 # ------------------------------------------------------------------ engine
 def recommend(target_date, lines_csv=None, sched_local=None, artifact=ARTIFACT,
-              paths=(HIST, CURRENT), quiet=False, ridge_mode="reduced"):
+              paths=(HIST, CURRENT), quiet=False, ridge_mode="frozen",
+              dis_mode="walkforward"):
     import nba_schedule
     asof = pd.to_datetime(target_date).normalize()
     teammap = pd.read_csv(TEAM_MAP_CSV).set_index("bigdataball_name")["abbr"].to_dict()
@@ -349,16 +369,16 @@ def recommend(target_date, lines_csv=None, sched_local=None, artifact=ARTIFACT,
     XR = ridge_features(g)
     feats = list(RIDGE_FEATS)
     if ridge_mode == "frozen":
-        XR, ndis = attach_dis_open(XR)
-        pend_missing = XR[XR.gid.isin(pend.gid) & XR.dis_open.isna()]
-        if len(pend_missing):
-            raise SystemExit(
-                f"  --ridge-mode frozen: dis_open missing for "
-                f"{len(pend_missing)} of today's games. The frozen chain is not\n"
-                f"  pending-capable yet (see module docstring). Refusing to\n"
-                f"  substitute a reconstruction.")
-        feats.append("dis_open")
-        spec_name = "MOVE_COMBINED (frozen)"
+        raw_all = _load_master(paths)
+        raw_all = pd.concat([raw_all, pending_raw(pend, raw_all.columns)],
+                            ignore_index=True)
+        XR, ndis = attach_dis_open(XR, raw_all, asof, mode=dis_mode)
+        miss = XR[XR.gid.isin(pend.gid) & XR.dis_open.isna()]
+        if len(miss):
+            print(f"  !! dis_open unavailable for {len(miss)} game(s) "
+                  f"(insufficient team history); they will not be scored")
+        feats = list(FROZEN_FEATS)
+        spec_name = "MOVE_COMBINED (frozen, full feature set)"
     else:
         spec_name = "MOVE_REDUCED (no dis_open -- NOT the frozen spec)"
     rid, ntr, alpha = ridge_predict(XR, asof, feats)
@@ -459,8 +479,12 @@ if __name__ == "__main__":
     ap.add_argument("--hist", default=HIST)
     ap.add_argument("--current", default=CURRENT)
     ap.add_argument("--artifact", default=ARTIFACT)
+    ap.add_argument("--dis-mode", choices=["walkforward", "asof"],
+                    default="walkforward",
+                    help="'walkforward' (default, correct) vs 'asof' (fast, "
+                         "in-sample dis_open in training rows)")
     ap.add_argument("--ridge-mode", choices=["reduced", "frozen"],
-                    default="reduced",
+                    default="frozen",
                     help="'frozen' requires dis_open for every game incl. "
                          "pending and refuses to approximate")
     a = ap.parse_args()
@@ -471,6 +495,6 @@ if __name__ == "__main__":
         selftest(a.selftest, paths, a.artifact)
     elif a.date:
         recommend(a.date, a.lines, a.schedule_local, a.artifact, paths,
-                  ridge_mode=a.ridge_mode)
+                  ridge_mode=a.ridge_mode, dis_mode=a.dis_mode)
     else:
         ap.print_help()

@@ -89,9 +89,19 @@ def _from_local(path):
 SOURCES = [("cdn", _from_cdn), ("stats", _from_stats)]
 
 
-def fetch(local_csv=None, use_cache_on_fail=True, verbose=True):
-    """Return the full-season schedule frame, trying each source in turn."""
+def fetch(local_csv=None, use_cache_on_fail=True, verbose=True,
+          prefer_local=True):
+    """Return the full-season schedule frame.
+
+    An explicitly supplied local_csv is treated as an OVERRIDE (prefer_local),
+    so a hand-maintained schedule always wins over the live endpoints.
+    """
     os.makedirs(CACHE_DIR, exist_ok=True)
+    if prefer_local and local_csv and os.path.exists(local_csv):
+        df = _from_local(local_csv)
+        if verbose:
+            print(f"  schedule: {len(df):,} games from LOCAL OVERRIDE {local_csv}")
+        return df
     cache = os.path.join(CACHE_DIR, f"schedule_{SEASON.replace('-', '_')}.csv")
     errs = []
     for name, fn in SOURCES:
