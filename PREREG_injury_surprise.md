@@ -308,3 +308,61 @@ reported.
 2. One holdout season (1,009 games).
 3. `Probable->Out` and `Available->Out` rest on 88 and 35 games.
 4. Displacement is established on the holdout only.
+
+---
+
+## 9. ADDENDUM — aggregation restricted to SALIENT players (EXPLORATORY, POST-HOC)
+
+**Not part of the pre-registered test and not promotable.** The section 8
+aggregation result was declared NOT EVALUABLE *after* its cell counts were
+seen, and this restriction was applied in response to that. It is descriptive.
+
+The one defence against cherry-picking: SALIENT is not a cut invented here. It
+is the frozen Hypothesis B event set (top-3 trailing minutes share on the
+player's team that date), pre-specified in `PREREG_injury.md` section 2. No
+alternative restriction was tried.
+
+Restriction keeps 8,251 of 64,743 late-OUT events (12.7%) and balances the
+cells that the unrestricted version could not:
+
+| N salient late-OUT | dev games | mean tmove | holdout games | mean tmove |
+|---|---|---|---|---|
+| 0 | 1,002 | +0.664 | 197 | +0.518 |
+| exactly 1 | 1,326 | +0.096 | 316 | +0.283 |
+| exactly 2 | 985 | -0.265 | 269 | -0.257 |
+| >= 3 | 756 | -1.083 | 227 | -1.088 |
+
+Monotone on BOTH windows.
+
+### Additivity (dummies vs the 0-absence base, controls ridge + latent)
+
+| | b(1) | b(2) | b(>=3) | b(2)/b(1) |
+|---|---|---|---|---|
+| development | -0.524 (t=-3.99) | -0.938 (t=-6.65) | -1.865 (t=-12.32) | **+1.79** |
+| holdout | -0.385 (t=-1.22) | -1.066 (t=-3.27) | -1.961 (t=-5.78) | +2.77 |
+
+Additive implies a ratio near 2.0; a threshold implies near 1.0. Development
+gives **1.79** — approximately additive, marginally sub-additive. Holdout gives
+2.77, but its `b(1)` is imprecise (t=-1.22), so that ratio is unstable and
+should not be read as super-additivity.
+
+A linear specification agrees: **-0.5294 points per salient late absence
+(t=-13.63)** on development, and -11.375 per unit of `SHOCK` (surprise x
+importance, t=-15.29).
+
+**Answer to item 5, as an exploratory result: roughly ADDITIVE, no threshold.**
+Two meaningful absences move the total about twice as far as one. `b(>=3)` at
+-1.865 against `b(1)` at -0.524 is consistent with continued linearity rather
+than saturation.
+
+### Caveats
+
+1. Post-hoc restriction, as stated above. A confirmatory version needs its own
+   pre-registration on an untouched window.
+2. `UNLISTED` still supplies 6,563 of 8,251 salient events — even among top-3
+   players, most late OUTs are players added to the report already Out.
+3. The salience merge introduces 263 duplicate rows (0.4%) where a player maps
+   to two team abbreviations on one date (trades). Left uncorrected; too small
+   to affect the cell pattern, but it means counts are marginally overstated.
+4. `b(1)` is not significant on the holdout, so the 1-absence effect is
+   established on development only.
