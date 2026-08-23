@@ -193,3 +193,118 @@ refinement adds nothing.
    line.
 4. Prior status is observed at hourly report granularity; a status that
    changed twice inside one hour is seen once.
+
+---
+
+## 8. RESULT — 2026-08-23. Verdict: `I_LATE` INFORMATIVE (all five criteria met)
+
+### Estimation history, disclosed in full
+
+Three executions. The first two produced meaningless variables and are void;
+neither was a look at a valid result, and no specification was changed in
+response to either.
+
+1. **Void — join failure.** `I_LATE` was identically zero: the `MIN_SHARE`
+   as-of join silently failed because PBP game ids are zero-padded and
+   `OLE.load()` ids are not, so nothing matched. Also crashed on an empty
+   quantile bin.
+2. **Void — definitional circularity in my code, not in the prereg.**
+   `prior_of()` returned a status only for sequences CONTAINING an `Out`, so
+   conditioning on prior status already selected players who became Out. Every
+   probability came back ~1.0 (Questionable .9996, Doubtful 1.0000, UNLISTED
+   .9843), making `SurpriseOUT` a rescaled count (~0.0004-0.0157) rather than
+   a surprise. Section 1 specifies "among ALL player-game-reports carrying that
+   status"; the code did not implement that. Corrected to conform.
+3. **Valid**, reported below.
+
+Both fixes restored the code to the pre-registered definition. Neither altered
+the definition. Recorded so the reader can discount accordingly.
+
+### P(OUT | prior status), strictly historical — face-valid after the fix
+
+| prior status | P(OUT) | surprise | n_prior |
+|---|---|---|---|
+| Questionable | 0.3987 | 0.6013 | 143,766 |
+| Doubtful | 0.8319 | 0.1681 | 17,848 |
+| Probable | 0.0553 | 0.9447 | 49,212 |
+| Available | 0.0072 | 0.9928 | 68,954 |
+| UNLISTED | 0.7944 | 0.2056 | 17,220 |
+
+Doubtful mostly means Out; Probable->Out is rare and therefore surprising; a
+player added to the report late is usually already Out.
+
+### Models (target: open->close total movement)
+
+| | development (n=4,069) | holdout (n=1,009) |
+|---|---|---|
+| BASE: ridge | +0.979 (+14.53) | +0.762 (+6.39) |
+| BASE: latent | +0.732 (+6.83) | +0.659 (+3.07) |
+| BASE: `OUT_frozen` | -3.977 (-9.51) | -4.316 (-4.36) |
+| BASE: `N_LATE` | -0.021 (-1.75) | -0.064 (-2.14) |
+| **+`S_LATE`** | -0.113 (t=-1.07) | -0.555 (t=-2.35) |
+| **+`I_LATE`** | **-4.799 (t=-6.17)** | **-6.317 (t=-4.17)** |
+| incr R2 from `I_LATE` | +0.00836 | +0.01567 |
+
+Permutation on development: `I_LATE` p=**0.0002**; `S_LATE` p=0.2785.
+
+### Verdict against the section 5 rule
+
+`I_LATE` meets ALL FIVE: negative with |t|>=2 on development (-6.17); same sign
+on holdout (-4.17); permutation p=0.0002; and BOTH bucket sets monotone —
+
+- shock terciles: **+0.387 -> +0.013 -> -0.635**
+- importance quartiles: **+0.674 -> +0.334 -> -0.602 -> -0.722**
+
+`S_LATE` (surprise WITHOUT importance) FAILS: development t=-1.07, permutation
+p=0.2785. Surprise alone carries nothing; it works only multiplied by
+importance.
+
+### Displacement — the point of the exercise, met on holdout only
+
+`OUT_frozen` falls from -3.977 to -2.426 on development (**-39%**, t still
+-4.99) and from -4.316 to -2.151 on holdout (**-50%**, t=-1.94, losing
+significance). The section 5 bar (>=50% fall AND loses |t|>=2) is therefore met
+on the holdout and NOT on development.
+
+Recorded conclusion, with that split stated: the market reacts substantially to
+**surprise-weighted importance** rather than to raw late-OUT occurrence, but
+raw occurrence is not fully displaced on development and cannot be declared
+redundant.
+
+`corr(surprise, min_share) = +0.1554` — the section 7 risk-1 worry (that the
+most surprising absences would be the least important) did NOT materialise.
+
+### Prior-status categories, fixed order
+
+| transition | n | mean tmove |
+|---|---|---|
+| Questionable->Out | 2,058 | -0.250 |
+| Doubtful->Out | 703 | -0.134 |
+| Probable->Out | 88 | **-0.960** |
+| UNLISTED->Out | 4,019 | -0.079 |
+
+`Probable->Out` — the rarest and most surprising transition — carries the
+largest downward move, consistent with the surprise mechanism, on only 88
+games.
+
+### Aggregation (item 5) — NOT EVALUABLE, reported as such
+
+| `N_LATE` | n | mean tmove |
+|---|---|---|
+| exactly 1 | 6 | +2.000 |
+| exactly 2 | 28 | +1.464 |
+| >= 3 | 3,985 | -0.093 |
+
+The additivity test cannot be run. `UNLISTED->Out` fires on nearly every game
+(58,049 of 64,480 events), so almost all games land in `>=3` and the 1-vs-2
+cells hold 6 and 28 games. This is a consequence of the unrestricted event set
+specified in section 2, not a finding. No breakpoint was searched and none is
+reported.
+
+### Limitations
+
+1. `UNLISTED` supplies 90% of events, so `I_LATE` is dominated by that cell's
+   probability estimate.
+2. One holdout season (1,009 games).
+3. `Probable->Out` and `Available->Out` rest on 88 and 35 games.
+4. Displacement is established on the holdout only.
