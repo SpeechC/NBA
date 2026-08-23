@@ -1,0 +1,51 @@
+COLUMN MAPPINGS USED
+  game id          -> GAME-ID              OK
+  date             -> DATE                 OK
+  season           -> season_label(raw)    OK
+  home team        -> TEAM_H               OK
+  away team        -> TEAM_R               OK
+  home points      -> PTS_H                OK
+  away points      -> PTS_R                OK
+  opening total    -> OPENING TOTAL_H      OK
+  closing total    -> CLOSING TOTAL_H      OK
+  opening spread   -> OPENING SPREAD_H     OK
+  closing spread   -> CLOSING SPREAD_H     OK
+
+SPREAD CONVENTION: corr(margin, -spread_H)=+0.452  corr(margin, +spread_H)=-0.452
+  -> OpenMargin = -OPENING SPREAD_H  (home favourite has a NEGATIVE raw spread)
+IDENTITY CHECK: max|hse+ase-te_open|=0.00e+00  max|hse-ase-se_open|=0.00e+00  PASS
+  role thresholds FROZEN on development: BLK36 q80 = 0.9859
+  player-date role rows 205,015   salient 34,229   DEF_ANCHOR 7,039
+  injury rows matched to a role state: 45,305   of which salient 10,789
+  3,489 games  seasons [np.int64(2020), np.int64(2021), np.int64(2022), np.int64(2023), np.int64(2024)]
+    OUT_baseline_DEF     nonzero on 696 games   mean 0.0380
+    OUT_late_DEF         nonzero on 341 games   mean 0.0173
+    OUT_late_OFF         nonzero on 1,183 games   mean 0.0742
+
+================================================================================================
+HYPOTHESIS A — role-specific absence and the CLOSING total
+  gap = c_true - c_market;  A1 predicts gap > 0 for DEF_ANCHOR
+================================================================================================
+
+  A1  DEF_ANCHOR absences (closing total)
+    window                  n    c_true      t   c_market      t      gap      t
+    development         2,798    +3.041   0.66     -0.162  -0.15   +3.203   0.72
+    holdout 2024-25       691    +8.882   1.17     -5.675  -2.67  +14.557   2.00
+    permutation (A1 DEF): observed +3.2029  null -0.0114 sd 4.4944  p=0.4875
+
+  A2  OFF_STAR absences (closing total)  [expect gap ~ 0]
+    window                  n    c_true      t   c_market      t      gap      t
+    development         2,798    -7.047  -2.94     -9.030 -16.42   +1.983   0.85
+    holdout 2024-25       691    -6.664  -1.53    -10.570  -9.09   +3.906   0.93
+    permutation (A2 OFF): observed +1.9833  null +0.2755 sd 2.2581  p=0.3817
+
+  A3  FALSIFICATION: DEF_ANCHOR baseline vs the OPEN  [expect ~0]
+    window                  n    c_true      t   c_market      t      gap      t
+    development         2,798    +3.041   0.66     -1.841  -1.86   +4.882   1.07
+    holdout 2024-25       691    +8.882   1.17     -6.597  -3.66  +15.479   2.06
+
+================================================================================================
+HYPOTHESIS B — intraday status change as a movement source
+================================================================================================
+  development        B1 alone -4.0216 (t=-8.69)  n=2,798   |  B2 JOINT: ridge +1.053 (t=+12.84) latent +0.773 (t=+5.86) LATE -4.4053 (t=-9.95)  n=2,798
+  holdout 2024-25    B1 alone -4.8512 (t=-4.60)  n=691   |  B2 JOINT: ridge +0.748 (t=+4.88) latent +0.657 (t=+2.45) LATE -5.7625 (t=-5.58)  n=691

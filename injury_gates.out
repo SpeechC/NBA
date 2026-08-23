@@ -1,0 +1,51 @@
+  panel: 1,224,205 rows, 875 report days, 847 game dates
+
+====================================================================================
+Q1 — COVERAGE (>= 90% of panel games with >= 1 report)
+====================================================================================
+    season   games  covered     pct
+      2020   1,080    1,043   96.6%
+      2021   1,230    1,224   99.5%
+      2022   1,230    1,226   99.7%
+      2023   1,162    1,162  100.0%
+      2024   1,166    1,166  100.0%
+  OVERALL 99.2%   Q1 PASS
+  [2025-26 truncation at 2025-12-22 is documented and expected]
+
+====================================================================================
+Q3 — TIMING SANITY (>= 99% of reports precede tip)
+====================================================================================
+  report date <= game date: 100.00%
+  lead-day distribution: {0: 976253, 1: 247952}
+  Q3 PASS
+
+====================================================================================
+Q2 — PARSE VALIDITY (>= 97% of final-report OUT play 0 seconds)
+====================================================================================
+  final-report OUT designations checked: 56,117
+  of these, absent from the play-by-play that night: 56,093 (99.96%)
+  Q2 PASS
+
+====================================================================================
+Q4 — ERA STABILITY (rows per report within 2x across layout eras)
+====================================================================================
+    season   reports        rows   rows/report
+      2020       416      34,334          82.5
+      2021     3,003     272,002          90.6
+      2022     3,023     253,170          83.7
+      2023     2,832     275,581          97.3
+      2024     2,912     299,249         102.8
+      2025     1,033      89,869          87.0
+  max/min across seasons = 1.25x   Q4 PASS
+  [the pre/post Nov-2023 layout change is the era boundary; a large
+   ratio means one era is being silently under-parsed]
+
+====================================================================================
+STAGE-0 VERDICT
+====================================================================================
+  Q1 coverage            PASS
+  Q2 parse validity      PASS
+  Q3 timing sanity       PASS
+  Q4 era stability       PASS
+
+  -> gates pass; the PREREG_injury.md market tests may proceed

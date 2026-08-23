@@ -5,6 +5,14 @@ Q1 coverage        >= 90% of panel games in the analysis window (2020-21..2024-2
 Q2 parse validity  players listed OUT in the FINAL pregame report play 0
                    seconds in the lineup parquet in >= 97% of cases
 Q3 timing sanity   report timestamps precede tip for >= 99% of used reports
+Q4 era stability   rows-per-report must not vary more than 2x across layout
+                   eras. ADDED after two silent layout-era parser bugs that
+                   Q1-Q3 could not see: Q2 only validates rows that WERE
+                   parsed, never rows that silently vanished, so a parser that
+                   drops 85% of pages still scores 99.95%. Both bugs (column
+                   x-positions differing pre/post Nov-2023, then the header
+                   printing on every page in the old layout but page 1 ONLY in
+                   the new one) would have been caught instantly here.
 
 Any failure stops the market tests until the data defect is fixed. Fixing data
 is permitted; touching the hypothesis or the frozen states is not.
@@ -142,13 +150,34 @@ def main():
     q2 = rate >= 0.97
     print(f"  Q2 {'PASS' if q2 else 'FAIL'}")
 
+    # ---------------------------------------------------------------- Q4
+    print("\n" + "=" * 84)
+    print("Q4 — ERA STABILITY (rows per report within 2x across layout eras)")
+    print("=" * 84)
+    n = P.groupby(["report_date", "report_stamp"]).size().rename("rows")
+    nd = n.reset_index()
+    nd["d"] = pd.to_datetime(nd["report_date"])
+    nd["yr"] = np.where(nd["d"].dt.month >= 8, nd["d"].dt.year,
+                        nd["d"].dt.year - 1)
+    per = nd.groupby("yr")["rows"].mean()
+    print(f"  {'season':>8}{'reports':>10}{'rows':>12}{'rows/report':>14}")
+    for yr, x in nd.groupby("yr"):
+        print(f"  {yr:>8}{len(x):>10,}{int(x['rows'].sum()):>12,}"
+              f"{x['rows'].mean():>14.1f}")
+    ratio = per.max() / per.min() if len(per) and per.min() > 0 else np.inf
+    q4 = ratio <= 2.0
+    print(f"  max/min across seasons = {ratio:.2f}x   "
+          f"Q4 {'PASS' if q4 else 'FAIL'}")
+    print("  [the pre/post Nov-2023 layout change is the era boundary; a large"
+          "\n   ratio means one era is being silently under-parsed]")
+
     print("\n" + "=" * 84)
     print("STAGE-0 VERDICT")
     print("=" * 84)
     for nm, ok in (("Q1 coverage", q1), ("Q2 parse validity", q2),
-                   ("Q3 timing sanity", q3)):
+                   ("Q3 timing sanity", q3), ("Q4 era stability", q4)):
         print(f"  {nm:22} {'PASS' if ok else 'FAIL'}")
-    print(f"\n  -> {'gates pass; the PREREG_injury.md market tests may proceed' if (q1 and q2 and q3) else 'STOP: fix the data defect before any market test'}")
+    print(f"\n  -> {'gates pass; the PREREG_injury.md market tests may proceed' if (q1 and q2 and q3 and q4) else 'STOP: fix the data defect before any market test'}")
 
 
 if __name__ == "__main__":

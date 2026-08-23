@@ -39,7 +39,9 @@ DATE_RE = re.compile(r"\d{1,2}/\d{1,2}/\d{4}")
 # Column x-positions are NOT constant across the archive: the pre-Nov-2023
 # layout puts CurrentStatus at x0~498, the later one at x0~587, and the older
 # format writes headers as separate words ("Game Date" vs "GameDate").
-# Boundaries are therefore derived PER PAGE from the header row.
+# Boundaries are therefore derived from the header row of the first page that
+# has one, then CARRIED FORWARD: the modern layout prints the header on page 1
+# only, while the older one repeats it on every page.
 HDR = {"matchup": ("Matchup",), "team": ("Team",),
        "player": ("PlayerName", "Player"),
        "status": ("CurrentStatus", "Current"), "reason": ("Reason",)}
@@ -91,11 +93,19 @@ def col_of(x0, bounds):
 def parse_pdf(path):
     rows = []
     with pdfplumber.open(path) as pdf:
+        bounds = None
         for page in pdf.pages:
             words = page.extract_words()
-            bounds = page_bounds(words)
-            if bounds is None:
-                continue                       # no header (cover/continuation)
+            found = page_bounds(words)
+            if found is not None:
+                bounds = found
+            elif bounds is None:
+                continue        # no header seen yet in this file (cover page)
+            # else: reuse the last header's geometry. The pre-Nov-2023 layout
+            # repeats the header on EVERY page; the later one prints it ONLY on
+            # page 1, so requiring a per-page header silently dropped pages
+            # 2..N of every modern report (a 7-page file yielded 15 rows
+            # instead of ~85). Column geometry is constant within a file.
             lines = {}
             for w in words:
                 c = col_of(w["x0"], bounds)

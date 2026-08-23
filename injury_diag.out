@@ -1,0 +1,73 @@
+COLUMN MAPPINGS USED
+  game id          -> GAME-ID              OK
+  date             -> DATE                 OK
+  season           -> season_label(raw)    OK
+  home team        -> TEAM_H               OK
+  away team        -> TEAM_R               OK
+  home points      -> PTS_H                OK
+  away points      -> PTS_R                OK
+  opening total    -> OPENING TOTAL_H      OK
+  closing total    -> CLOSING TOTAL_H      OK
+  opening spread   -> OPENING SPREAD_H     OK
+  closing spread   -> CLOSING SPREAD_H     OK
+
+SPREAD CONVENTION: corr(margin, -spread_H)=+0.452  corr(margin, +spread_H)=-0.452
+  -> OpenMargin = -OPENING SPREAD_H  (home favourite has a NEGATIVE raw spread)
+IDENTITY CHECK: max|hse+ase-te_open|=0.00e+00  max|hse-ase-se_open|=0.00e+00  PASS
+====================================================================================
+SAMPLE LOSS — which control is missing
+====================================================================================
+  games in window            5,868
+  after control merge, complete 3,489
+    mu_state                   missing on 2,379
+    pace_s                     missing on 2,379
+    oeff_s                     missing on 2,379
+    deff_s                     missing on 2,379
+    FC_h                       missing on 2,379
+    FC_a                       missing on 2,379
+    FD_h                       missing on 2,379
+    FD_a                       missing on 2,379
+    M                          missing on 2,379
+    ftr_s                      missing on 2,379
+    tpa_s                      missing on 2,379
+  by season (complete / total):
+    2020     600 /  1,080
+    2021     756 /  1,230
+    2022     759 /  1,230
+    2023     683 /  1,162
+    2024     691 /  1,166
+COLUMN MAPPINGS USED
+  game id          -> GAME-ID              OK
+  date             -> DATE                 OK
+  season           -> season_label(raw)    OK
+  home team        -> TEAM_H               OK
+  away team        -> TEAM_R               OK
+  home points      -> PTS_H                OK
+  away points      -> PTS_R                OK
+  opening total    -> OPENING TOTAL_H      OK
+  closing total    -> CLOSING TOTAL_H      OK
+  opening spread   -> OPENING SPREAD_H     OK
+  closing spread   -> CLOSING SPREAD_H     OK
+
+SPREAD CONVENTION: corr(margin, -spread_H)=+0.452  corr(margin, +spread_H)=-0.452
+  -> OpenMargin = -OPENING SPREAD_H  (home favourite has a NEGATIVE raw spread)
+IDENTITY CHECK: max|hse+ase-te_open|=0.00e+00  max|hse-ase-se_open|=0.00e+00  PASS
+  role thresholds FROZEN on development: BLK36 q80 = 0.9859
+  player-date role rows 205,015   salient 34,229   DEF_ANCHOR 7,039
+  injury rows matched to a role state: 45,305   of which salient 10,789
+
+====================================================================================
+HYPOTHESIS B — incremental content and orthogonality
+====================================================================================
+
+  development  n=2,798
+    incumbents R2 +0.08183   + LATE +0.11326   incremental +0.03143
+    split:  OUT_late -4.528 (t=-10.14)   UPGRADE_late -3.043 (t=-0.84)
+    MOVE_RIDGE_OOS   ~ LATE:  +0.3297 (t=+3.07)   [~0 => orthogonal, not already encoded]
+    MOVE_LATENT_OOS  ~ LATE:  +0.0473 (t=+0.71)   [~0 => orthogonal, not already encoded]
+
+  holdout 2024-25  n=691
+    incumbents R2 +0.04662   + LATE +0.08791   incremental +0.04129
+    split:  OUT_late -5.837 (t=-5.57)   UPGRADE_late +2.648 (t=+0.37)
+    MOVE_RIDGE_OOS   ~ LATE:  +0.8209 (t=+3.02)   [~0 => orthogonal, not already encoded]
+    MOVE_LATENT_OOS  ~ LATE:  +0.4523 (t=+2.91)   [~0 => orthogonal, not already encoded]

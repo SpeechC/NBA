@@ -149,3 +149,89 @@ All holdout claims carry correspondingly less power and must say so.
 3. 2025-26 report URLs returned 403 under the old naming in a probe; if that
    season cannot be captured, the holdout shrinks to 2024-25 and the document
    proceeds with the reduced window, flagged.
+
+---
+
+## 9. RESULTS, recorded 2026-08-23 (repaired panel, all four gates PASS)
+
+Development 2020-21..2023-24 (2,798 games), holdout 2024-25 (691 games).
+Sample is capped by `tpa_s` missingness in `rsk.CTRL` (2,379 of 5,868 games
+league-wide, uniform across seasons) -- a PRE-EXISTING control-set limitation,
+not an injury-data one. State incidence: DEF_ANCHOR baseline absences fire on
+696 games, OUT_late on 1,524.
+
+### Hypothesis A — FAIL (A1 rejected on its own frozen gate)
+
+| cell | window | c_true | c_market | gap | t |
+|---|---|---|---|---|---|
+| A1 DEF_ANCHOR / close | dev | +3.041 (0.66) | -0.162 (-0.15) | **+3.203** | 0.72 |
+| A1 DEF_ANCHOR / close | holdout | +8.882 (1.17) | -5.675 (-2.67) | +14.557 | 2.00 |
+| A2 OFF_STAR / close | dev | -7.047 (-2.94) | -9.030 (-16.42) | +1.983 | 0.85 |
+| A2 OFF_STAR / close | holdout | -6.664 (-1.53) | -10.570 (-9.09) | +3.906 | 0.93 |
+| A3 DEF_ANCHOR / OPEN | dev | +3.041 | -1.841 (-1.86) | +4.882 | 1.07 |
+| A3 DEF_ANCHOR / OPEN | holdout | +8.882 | -6.597 (-3.66) | +15.479 | 2.06 |
+
+A1 permutation p = **0.4875** (5,000 within-season reps; gate required
+p < 0.05). **A1 FAILS.** Economic scale also fails: +3.203 x mean weight
+0.1907 = **+0.61 points per firing game**, against a >= +1.0 requirement.
+c_true itself is insignificant (t=0.66) -- the premise that a DEF_ANCHOR
+absence raises the total is not established here, so there is no omission to
+price. Per section 8 risk 2 this is evidence against the hypothesis AS
+SPECIFIED, and no alternative role definition may be tried under this document.
+
+The holdout cell (gap +14.557, t=2.00) does NOT rescue A1 and must not be read
+as one. Three reasons, all pre-committed: (i) the gate is sequential -- the
+development permutation decides, and it failed at p=0.49; (ii) the A3
+falsification fires at the same time and the same size (+15.479 vs +14.557),
+so whatever it is appears identically against the OPEN and the CLOSE, which is
+precisely the pattern section 3 designated as "a data/timing error before it
+indicates an edge"; (iii) it is driven entirely by c_market (t=-2.67), not by
+c_true (t=1.17) -- the market lowers the total on these absences and outcomes
+do not follow, on one season.
+
+A2 behaved exactly as predicted and is the pipeline's validity check: the
+market prices OFF_STAR absences hard (c_market -9.030, t=-16.42), c_true is
+close behind (-7.047), and the gap is ~0 (p=0.38). The machinery detects real
+pricing where real pricing exists. That is what makes the A1 null credible
+rather than a plumbing failure.
+
+### Hypothesis B — PASS (B2 met on both windows)
+
+| window | B1 alone | JOINT ridge | JOINT latent | JOINT LATE | incr. R2 |
+|---|---|---|---|---|---|
+| development | -4.022 (t=-8.69) | +1.053 (12.84) | +0.773 (5.86) | **-4.405 (t=-9.95)** | +0.0314 |
+| holdout | -4.851 (t=-4.60) | +0.748 (4.88) | +0.657 (2.45) | **-5.763 (t=-5.58)** | +0.0413 |
+
+B2 required joint |t| >= 2 on development AND holdout sign agreement: met, with
+both incumbents surviving alongside. Incremental R2 is +0.0314 on development
+(over 0.0818) and +0.0413 on holdout (over 0.0466 -- nearly doubling it). The
+effect is entirely OUT_late (t=-10.14 dev, -5.57 holdout); UPGRADE_late is
+empty (t=-0.84, +0.37) on 31 firing games and carries nothing.
+
+Partial encoding exists -- MOVE_RIDGE_OOS ~ LATE gives t=+3.07 dev / +3.02
+holdout -- so the incumbents already anticipate some late-out news, but LATE
+survives jointly at t=-9.95 / -5.58 and is mostly independent.
+
+**What this does and does not license.** B is a DECOMPOSITION result: late
+status changes are a third partly-independent source of open->close total
+movement, sign negative (net late absences move the total down). It is NOT a
+tradable edge as it stands. The final pregame report precedes tip by ~30
+minutes and the close is at tip, so this is near-contemporaneous with the
+market's own reaction; converting it to P&L is a latency question (receive and
+act on the report faster than the market), not a research one. Per section 4,
+a combined-spec extension requires its own pre-registration and does not
+modify PREREG_move_combined.md. The frozen MOVE_COMBINED signal is untouched.
+
+### Process note — two silent parser defects preceded these numbers
+
+An earlier run of these same tests produced different numbers (A1 dev gap
++6.54; B holdout t=-2.43) on a panel missing ~530,000 rows. The archive has
+two layout eras and BOTH transitions broke the parser silently: column
+x-positions differ pre/post Nov-2023, and the old layout repeats the column
+header on every page while the new one prints it on page 1 only -- so pages
+2..N of every modern report were skipped, yielding ~15 rows/report instead of
+~100. Q1-Q3 could not see this: Q2 validates rows that WERE parsed and scored
+99.95% throughout. Gate **Q4 (era stability, rows-per-report within 2x across
+eras)** was added and is now part of the Stage-0 verdict; the old panel scores
+5.7x FAIL, the repaired one 1.25x PASS. Repaired totals: 1,224,205 rows,
+13,219 reports, 1,028 players.
