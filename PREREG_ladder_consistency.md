@@ -82,3 +82,52 @@ unknowable in aggregate capacity.
   not candles).
 - Systematic soft violations without hard crosses -> quoting noise inside the
   spread; relevant to the maker strategy's quoting model, not an edge.
+
+---
+
+## 7. RESULT — run once, 2026-08-23. Verdict: LADDER COHERENT (grid row 1)
+
+1,256,843 bars; 1,240,283 two-sided; **0 same-rung bid>ask data errors**;
+203,749 (event,minute) ladders with >= 2 quoted rungs.
+
+### Hard crosses — effectively nonexistent
+
+| quantity | value |
+|---|---|
+| low-leg instances | **49** (0.022% of ladder-minutes) |
+| adjacent-pair instances | 38 |
+| gross cents | mean 2.59, median 1, max 18 |
+| net > 0 after both legs' taker fees | **14 instances** |
+| total net at 1 contract each | **$0.57 over the whole 62-date window** |
+| run lengths | 39 x 1-min, 1 x 2-min, 1 x 3-min, 1 x 5-min |
+| runs >= 3 min with net > 0 | **0** (both long runs net NEGATIVE: -2.24c, -2.37c) |
+
+The persistence test — the pre-stated defence against bar asynchrony — kills
+everything: the only two crosses that outlived a bar were fee-negative, and
+the 1-minute residue at ~1c gross is exactly the sequencing artifact section 3
+predicted. **The quoted Kalshi totals ladder admits no static dominance
+arbitrage.** Fifty-seven cents of theoretical upper bound over two months does
+not merit a follow-up.
+
+### Soft inversions — the useful number
+
+**8.63% of rung-minutes carry a mid inversion** (72,502 adjacent), with
+adjacent inversion sizes of mean 7.8c, median 5c, p95 25c — while hard crosses
+are ~absent. Large mid incoherence with zero executable crosses means the
+inversions live entirely INSIDE wide spreads on thin rungs: the mids are
+noise, the bid/ask bounds are coherent.
+
+Two standing consequences, both descriptive:
+
+1. **Mid-based estimators inherit this noise on thin rungs.** The L(t)
+   median-crossing estimator (absorption and day-move studies) uses mids; its
+   >= 4-rung / bracketed-crossing rules concentrate it near the money where
+   spreads are tight, which now looks like the right design choice, but any
+   future use of WING mids should treat them as +/- 5-25c objects.
+2. **For the maker strategy:** resting mid-referenced quotes on thin rungs
+   would be quoting against noise ~9% of the time. Quote placement should
+   reference the bid/ask bounds of adjacent rungs (which ARE coherent), not
+   mids.
+
+Per section 5, nothing here is promoted to a strategy; the two consequences
+above are design notes, not edges.
