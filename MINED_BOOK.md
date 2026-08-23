@@ -33,3 +33,29 @@ Disposition: seat #5 on the 2026-27 prospective watch list (paper only),
 joining MOVE_COMBINED, CrewShock, the second-line curve, and maker-kappa.
 Mechanism note (written post-hoc, flagged as such): late-season fatigue and
 effort withdrawal on congested schedules degrade defense first.
+
+## Pass 2 — wider inventory, 2026-08-23
+
+Alphabet widened 24 -> 47 conditions (roadtrips, homestands, rest patterns,
+win/loss streaks, signed-spread states, big line moves, tilt matchups,
+referee foul-state and experience, injury counts, calendar months); pairs AND
+triples admitted at the same dev n>=600 economic floor. Result: **90 cells**
+total (47 singles, 41 pairs, 2 triples) — the floor, not imagination, is what
+bounds the space: most new conditions are too sparse to pair and stay
+tradable.
+
+Outcome: the SAME single seat qualifies, and nothing else.
+
+  4in6_either & late_season -> OVER   dev 54.55% (770)   holdout 56.66% (293)
+
+FDR on the wide space: phantom pipelines qualify 0.7 cells on average (p95=2),
+90 of 200 produce a book, phantom books score 50.25% mean / 53.90% p95 on the
+real holdout. The real book sits at the **99th percentile**.
+
+Interpretation: widening the search did not add seats and did not dilute the
+survivor — it sharpened its calibration (97th -> 99th). Within this alphabet
+and the bettable-volume floor, the mined space is SATURATED at one seat.
+Further widening requires either dropping the volume floor (which breaks
+bettability by our own criterion) or new data alphabets (timestamped feeds,
+order flow, lineup announcements) rather than more transformations of what we
+hold.
