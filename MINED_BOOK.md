@@ -91,3 +91,32 @@ calibration (unique qualifier, 99th percentile), unaffected by pass 3 (its
 cell's numbers are unchanged; it merely lost a dev-win% beauty contest to
 noise). The scaling conclusion is now empirical: in this data, mined yield
 does not grow with search size -- noise does.
+
+## Pass 3b — variant 2: threshold 53.0, full-portfolio evaluation, 2026-08-23
+
+Operator-chosen after variant 1 failed -> meta-multiplicity acknowledged in
+advance; pre-set bar raised to the 97.5th phantom percentile.
+
+Threshold 53.0 admits **216 qualifying cells** (phantom mean 60.8, p95 119).
+Top-15 book unchanged by construction (52.46%, 86th pctile). The new object:
+
+| book | seat-weighted | **deduped (unique game-bets)** | phantom pctile |
+|---|---|---|---|
+| FULL portfolio (216 seats) | 52.53% on 60,657 | **50.11% on 4,073** | 93rd (bar: 97.5) |
+
+**FAIL, decisively.** Two diagnostics:
+
+1. **Seat-weighting was recounting, not pooling.** 60,657 seat-bets deduplicate
+   to 4,073 games -- overlapping cells re-bet the same shared core ~15x. The
+   52.53% seat-weighted figure is the same lucky games counted repeatedly;
+   deduped, the portfolio is a coin flip (50.11%).
+2. **The excess dev structure is real but non-stationary.** 216 qualifiers vs
+   a phantom p95 of 119 means the dev window genuinely contains more
+   >=53%-win% cells than scrambled data -- concentrated in the tmove_pos
+   family -- and that structure simply does not exist in 2024-26. A dev-era
+   regime feature, not a selection artifact and not a live edge.
+
+Disposition: variant 2 not adopted. No further pass-3 variants: iterating
+thresholds/book-definitions after failures is operator-level selection that
+the phantom machinery cannot price. The mined program closes at: seat 5
+(pass 1-2, 99th pctile) on the paper list; large-scan yield zero.
