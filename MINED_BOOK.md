@@ -59,3 +59,35 @@ Further widening requires either dropping the volume floor (which breaks
 bettability by our own criterion) or new data alphabets (timestamped feeds,
 order flow, lineup announcements) rather than more transformations of what we
 hold.
+
+## Pass 3 — the large scan (3,527 cells), 2026-08-23
+
+~80 conditions (sharp + dense median splits), all pairs and triples above the
+dev n>=600 floor: **67 singles, 730 pairs, 2,730 triples**. Identical frozen
+selection and FDR machinery.
+
+Result: 114 qualifying cells (phantom mean 32.5, p95 70). Top-15 book by dev
+win%: **holdout 52.46% seat-weighted, 52.06% deduped over 1,312 game-bets —
+below the 52.38% break-even and at the 86th percentile of phantom books
+(p95 = 53.73). THE PASS-3 BOOK FAILS ITS OWN CALIBRATION.**
+
+Two diagnostics worth recording:
+
+1. **The winner's curse, demonstrated in one table.** The pass-1/2 survivor
+   (4in6 x late-season, dev 54.55, holdout 56.66) did NOT make the pass-3
+   book: 3,527 cells produced fifteen cells with HIGHER dev win% (55.1-57.0),
+   which displaced it -- and those fifteen then scored 52.5% on holdout. The
+   bigger the scan, the higher the dev bar noise sets, and the more the
+   selection favours overfit cells over robust ones. Search size DEGRADED the
+   book (99th -> 86th percentile).
+2. **The dev-era mirage in the book: 9 of 15 seats contain `tmove_pos`**
+   ("line moved up -> bet over at close"), a close-underreaction claim the
+   error-decomposition already refuted at the season scale (latent state vs
+   closing error corr -0.0002). Its dev-window strength did not carry: those
+   seats' holdout results scatter 49.8-61.9 around ~52.
+
+Disposition: pass 3 book NOT adopted. Seat 5 stands on its own pass-1/2
+calibration (unique qualifier, 99th percentile), unaffected by pass 3 (its
+cell's numbers are unchanged; it merely lost a dev-win% beauty contest to
+noise). The scaling conclusion is now empirical: in this data, mined yield
+does not grow with search size -- noise does.
