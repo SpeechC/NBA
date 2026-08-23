@@ -58,3 +58,52 @@ arithmetic. One partial season; power stated with the result.
 - promoting a stage-1 hit without stage 2
 - treating positive controls (#1-3) as findings
 - any P&L computation inside this document
+
+---
+
+## 5. RESULT — stage 1 run once, 2026-08-23. Survivors: NONE. Stage 2 moot.
+
+| conditioner | n_dev | slope(e2) | perm p | holdout slope | RMSE by class |
+|---|---|---|---|---|---|
+| level (pos. control) | 7,162 | +12.7 | **0.0165** | +23.6 | 17.52 / 18.54 / 18.33 |
+| \|spread\| (pos. control) | 7,162 | -2.6 | 0.66 | -0.6 | 18.45 / 17.88 / 17.98 |
+| pace_prior | 6,222 | +11.5 | 0.076 | +17.2 | 17.85 / 17.86 / 18.46 |
+| b2b_either | 7,162 | +7.3 | 0.22 | +14.3 | 17.99 / 18.43 |
+| season_frac | 7,162 | +3.0 | 0.62 | -3.7 | |
+| weekend | 7,162 | -0.8 | 0.89 | -0.5 | |
+| final_week | 7,162 | +5.1 | 0.40 | +11.5 | 18.09 / 18.69 |
+| nc_involved | 6,222 | +0.1 | 0.99 | -2.8 | 18.06 / 18.07 |
+| \|MOVE_COMBINED\| | 3,145 | -13.9 | 0.12 | +18.4 | |
+| n_late | 4,069 | +11.5 | 0.14 | -1.6 | |
+| \|CrewShock\| | 7,162 | -1.4 | 0.81 | -9.3 | |
+| \|tmove\| | 7,162 | +5.3 | 0.35 | -3.7 | |
+
+BH q=0.10 over 12 requires min p <= 0.0083; the best cell (level, p=0.0165)
+does not clear it. **No conditioner survives.**
+
+### The two readings, both recorded
+
+1. **The positive-control clause fires.** Level — the mechanically guaranteed
+   heteroskedasticity — reaches only p=0.0165 and fails the correction. Per
+   section 2's own standard, the screen is UNDERPOWERED for effects of the
+   size that actually exist: the level terciles differ by ~1.0 point of RMSE
+   (17.5 vs 18.5) and even that is barely visible in 7,162 games, because e^2
+   inference inherits the enormous kurtosis of an sd-18 error.
+2. **Nothing bigger exists.** Across every class of every conditioner, RMSE
+   spans 17.5 to 18.7 — a +/-3% band around 18.1. No pregame-computable class
+   among the 12 separates realized dispersion by more than ~1 point.
+
+### Why the dispersion program kept failing, now visible in one table
+
+Game-total error is dominated by irreducible within-game shooting noise
+(sd ~18), which is nearly context-free. Conditioners move the small
+predictable component; the noise floor swamps them. There was never much
+conditional-variance structure to find — the nine prior nulls were the
+correct answer, not missed detections.
+
+The one confirmed variance-relevant structure — the OT mixture — is
+consistent with this table rather than contradicted by it: a 5.24% one-sided
+24-point jump adds ~31 to a variance of ~327 (about +4.6% RMSE), a TAIL-SHAPE
+effect that RMSE barely sees. Dispersion structure in this market lives in
+tail mass, not in second moments, and the tradable expression of it is
+already specified in the second-line curve. That avenue remains the only one.
