@@ -123,3 +123,53 @@ To make the latency question answerable, ACQUIRE:
 
 Until then the frozen interpretation stands at market-microstructure, and no
 P&L claim may be attached to `OUT_late`.
+
+---
+
+## 8. RESULT — estimated once, 2026-08-23. Verdict: MATERIAL
+
+Sample 5,078 games (2020-21..2024-25); development 4,069, holdout 1,009.
+`OUT_late` fires on 1,388 games.
+
+| | development | holdout 2024-25 |
+|---|---|---|
+| ridge | +0.9727 (t=+14.45) | +0.7461 (t=+6.26) |
+| latent | +0.7374 (t=+6.88) | +0.6618 (t=+3.08) |
+| **OUT_late (bI)** | **-4.0864 (t=-9.88)** | **-4.6254 (t=-4.71)** |
+| R2 incumbents -> joint | 0.07847 -> 0.10010 | 0.05766 -> 0.07802 |
+| **incremental R2** | **+0.02163** | **+0.02036** |
+
+All three section-5 criteria met: |t(bI)| >= 2 on both windows with the same
+(negative) sign; both incumbents retain |t| >= 2 on both windows, so there is
+no absorption; holdout incremental R2 +0.0204 clears the +0.010 bar. The
+secondary signed variant agrees closely (-4.0029 / -4.6149), as required —
+`UPGRADE_late` is empty, so disagreement would have signalled an error.
+
+The three-channel decomposition is confirmed on the control-free sample:
+**late OUT information is a third, partially independent information-arrival
+channel in NBA total price discovery.**
+
+### Qualification the run itself exposed — the early-season claim in section 3 does NOT hold
+
+Section 3 argued the control-free sample is not merely larger but less
+selected, restoring early-season games where information-arrival effects are
+plausibly largest. The first half of that is true; the second is NOT, and the
+prediction should be treated as refuted.
+
+Deciles 1-3 contribute **1,525 games, on which `OUT_late` fires 12 times.**
+The injury states carry their OWN warm-up: `MIN_SHARE` requires 10 prior games
+and `BLK36` requires 300 prior minutes, so no player qualifies as SALIENT or
+DEF_ANCHOR early in a season. Removing the control warm-up restored the GAMES
+but not the SIGNAL. The ~1,589 additional games enter almost entirely as
+`OUT_late = 0`, sharpening the incumbent baseline and the intercept while
+adding essentially no new injury events.
+
+This also explains why incremental R2 is LOWER here (+0.0216 / +0.0204) than
+in the controlled Hypothesis B run (+0.0314 / +0.0413): the added games dilute
+rather than reinforce. The coefficient itself is stable across the two samples
+(-4.41/-5.76 controlled vs -4.09/-4.63 here), which is the reassuring part.
+
+Consequence: the early season remains unmeasured for this channel. Testing it
+would require role definitions with prior-season carryover — a DIFFERENT
+specification, requiring its own pre-registration, and explicitly not
+attempted here.
