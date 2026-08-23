@@ -156,3 +156,85 @@ weighting or subset will be searched.
 3. One partial season, 62 dates, 327 candidate game-matchups before censoring.
 4. Kalshi is not the sportsbook. A result here constrains Kalshi execution
    only; the book may absorb on a different schedule.
+
+---
+
+## 10. RESULT — estimated once, 2026-08-23. Verdict: ABSORBED ON PUBLICATION
+
+Implied lines reconstructed on 108,663 minute-observations over 429 games.
+530 games in window (327 treated, 203 control); **219 measurable** (158
+treated, 61 control) after requiring a usable `L(t)` both before and after
+`t0` and an event-ticker match.
+
+### JUMP — the official report does not visibly move the Kalshi line
+
+| | treated | control | difference |
+|---|---|---|---|
+| `L_0 - L_pre` | -0.045 (n=158) | -0.090 (n=61) | **+0.045 (t=+0.29)** |
+
+Prediction 6a (`JUMP < 0`) is NOT confirmed. Publication of the official report
+produces no detectable repricing relative to control.
+
+### RESIDUAL — small, mostly insignificant, far below the economic bar
+
+| k | treated | n_t | control | n_c | difference | t | >= 1.0 pt? |
+|---|---|---|---|---|---|---|---|
+| 1h | -0.286 | 134 | +0.156 | 47 | **-0.441** | **-2.38** | no |
+| 2h | -0.220 | 141 | -0.169 | 52 | -0.051 | -0.28 | no |
+| 4h | -0.260 | 152 | -0.126 | 52 | -0.135 | -0.65 | no |
+| 8h | — | 7 | — | 3 | insufficient | | |
+
+The 8h horizon is censored to near-nothing exactly as section 4 pre-stated
+(median `t0` is 8.5h before tip), and its emptiness is not evidence of
+anything.
+
+### Monotonicity — fails, with the wrong sign
+
+| k | slope on carryover weight | t |
+|---|---|---|
+| 1h | +0.126 | +0.71 |
+| 2h | +0.134 | +0.68 |
+| 4h | +0.045 | +0.23 |
+
+Heavier weighted absences do not move the line more. All three slopes are
+positive (the prediction is negative) and none is distinguishable from zero.
+
+### Verdict against the section 7 rule
+
+The rule required ALL of: negative at |t| >= 2, magnitude >= 1.0 point, and
+monotone in the weight. Only the 1h cell satisfies the first. It fails the
+second (0.441 points) and the third (slope +0.126, wrong sign). Every other
+horizon fails the first as well.
+
+**ABSORBED ON PUBLICATION.** The scientific result from Hypothesis B stands
+unchanged; the trading interpretation is closed. Per section 8 no further
+horizon, weighting or subset is searched.
+
+Economic scale, to make the size concrete: 1 point of total is about 2.2c of
+win probability at the money. The 1h difference of 0.441 points is therefore
+worth roughly **1.0c against a 3.0c median round-trip spread** — under water
+before fees, even taking it at face value.
+
+### What the null actually says, and what it does not
+
+The informative surprise is `JUMP ~ 0`. Hypothesis B established that
+`OUT_late` predicts open->close movement in the sportsbook line at t=-9.95 /
+-5.58. Here the official report's publication moves the Kalshi ladder by
+nothing measurable, and almost nothing remains afterwards. The natural reading
+is that the information reaches the market BEFORE the official report
+timestamp — beat reporters, team sources, warmups — so by the time the PDF
+posts, the price already reflects it. The official report is a RECORD of the
+information event, not the information event itself.
+
+This does not overturn Hypothesis B. It bounds where that movement is
+capturable: not at or after the official publication instant, on Kalshi, in
+this window.
+
+Limitations that constrain the strength of this null, beyond those in
+section 9: (i) 219 of 530 games measurable, so this is not the full window and
+attrition is not verified to be random; (ii) control arm is only 61 games;
+(iii) hourly `t0` biases toward "absorbed" by construction, as pre-recorded —
+a true jump inside the hour before the stamp would be attributed to `JUMP`,
+and `JUMP` is measured as zero, which weakens even that escape route;
+(iv) Kalshi 2025-26 is a different market AND a different season from the
+sportsbook 2020-24 panel on which the channel was established.
