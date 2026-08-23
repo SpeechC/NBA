@@ -59,8 +59,35 @@ alternative estimator will be tried after seeing results.
 ## 4. Event and measurement
 
 Unit of observation = **one game**, at the first minute `t0` at which ANY
-`OUT_late` designation for that game appears in a report. Treatment magnitude
-= the frozen MIN_SHARE-weighted `OUT_late` sum for that game.
+`OUT_late` designation for that game appears in a report.
+
+**AMENDMENT, recorded 2026-08-23 BEFORE estimation.** The weight definition
+first written here was not reproducible and is replaced. `pbp_lineups_all.parquet`
+contains NO 2025-26 data (nothing at or after 2025-09), so `MIN_SHARE`,
+`BLK36` and `SALIENT` cannot be computed within-season for this window — and
+the frozen `OUT_late` of `PREREG_injury.md` is SALIENT-restricted, so the
+frozen state itself is not reproducible for 2025-26. I fixed the weight before
+checking coverage; that was an error, and this records the correction rather
+than silently substituting.
+
+Replacement, PIT-safe (uses only pre-2025-26 information):
+
+```
+w(player) = mean MIN_SHARE over that player's last 20 games of 2024-25
+            (prior season carryover; 0 if the player has no 2024-25 history)
+treatment(game) = sum of w over the game's OUT_late players
+treated  = treatment > 0        control = no OUT_late event at all
+```
+
+A continuous carryover weight is used rather than a carried-forward top-3
+SALIENT flag because roster churn between seasons makes a hard salience cut
+fragile, while a continuous weight simply downweights marginal players.
+
+This is a DEVIATION from the frozen state and is flagged wherever the result
+is reported. It affects the treatment MAGNITUDE only; the EVENT definition and
+timing come entirely from the injury panel, which is complete for this window
+and needs no PBP. Rookies and players without 2024-25 history carry w=0 and so
+cannot make a game treated — biasing toward the null, not toward a finding.
 
 `t0` resolution is the report stamp (hourly); the publication instant is taken
 as the stamp.
@@ -102,7 +129,9 @@ TRADABLE at horizon k requires ALL of:
 - `RESIDUAL_k` negative with |t| >= 2 against the control arm;
 - |`RESIDUAL_k`| >= **1.0 point** of total (about 2.2pp of win probability at
   the money, sd 18.08) — below this the 3.0c median spread plus fees eats it;
-- monotone in the treatment weight (heavier weighted absences move more).
+- monotone in the treatment weight (heavier weighted absences move more),
+  evaluated on the carryover weight defined in section 4 with its deviation
+  flagged.
 
 Anything else is recorded as **ABSORBED ON PUBLICATION** — the scientific
 result stands, the trading interpretation is closed, and no further horizon,
