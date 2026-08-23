@@ -87,3 +87,61 @@ Tradability stays closed regardless — `PREREG_injury_absorption.md` settled it
    decile >12h pre-tip), so part of the day-level response can precede even
    `DAY_MOVE`. This biases the test TOWARD the null.
 4. Carryover importance weights, not within-season — PBP lacks 2025-26.
+
+---
+
+## 8. RESULT — estimated once, 2026-08-23. Verdict: NOT ESTABLISHED
+
+428 games with a usable day-move (median 118 bars over an 8.8h span); 305
+treated, 123 control. Mean `DAY_MOVE` overall -0.174.
+
+| quantity | value | prereg s5 requirement | met? |
+|---|---|---|---|
+| `b(treatment)` | **-0.0503 (t=-1.15)** | b<0 and |t| >= 2 | sign yes, **t NO** |
+| within-date permutation | **p=0.2603** | p < 0.05 | **NO** |
+| treated - control | **-0.506 (t=-2.17)** | negative | yes |
+| treated mean / control mean | -0.320 / +0.186 | — | — |
+
+Two of four. The rule required all four. **NOT ESTABLISHED.**
+
+### Consequence, applied as pre-committed in section 5
+
+The standing interpretation — *"late OUT information moves the total, but the
+move happens BEFORE the official report publishes"* — is **NOT established
+within a single sample**, and is hereby downgraded from an inference to
+unsupported speculation. Section 4 named this outcome in advance and it is
+reported as named, not reinterpreted.
+
+What survives and what does not:
+
+- SURVIVES: the treated-minus-control contrast is negative and significant
+  (-0.506, t=-2.17). Games with important late absences do see the Kalshi total
+  fall relative to same-date games without them.
+- DOES NOT SURVIVE: the dose-response. The continuous carryover-weighted
+  treatment gives t=-1.15 with permutation p=0.26. This matters more than the
+  raw contrast, because the surprise/importance result (`PREREG_injury_surprise.md`
+  s8) rests on exactly such a dose-response holding — bigger absence, bigger
+  move. It does not appear here.
+
+### Power, recorded as a limitation and NOT used to rescue the verdict
+
+Prereg limitation 3 anticipated this and it bound hard: the candle window spans
+a median of **8.8h before tip**, while `OUT_late` first appears a median
+**8.5h before tip**. The window opens almost exactly when the typical event
+lands, so roughly half of all events occur at or before the first bar and
+their day-level response is partly or wholly outside what `DAY_MOVE` can see.
+The test is therefore biased toward the null by construction.
+
+That is an explanation for a weak result, not grounds to overturn it. The
+correct reading is that this test COULD NOT settle the question, not that it
+settled it favourably. Settling it needs candles fetched with a longer
+lookback (24-36h) so the window opens before the events do — a re-fetch, not a
+re-analysis, and it would need its own pre-registration.
+
+### Standing status of the wider claim
+
+`JUMP` ~ 0 (+0.045, t=+0.29) is unaffected and still measured: publication
+itself moves nothing. What is now unsupported is the further step from that to
+"therefore the move happened earlier." Both remain consistent with the
+sportsbook evidence, but the single-sample demonstration was attempted and did
+not succeed.
