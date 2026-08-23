@@ -69,3 +69,36 @@ closes.
 - subsetting by season part, team, or schedule position after seeing results
 - promoting `b_NN` or the opening-line rows
 - any second estimation
+
+---
+
+## 5. RESULT — estimated once, 2026-08-23. Verdict: FAIL (question closed)
+
+THRESH frozen at **-5.409** margin points (dev-only GMM posterior-0.5
+boundary). 8,236 classified games (both teams >= 10 prior); C-N 2,360, N-N 199.
+
+| window | line | b_CN | t | b_NN | t |
+|---|---|---|---|---|---|
+| development | close | **+0.288** | 0.56 | -2.481 | -1.54 |
+| holdout 2024-25 | close | -1.912 | -1.63 | -1.098 | -0.36 |
+| holdout 2025-26 | close | +2.919 | +2.34 | -0.634 | -0.20 |
+| holdout pooled | close | +0.495 | 0.58 | -0.897 | -0.41 |
+
+Permutation (b_CN, development): **p = 0.5697**.
+
+Against the section 3 rule: development sign positive but permutation FAILS
+(p=0.57 vs required <0.05); holdout pooled +0.495 is under the +1.0 economic
+bar; and the two holdout seasons carry OPPOSITE signs (-1.9 then +2.9) — the
+signature of noise, not a bias.
+
+**Interpretation.** The lookahead audit's +0.95 (t=2.81) collapses to +0.29
+(p=0.57) the moment the labels become bettor-feasible. The descriptive bias
+was therefore substantially a LABEL-SELECTION ARTIFACT — conditioning team
+class on full-season outcomes selects on components of the very errors being
+measured — and not a market mispricing. Section 0 anticipated exactly this
+discount. Per section 3, the team-class question is CLOSED: no re-thresholding,
+no alternative class definitions, no subsetting.
+
+The audit's other finding stands unchanged: market PRECISION (MAE/RMSE) is
+identical across classes — the book prices tanking-team games as accurately
+as any others.
