@@ -120,3 +120,46 @@ Disposition: variant 2 not adopted. No further pass-3 variants: iterating
 thresholds/book-definitions after failures is operator-level selection that
 the phantom machinery cannot price. The mined program closes at: seat 5
 (pass 1-2, 99th pctile) on the paper list; large-scan yield zero.
+
+## Pass 4 — the AGENT'S feature space, swept with the miner's machinery (2026-08-23)
+
+Prompted by the observation that passes 1-3 never touched what the research
+agent works on. Swept its space the same way: 34 roots at >50% coverage --
+16 lineup/rotation roots (ROTATION_CONCENTRATION_HHI, TOP_LINEUP_SHARE,
+STARTER5_SHARE, SUBS_PER48, AVG_STINT_SECONDS, BENCH_HEAVY_SHARE, ...) plus
+18 shot-quality / rebounding / ball-security / coaching roots (ADV_EFG,
+ADV_OREB_PCT, EV_TIMEOUTS, EV_LIVE_BALL_TOV_SHARE, PBP_H1_POSS_SHARE,
+PBP_POS_DUR_SD, ...), all strictly prior-only (shift(1).rolling(20, min 10)),
+plus schedule/referee anchors so cross-family pairs were reachable.
+
+**8,827 cells** (177 singles, 8,650 pairs) -- the largest sweep in the program.
+
+Result: 149 qualifying cells (phantom mean 51.0, p95 102). Top-15 book:
+
+| | value |
+|---|---|
+| holdout, seat-weighted | 51.00% on 700 seat-bets |
+| holdout, **deduped** | **48.33% on 329 games** |
+| phantom books | mean 49.95, p95 54.23 |
+| real book percentile | **62nd** (bar: 95th) |
+
+**FAIL.** Below break-even deduped, and firmly inside the noise distribution.
+
+Two diagnostics:
+
+1. **A single root dominates the book by selection, not by signal.**
+   `PBP_H1_POSS_SHARE_sum_top20` appears in 8 of 15 seats. Its holdout cells
+   scatter 45-60% on 40-60 games each; the family as a whole lands at ~51%.
+   That is what a lucky dev-window root looks like after an 8,827-cell search.
+2. **Tiny holdout cells.** Seat n on holdout runs 4-73 games (one cell has
+   FOUR). The economic floor was enforced on DEVELOPMENT n only; these
+   two-way tail intersections thin out badly out of sample, which is itself a
+   reason the space cannot support this many conditions.
+
+**Conclusion.** The agent's feature space, swept exhaustively and priced
+honestly, yields nothing -- consistent with its own record (371 proposals, 0
+validated candidates, and its two surviving leads both already closed by this
+program at p=.086 and p=.099). Combined with pass 3, the pattern is now firm
+across two disjoint feature families: enlarging the search enlarges the noise,
+and the only calibrated survivor in the whole program remains seat 5 from the
+smallest sweep.
