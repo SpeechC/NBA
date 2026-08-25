@@ -105,3 +105,35 @@ The robustness question is answered in the direction that supports the
 prototype: the phenomenon is a property of the venue, scaled by attention.
 Prototype proceeds in LOG-ONLY mode per the standing plan; the live WNBA
 weeks measure feed latency and depth — the two quantities no backtest holds.
+
+---
+
+## ADDENDUM 2026-08-26 — August recovered; a third format-drift catch
+
+August initially showed ZERO measurable games. Cause: **Kalshi changed its
+event-title format in August** — "Dallas vs Indiana" became "Las Vegas vs
+Chicago women's Pro Basketball game: Over 169.5 points?" (and 17 newest events
+carry no teams in the title at all). The naive `X vs Y$` parse captured
+garbage for the home side and the join silently dropped the month. Fixed with
+a city-whitelist regex; 15 July games were recovered too.
+
+Same failure family as the NBA vendor's two layouts and the injury PDFs' two
+layouts: **formats drift mid-corpus, and joins fail silently.** The
+by-month funnel count (scraped -> joined -> measured) is the gate that catches
+it and is now part of this pipeline's standard output.
+
+Updated results on the enlarged set (118 measurable games, May-Aug):
+- staleness: s(H1) = +0.2888 (se 0.0442) — unchanged from the 79-game 0.276.
+- walk-forward $10 economics, best rung per game, fees in:
+
+| month | bets | hit | P&L |
+|---|---|---|---|
+| June | 15 | 73.3% | +$27.84 |
+| July | 42 | 85.7% | +$205.68 |
+| **August** | **31** | **80.6%** | **+$143.37** |
+| **SEASON** | **88** | **81.8%** | **+$376.89 on $880 staked = +42.8% ROI** |
+
+August — the freshest month, fully out-of-sample under the expanding
+walk-forward — sustains the effect. Caveats unchanged: fills assumed at
+displayed quotes (F1 pending tonight's depth logs), convergence timing anchor,
+118 of 283 games measurable.
