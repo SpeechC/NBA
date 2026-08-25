@@ -49,3 +49,59 @@ for all games. If tip anchors disagree wholesale the measurement stops.
 ## 6. Prohibited
 Re-timing windows after results; alternative anchors after results; promoting
 the economic tail; any live trading implication.
+
+---
+
+## RESULT — 2026-08-26. Band 3: MORE STALE THAN THE NBA (s = 0.276)
+
+### Estimation history, disclosed
+Two invalid runs preceded the valid one, both plumbing: (1) the downloader's
+event parser split WNBA team codes NBA-style 3+3 ("GSCONN" -> GSC+ONN),
+collapsing the join to 88 games with garbage codes — fixed by parsing teams
+from event TITLES ("Dallas vs Indiana"); (2) volume-density tip detection
+failed because WNBA markets trade all day (median "duration" 640 min) — 
+replaced by CONVERGENCE ANCHORING: game end = first run of 5 bars with
+|L - actual_total| <= 2.5, halftime = end - 58 min, non-OT games only.
+Anchoring uses the outcome for TIMING only; noted as a weak-leakage caveat.
+
+### The staleness regression (79 non-OT games)
+
+    L_half = a + 0.866*pre + 0.276*H1        s(H1) se 0.051, (s-1)/se = -14.1
+    realized benchmark on same games: s' = 0.940 (se 0.089)  ~ structural 1.0
+
+The identification validates internally (banked WNBA points do count ~1.0 in
+reality) and the market misses it by 14 sigma. Per the pre-set bands this is
+BAND 3 (< 0.45): stronger staleness in the thinner market — the direction the
+attention/correction-flow thesis predicts. Kalshi WNBA at halftime carries
+only ~28% of the realized first half and anchors 0.87 on the pregame price
+(NBA: 66% and 0.65).
+
+**Venue-level conclusion now supported in two leagues, two seasons, two
+trader pools: Kalshi's live basketball pricing under-weights banked scoring,
+more severely where attention is thinner.** Per the prereg, band 3 is
+report-only: no trading promotion.
+
+### Economic tail (secondary, split fixed in advance)
+Rule fit on 45 pre-July games (resid CDF THIN — stated), traded July-August
+at real rung quotes with taker fees, best rung per game:
+
+| min edge | games | hit | P&L (1 ct) | ROI |
+|---|---|---|---|---|
+| >=3c | 34 | 79% | +$5.54 | +25.8% |
+| >=8c | 32 | 84% | +$7.23 | +36.6% |
+
+Directionally consistent with the NBA tail (which paid only at >=8c); here
+even the loose threshold paid, as deeper staleness predicts. 34 games and a
+45-game CDF: suggestive, nowhere near conclusive.
+
+### Caveats
+79 of 283 games measured (join 202/283 via city titles; non-OT filter;
+convergence-anchor availability) — attrition is not verified random. Timing
+fuzz attenuates s downward in both leagues, so 0.276 is a lower bound-ish.
+One season each league. Depth unobserved throughout.
+
+### Disposition
+The robustness question is answered in the direction that supports the
+prototype: the phenomenon is a property of the venue, scaled by attention.
+Prototype proceeds in LOG-ONLY mode per the standing plan; the live WNBA
+weeks measure feed latency and depth — the two quantities no backtest holds.
