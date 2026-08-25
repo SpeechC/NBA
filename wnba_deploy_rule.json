@@ -1,0 +1,10 @@
+{
+ "a": -3.164805630924569,
+ "b": 0.557298587431899,
+ "c": 0.9404346321279915,
+ "n_fit": 79,
+ "pre_semantics": "last usable ladder L before tip (matched to live capture)",
+ "note": "deep-pregame-L variant rejected: errors-in-variables skew (b .23, c 1.27, sd 14.3)",
+ "fit_through": "2026-08-24",
+ "frozen": "2026-08-26"
+}

@@ -106,3 +106,21 @@ quarter length (12 min -> window arithmetic), and the frozen rule/CDF (NBA
 history, already computed). Everything else — including this spec's acting
 boundary and flip conditions — carries verbatim with league-appropriate
 numbers.
+
+## 11. Deployment rule — frozen 2026-08-26 (addendum per the change rule)
+
+Fit on the ENTIRE season to date (user direction; the July split served only
+the honest backtest). Two candidate fits were compared before freezing:
+
+| fit | pre semantics | n | b(pre) | c(H1) | resid sd |
+|---|---|---|---|---|---|
+| rejected | deep-pregame L (first hour, ~10h pre-tip) | 151 | 0.226 | 1.275 | 14.32 |
+| **FROZEN** | last pre-tip L (matches live capture) | 79 | see json | ~0.9 | ~8-9 |
+
+The 151-game fit was rejected for TRAIN/SERVE SKEW: its noisy `pre` proxy
+attenuates b and inflates the residual (errors-in-variables), while the live
+monitor captures the sharp last-pre-tip L. Rule + empirical residual CDF live
+in `wnba_deploy_rule.json` / `wnba_deploy_residuals.npy`; both are written
+into every log header. CDF thinness (n=79) remains a recorded limitation; it
+grows as the monitor itself accumulates matched games, but the rule is NOT
+refit mid-run per section 4.
