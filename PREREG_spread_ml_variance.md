@@ -109,3 +109,87 @@ smaller cannot clear it.
 - fitting a sigma(|S|) function and then testing it on the same data
 - reporting a proportional-devig-only result as a finding
 - any claim about totals from this document
+
+---
+
+## 8. RESULT — run once, 2026-08-24. Verdict: DETECTED BUT NOT TRADABLE
+
+9,488 games. Development 7,161, holdout 2,327. Mean overround 4.14% / 4.28%.
+
+### PRED-1 FAILS: the book does NOT use a constant-sigma map
+
+| \|S\| bucket | n | realised sd | implied sigma (prop) | (addi) | (power) | gap pp (prop) |
+|---|---|---|---|---|---|---|
+| [0,3) | 1,522 | 13.75 | 19.64 | 18.86 | 18.45 | +0.01 |
+| [3,6) | 2,254 | 12.58 | 14.09 | 13.51 | 13.20 | -0.21 |
+| [6,9) | 1,750 | 12.93 | 12.53 | 11.94 | 11.65 | +0.24 |
+| [9,12) | 1,028 | 13.14 | 11.74 | 11.11 | 10.77 | +1.42 |
+| [12,+) | 604 | 13.31 | 11.66 | 10.84 | 10.33 | +2.22 |
+
+Implied sigma falls 19.6 -> 11.7 across the range (slope -0.587 per point of
+|S|). The book varies its variance assumption enormously. The premise of the
+hypothesis is refuted, and per section 1 that is fatal on its own.
+
+### My positive control was misplaced BY DESIGN — owned, not excused
+
+Section 4 put the control at |S| ~ 0. That is exactly where the estimator
+degenerates: sigma = -S / Phi^-1(p), and at S -> 0 with p -> 0.5 both numerator
+and denominator vanish, so the ratio is noise. The 19.64 in the [0,3) bucket is
+an ARTIFACT of my estimator, not a property of the market, and the control
+therefore "failed" for a mechanical reason I should have foreseen.
+
+LINEAGE lesson 8 said to power-check a control against the sample it runs on.
+The sharper form this adds: **also check that the control sits where the
+ESTIMATOR is well-conditioned.** A control placed in a degenerate region tests
+the arithmetic, not the market.
+
+### What survives in the well-conditioned region (|S| >= 6)
+
+Here the estimator is stable and the finding REPLICATES across windows:
+
+| \|S\| bucket | dev implied | dev realised | hold implied | hold realised |
+|---|---|---|---|---|
+| [6,9) | 12.53 | 12.93 | 13.05 | 13.67 |
+| [9,12) | 11.74 | 13.14 | 12.48 | 13.22 |
+| [12,+) | 11.66 | 13.31 | 12.69 | 13.17 |
+
+The book's moneyline implies **0.4 to 1.6 points LESS margin variance than
+reality**, in the predicted direction (big favourites too short), in both
+windows and under all three devig methods. That part of PRED-3 holds.
+
+### But it does not pay, and the omnibus detection is weaker than it looked
+
+Win-probability gap in the top bucket: **+2.22pp development, +0.13pp holdout**
+(proportional). Underdog moneyline ROI, the tradable expression:
+
+| bucket | dev dog ROI | holdout dog ROI |
+|---|---|---|
+| [0,3) | -4.69% | +0.46% |
+| [9,12) | -2.54% | +3.60% |
+| [12,+) | **-4.02%** | **-31.36%** |
+
+No bucket is positive on both windows. The gap is real but smaller than the
+vig on a big underdog, exactly as section 6 warned it would need to beat.
+
+**Partial retraction of the omnibus detection.** Test 5's t = +5.59 was
+computed on the pooled sample. Decomposed by decile, the development
+heteroskedasticity is almost entirely ONE decile — sd 15.16 at |S| ~ 14.2
+against ~12.5-13.8 everywhere else — and the corresponding holdout decile shows
+**12.57**, the lowest of its window. The bias-removed z^2 slope is +0.146
+(t=+27.73) on development and **-0.020 (t=-2.74) on holdout**: a sign flip.
+Bias-vs-variance confounding was checked and ruled out (raw and bias-removed
+slopes agree to three decimals).
+
+So: heteroskedasticity in |S| is NOT a stable feature of this market. The
+omnibus flagged something real in-sample that does not persist. Recorded as a
+correction to FINDINGS_LATE.md s21.
+
+### What is genuinely learned
+
+1. Books map spread->ML with a **variance model, not a constant** — that whole
+   class of "they assume homogeneous variance" hypotheses is closed.
+2. Their sigma is nonetheless **biased low by ~0.5-1.5 points at |S| >= 6**,
+   consistently and across devig methods. Real, replicating, sub-vig.
+3. An omnibus detection can be driven by a single tail decile and reverse out
+   of sample. **Omnibus detections need a decile decomposition before they are
+   promoted**, which is now the standing rule.
