@@ -92,3 +92,48 @@ in-game friction; not a tradability claim, and none is made.
 Halftime-timing fuzz (fixed window T+63..77, untunable per s5) biases s in
 unknown direction; 111 games; one partial season; the efficient benchmark is
 the s20 book rule, itself an estimate.
+
+---
+
+## 7. EXTENSION (exploratory, windows fixed before running) — the full-game trajectory
+
+Same estimator at four checkpoints (fixed wall-clock windows: Q1 T+30-42,
+HALF T+63-77, Q3 T+98-112, mid-Q4 T+116-128). Efficient benchmarks estimated
+on the FULL 8-season panel: banked points carry s' of 1.00-1.06 (slightly
+above 1 because pace persists — a fast quarter predicts a fast rest).
+
+| checkpoint | n | s_kalshi | benchmark | gap | t vs bench | b(pre) |
+|---|---|---|---|---|---|---|
+| Q1 | 416 | 0.657 (.023) | 1.062 | -0.405 | -17.3 | 0.803 |
+| HALF | 379 | 0.657 (.024) | 1.001 | -0.344 | -14.1 | 0.647 |
+| Q3 | 359 | 0.629 (.023) | 1.018 | -0.389 | -17.1 | 0.490 |
+| mid-Q4 | 333 | 0.737 (.025) | 1.018 | -0.282 | -11.3 | 0.427 |
+
+Balanced panel (301 games measurable at every checkpoint): 61% / 80% / 68% /
+78% of efficient — composition, not convergence, explains part of the raw
+wiggle.
+
+### Reading
+1. **The under-reaction is game-long, not a halftime artifact.** Kalshi
+   incorporates ~60-80% of banked scoring at every stage and never converges
+   to efficient, at 11-17 sigma per checkpoint.
+2. **The prior decays correctly; the score never catches up.** b(pre) falls
+   0.80 -> 0.43 across the game while s stays flat — the market unwinds its
+   pregame anchor on schedule but persistently under-trusts what has actually
+   been scored.
+3. This corroborates the halftime headline on a proper sample (s = 0.657 on
+   379 games vs 0.628 on the earlier 111, which had been selected on the bad
+   HALFTIME column's coverage).
+
+### Attenuation caveat, stated against ourselves
+Quarter-end times vary by +/-5-8 minutes around the fixed windows, so some
+bars predate the full banked score — mechanically biasing s DOWN. True s is
+plausibly 0.75-0.85 rather than 0.63-0.74. Under-reaction survives the
+correction; its magnitude is softer than the raw table.
+
+Ladder attrition (416 -> 333 as blowout totals unbracket the crossing) is a
+second downward pressure via range restriction; the balanced panel bounds it.
+
+One season; the 2026-27 candle capture inherits in-game bars for free (the
+lookback spans the game), so this becomes a two-season question at zero
+additional cost.
