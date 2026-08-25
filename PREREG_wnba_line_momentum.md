@@ -1,8 +1,9 @@
 # PREREG — WNBA halftime LINE MOMENTUM (shadow ledger, log-only)
 
-**DRAFT written 2026-08-25, before any game in the test window. Not frozen
-until David signs off; if games run before freezing, they count only if the
-rule text was unchanged.**
+**FROZEN 2026-08-25, on David's written direction in the WNBA prototype
+thread, before any game in the test window. The rule text in s1-s3 is
+unchanged from the draft; s5 (the in-sample retrospective) was added at
+freeze time and is descriptive only — it alters no rule, band, or endpoint.**
 
 ## 0. Provenance — stated against ourselves
 Third candidate pattern found on the 2026 season data in one day, after two
@@ -51,3 +52,30 @@ regardless of which band looks best.
 Shadow ledger graded from the monitor's append-only JSONL by
 `wnba_reconcile.py` at season end. NO trading: the component remains
 OBSERVER (spec s5); this prereg authorizes measurement only.
+
+## 5. In-sample retrospective — the stated comparison (descriptive ONLY)
+
+Run at freeze time on the 2026 season, s1's exact rule (frozen deployment E,
+crossing rung, real quotes, taker fees, OT included), entry at the ESPN true
+buzzer +1 min (the live trigger's realism) and +3:
+
+    entry buzzer+1 (97 games):            entry buzzer+3 (95 games):
+      |dev|>=2  n=46  hit 57%  ROI  +8.8%   n=43  hit 51%  ROI  -0.6%
+      |dev|>=3  n=31  hit 52%  ROI  -1.8%   n=30  hit 47%  ROI  -8.9%
+      |dev|>=5  n= 8  hit 38%  ROI -25.0%   n= 7  hit 57%  ROI +15.2%
+    every CI spans roughly -30% .. +30%. Fade side at >=3: 48% / 53%.
+
+**The kappa = -1.0 regression does NOT translate into in-sample trading
+profit at real quotes.** Recorded reasons, stated before the forward test so
+they cannot be invented after: (a) the crossing rung captures only part of a
+point-edge (~2.9c/pt); (b) the signal's strong arm is the NO side (asymmetric
+kappa: -1.12 on E>L vs -0.37 on E<L), which fights the season's ~+2pt overs
+drift; (c) fees. The forward test is therefore a GENUINE open question — a
+direction check on the hit rate, per s3, not a confirmation exercise. Had the
+retrospective shown large profit, it would have warranted suspicion, not
+confidence: the pattern was discovered on these same games.
+
+The asymmetry observation (NO-arm stronger) is recorded here but NOT
+promoted: s1's symmetric rule stands, and re-scoping to one side after
+seeing this section would be the exact selection sin this program exists to
+prevent.
