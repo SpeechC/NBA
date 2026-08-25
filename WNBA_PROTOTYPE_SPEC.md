@@ -124,3 +124,27 @@ in `wnba_deploy_rule.json` / `wnba_deploy_residuals.npy`; both are written
 into every log header. CDF thinness (n=79) remains a recorded limitation; it
 grows as the monitor itself accumulates matched games, but the rule is NOT
 refit mid-run per section 4.
+
+## 12. Phase split — feed walled everywhere (addendum 2026-08-26)
+
+`wnba_feed_check.py` from the OPERATOR'S machine: all WNBA CDN endpoints
+return the same 3,817-byte WAF page seen from the sandbox; stats.wnba.com
+times out. The score feed is walled on both networks. The Kalshi API works on
+both. Therefore the component splits:
+
+**PHASE A — Kalshi-only continuous logger (buildable now, no score feed).**
+Polls ladder + orderbook every 30s across each game window and writes the
+append-only JSONL. Halftime is located POST-HOC by the convergence anchor
+(validated on 79 games) and scores join next day from basketball-reference
+(proven scrape). This delivers M1 (depth) at full fidelity and M3
+retrospectively. M2 (feed latency) is out of scope for Phase A by
+construction.
+
+**PHASE B — score feed for the live trigger.** Required only for M2 and any
+future trading variant. Candidate: ESPN's public scoreboard API (untested
+from the operator's machine; blocked from the sandbox). NOTE: the NBA October
+version may not share this problem at all — cdn.nba.com responded normally
+from the sandbox while cdn.wnba.com did not.
+
+Flip conditions F1-F4 unchanged; F2 simply cannot be evaluated until Phase B
+exists, which is itself a gate.
