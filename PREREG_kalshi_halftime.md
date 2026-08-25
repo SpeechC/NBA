@@ -137,3 +137,46 @@ second downward pressure via range restriction; the balanced panel bounds it.
 One season; the 2026-27 candle capture inherits in-game bars for free (the
 lookback spans the game), so this becomes a two-season question at zero
 additional cost.
+
+---
+
+## 8. RETROSPECTIVE ECONOMICS (one pass, fixed grid, real quotes, fees in)
+
+Rule weights and the residual CDF fit on seasons <= 2024-25 only (E[total] =
+4.22 + 0.478*pre + 1.0025*H1, resid sd 13.51, empirical tails); 2025-26 is
+out-of-sample for the WEIGHTS. The threshold grid itself is retrospective and
+is reported in full, losses included. Execution: taker at the ACTUAL quoted
+ask/bid of each rung at the halftime bar, taker fee 0.07*p*(1-p), 1 contract
+per position (displayed quotes are executable at 1 lot; depth is unobserved).
+
+**Best rung per game (the honest unit), 425 games, 226 with any positive edge:**
+
+| min predicted edge | games | hit% | avg cost | $P&L (1 ct) | ROI |
+|---|---|---|---|---|---|
+| 3c | 226 | 54.0% | 55.5c | -$3.44 | -2.7% |
+| 5c | 176 | 52.8% | 54.6c | -$3.13 | -3.3% |
+| 8c | 101 | 57.4% | 52.8c | +$4.68 | +8.8% |
+| 12c | 35 | 68.6% | 49.5c | +$6.69 | +38.6% |
+| 20c | 11 | 90.9% | 49.6c | +$4.54 | +83.1% |
+
+Calibration overall: predicted edge 6.4c, realized **-0.3c** per contract.
+Sides symmetric (YES +0.2c, NO -0.8c).
+
+### The two-sided verdict
+
+1. **The headline staleness does NOT convert to money on average.** The
+   under-reaction lives in the MIDS; the executable envelope (ask above,
+   bid below, ~15c wide) straddles the efficient price in the typical game.
+   This is the ladder-consistency lesson again — mids are noise, bounds are
+   coherent — now shown dynamically: the market under-updates its midpoint
+   while keeping its quoted bounds wide enough to be roughly unexploitable.
+2. **The deep tail is monotone-calibrated and was profitable.** Hit rates rise
+   54 -> 57 -> 69 -> 91% with predicted edge — the signal orders reality — and
+   everything at >= 8c predicted made money. But: 101/35/11 games, one
+   season, retrospective grid, depth unknown, +$5-16 per season AT ONE
+   CONTRACT. A micro-edge at best until depth and a second season speak.
+
+### Disposition
+No promotion from this table. The natural next step is FREE: the 2026-27
+candle capture records in-game bars automatically, so the >= 8c halftime rule
+can be paper-logged live alongside the other seats and graded on virgin data.
