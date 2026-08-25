@@ -143,7 +143,8 @@ def collect(rows):
         if not e:
             continue
         d = ev.setdefault(e, {"pre_L": None, "h1": None, "polls": [],
-                              "settlement": None, "first_ts": r.get("ts_utc"),
+                              "n_polls": 0, "settlement": None,
+                              "first_ts": r.get("ts_utc"),
                               "last_ts": r.get("ts_utc")})
         d["last_ts"] = r.get("ts_utc") or d["last_ts"]
         if r.get("type") == "settlement":
@@ -155,21 +156,29 @@ def collect(rows):
             if st.get("h1"):
                 d["h1"] = st["h1"]
             if r.get("would_trade"):
-                d["polls"].append({"ts": r["ts_utc"],
-                                   "would": r["would_trade"],
-                                   "period": st.get("period"),
-                                   "status": st.get("status")})
+                d["n_polls"] += 1
+                for w in r["would_trade"]:
+                    # Older rows predate per-row stamping; inherit the poll's.
+                    w.setdefault("ts_utc", r["ts_utc"])
+                    w.setdefault("period", st.get("period"))
+                d["polls"].extend(r["would_trade"])
     return ev
 
 
-def canonical_trade(polls, th):
-    """First poll at/after halftime with rows at this threshold -> best edge."""
-    for p in sorted(polls, key=lambda x: x["ts"]):
-        cands = [w for w in p["would"] if w["threshold"] == th]
-        if cands:
-            best = max(cands, key=lambda w: w["edge"])
-            return {**best, "entry_ts": p["ts"], "entry_period": p["period"]}
-    return None
+def canonical_trade(would_rows, th):
+    """THE canonical selection rule (spec s14), shared by this grader and the
+    monitor's dashboard so the two can never tell different stories: among
+    would-trade rows at this threshold take the EARLIEST poll, and within that
+    poll the single best edge. No lookahead — a fatter edge later in the game
+    is unreachable. Rows must carry ts_utc; collect() backfills older ones."""
+    cands = [w for w in would_rows
+             if w.get("threshold") == th and w.get("ts_utc")]
+    if not cands:
+        return None
+    t0 = min(w["ts_utc"] for w in cands)
+    best = max((w for w in cands if w["ts_utc"] == t0),
+               key=lambda w: w["edge"])
+    return {**best, "entry_ts": t0, "entry_period": best.get("period")}
 
 
 def main(out_dir=OUT_DIR):
@@ -214,7 +223,7 @@ def main(out_dir=OUT_DIR):
                 src = "bref"
         base = {"event": e, "date": event_date(e), "pre_L": d["pre_L"],
                 "h1": h1, "realized_total": total, "n_ot": n_ot,
-                "outcome_src": src, "n_would_polls": len(d["polls"]),
+                "outcome_src": src, "n_would_polls": d["n_polls"],
                 "first_ts": d["first_ts"], "last_ts": d["last_ts"]}
         if total is None:
             unresolved.append(base)

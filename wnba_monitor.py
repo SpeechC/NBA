@@ -13,6 +13,7 @@
 ===============================================================================
 """
 import datetime as dt
+import hashlib
 import json
 import os
 import sys
@@ -29,11 +30,29 @@ POLL_S = 30
 MAX_HOURS = 9
 IDLE_STOP_MIN = 120
 THRESHOLDS = (0.03, 0.05, 0.08)          # labels, not knobs (spec s4)
+PUBLISH_S3 = True                        # push dashboard.html to S3 each poll
+S3_BUCKET = "kalshi-strat"               # PUBLIC website bucket — see spec s15
+S3_KEY = "dashboard.html"
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, KALSHI_DIR)
+sys.path.insert(0, _HERE)                # so wnba_reconcile imports from either home
 os.chdir(KALSHI_DIR)
 from kalshi_client import KalshiClient          # noqa: E402
 from curl_cffi import requests as cr            # noqa: E402
+
+try:                                     # THE canonical rule lives in one place
+    from wnba_reconcile import canonical_trade  # noqa: E402
+except Exception as _ex:                         # noqa: BLE001
+    canonical_trade = None
+    print(f"[monitor] wnba_reconcile unavailable ({type(_ex).__name__}) — "
+          f"result cards will list every graded row instead of the "
+          f"canonical trade. Grading of record is unaffected.")
+
+try:
+    import boto3                                # noqa: E402
+except Exception:                                # noqa: BLE001
+    boto3 = None
 
 RULE = json.load(open(os.path.join(REPO, "wnba_deploy_rule.json")))
 RESID = np.load(os.path.join(REPO, "wnba_deploy_residuals.npy"))
@@ -116,9 +135,49 @@ def median_cross(pairs):
 
 
 DASH = os.path.join(OUT_DIR, "dashboard.html")
+_S3 = {"client": None, "last_hash": None, "fails": 0, "warned": False}
 
-def render_dashboard(events):
-    """events: list of dicts with evt/state/pre_L/E/L_now/rows/armed/rec."""
+
+def publish(html):
+    """Push the dashboard to S3. NEVER raises: this component's job is
+    logging, and a publish failure must not interrupt polling. Unchanged
+    content is skipped, and the object is written no-cache so the hosted copy
+    is not served stale."""
+    if not PUBLISH_S3:
+        return None
+    if boto3 is None:
+        if not _S3["warned"]:
+            print("[monitor] boto3 missing — S3 publish OFF "
+                  "(pip install boto3). Local dashboard still written.")
+            _S3["warned"] = True
+        return None
+    h = hashlib.md5(html.encode("utf-8")).hexdigest()
+    if h == _S3["last_hash"]:
+        return "unchanged"
+    try:
+        if _S3["client"] is None:
+            _S3["client"] = boto3.client("s3")
+        _S3["client"].put_object(
+            Bucket=S3_BUCKET, Key=S3_KEY, Body=html.encode("utf-8"),
+            ContentType="text/html; charset=utf-8",
+            CacheControl="no-cache, no-store, must-revalidate")
+        _S3["last_hash"] = h
+        if _S3["fails"]:
+            print(f"[monitor] S3 publish recovered after {_S3['fails']} fail(s)")
+        _S3["fails"] = 0
+        return "pushed"
+    except Exception as ex:                            # noqa: BLE001
+        _S3["fails"] += 1
+        if _S3["fails"] <= 3 or _S3["fails"] % 20 == 0:
+            print(f"[monitor] S3 publish ERR #{_S3['fails']} "
+                  f"{type(ex).__name__}: {ex}")
+        return "error"
+
+
+def render_dashboard(events, results=None):
+    """events: live dicts with evt/state/pre_L/E/L_now/rows/armed/rec.
+    results: settled games -> post-game WIN/LOSS cards. Returns the HTML."""
+    results = results or {}
     any_rec = any(e["rec"] for e in events)
     css = ("body{font-family:Consolas,monospace;background:#111;color:#ddd;"
            "margin:20px} table{border-collapse:collapse;margin:8px 0 24px}"
@@ -127,7 +186,12 @@ def render_dashboard(events):
            ".pos{color:#4dd06a;font-weight:bold} .neg{color:#888}"
            ".hot{background:#173a17} .banner{padding:12px;background:#b3261e;"
            "color:#fff;font-size:20px;font-weight:bold} .ok{background:#1b5e20}"
-           " h2{margin:18px 0 2px} .meta{color:#999;font-size:13px}")
+           " h2{margin:18px 0 2px} .meta{color:#999;font-size:13px}"
+           " .win{color:#4dd06a;font-weight:bold} .loss{color:#ff6b6b;"
+           "font-weight:bold} .final{border-left:3px solid #444;"
+           "padding-left:10px;margin-top:22px}"
+           " .tally{padding:8px 12px;background:#1a1a1a;margin:10px 0;"
+           "border:1px solid #333}")
     h=[f"<meta charset='utf-8'><meta http-equiv='refresh' content='30'>"
        f"<style>{css}</style>"]
     h.append(f"<div class='banner {'':s}{'' if any_rec else 'ok'}'>"
@@ -170,7 +234,57 @@ def render_dashboard(events):
                      f"<td class='{'pos' if (r['eN'] or 0)>0 else 'neg'}'>{f(r['eN'])}</td>"
                      f"<td>{r.get('act','')}</td></tr>")
         h.append("</table>")
-    with open(DASH,"w",encoding="utf-8") as fh: fh.write("".join(h))
+    # ---- concluded games: WIN/LOSS on what was actually recommended -------
+    if results:
+        allt = [t for r in results.values() for t in r["trades"]]
+        if allt:
+            nw = sum(1 for t in allt if t["win"])
+            pnl = sum(t["pnl"] for t in allt)
+            cls = "win" if pnl >= 0 else "loss"
+            h.append(f"<div class='tally'>settled today: <b>{nw}W / "
+                     f"{len(allt) - nw}L</b> &nbsp; P&amp;L "
+                     f"<span class='{cls}'>{pnl:+.2f}</span> per contract "
+                     f"&nbsp;({len(results)} game(s) concluded)</div>")
+        else:
+            h.append(f"<div class='tally'>{len(results)} game(s) concluded — "
+                     f"no wager was recommended in any of them</div>")
+    for evt, r in results.items():
+        label = ""
+        if r["trades"]:
+            nw = sum(1 for t in r["trades"] if t["win"])
+            nl = len(r["trades"]) - nw
+            p = sum(t["pnl"] for t in r["trades"])
+            word = "WIN" if nl == 0 else ("LOSS" if nw == 0 else
+                                          f"{nw}W/{nl}L")
+            cls = "win" if p >= 0 else "loss"
+            label = f" &nbsp;<span class='{cls}'>{word} {p:+.2f}</span>"
+        ot = f" | OT x{r['n_ot']}" if r.get("n_ot") else ""
+        h.append(f"<div class='final'><h2>{r['matchup']} &mdash; FINAL "
+                 f"{r['away_pts']}&ndash;{r['home_pts']}{label}</h2>"
+                 f"<div class='meta'>{evt} | realized total "
+                 f"<b>{r['total']}</b> | H1 {r['h1']} | pre_L "
+                 f"{r['pre_L'] if r['pre_L'] else '-'}{ot}</div>")
+        if not r["trades"]:
+            h.append("<div class='meta'>no wager was recommended — nothing "
+                     "to grade</div></div>")
+            continue
+        h.append("<table><tr><th>min edge</th><th>side</th><th>strike</th>"
+                 "<th>entry</th><th>cost</th><th>edge</th><th>result</th>"
+                 "<th>P&amp;L</th></tr>")
+        for t in sorted(r["trades"], key=lambda x: x["threshold"]):
+            cls = "win" if t["win"] else "loss"
+            word = "WIN" if t["win"] else "LOSS"
+            h.append(f"<tr><td>{t['threshold']:.0%}</td><td>{t['side']}</td>"
+                     f"<td>{t['strike']}</td>"
+                     f"<td>{str(t.get('entry_ts', ''))[11:19]}</td>"
+                     f"<td>{t['cost']:.2f}</td><td>{t['edge']:+.3f}</td>"
+                     f"<td class='{cls}'>{word}</td>"
+                     f"<td class='{cls}'>{t['pnl']:+.2f}</td></tr>")
+        h.append("</table></div>")
+    html = "".join(h)
+    with open(DASH, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    return html
 
 
 def p_over(E, K):
@@ -213,6 +327,7 @@ def main():
     idle_since = None
     pre_L = {}                 # event_ticker -> pregame L (frozen at first live)
     session = {}               # event_ticker -> {gid, would[], settled}
+    results = {}               # event_ticker -> settled card (WIN/LOSS display)
 
     print(f"[monitor v2] role={COMPONENT_ROLE} poll={POLL_S}s "
           f"rule=E={RULE['a']:+.2f}+{RULE['b']:.3f}*pre+{RULE['c']:.3f}*H1")
@@ -274,8 +389,27 @@ def main():
                 "pre_L": pre_L.get(evt), "final_status": gm.get("status"),
                 "n_would_trade": len(graded), "would_trade_graded": graded})
             sess["settled"] = True
+            # Post-game card: the CANONICAL trade per threshold (the same rule
+            # the grader of record uses), so the dashboard and the panel can
+            # never disagree about what was recommended or how it did.
+            cards = []
+            if canonical_trade:
+                for th in THRESHOLDS:
+                    t = canonical_trade(sess["would"], th)
+                    if not t:
+                        continue
+                    win, pnl = grade(t["side"], t["strike"], t["cost"], total)
+                    cards.append({**t, "win": win, "pnl": pnl})
+            else:
+                cards = graded
+            results[evt] = {
+                "matchup": f"{gm.get('away_city')} @ {gm.get('home_city')}",
+                "away_pts": gm["away_pts"], "home_pts": gm["home_pts"],
+                "total": total, "h1": gm.get("h1"), "pre_L": pre_L.get(evt),
+                "n_ot": max(0, (gm.get("period") or 4) - 4), "trades": cards}
             print(f"[monitor] SETTLED {evt}: total {total}, "
-                  f"{len(graded)} would-trade row(s) graded")
+                  f"{len(graded)} would-trade row(s) graded, "
+                  f"{len(cards)} canonical trade(s) on the board")
         unsettled = sum(1 for s in session.values() if not s["settled"])
         # ---- markets --------------------------------------------------------
         try:
@@ -293,6 +427,17 @@ def main():
                         row.update({"ts_utc": dt.datetime.utcnow().isoformat(),
                                     "component_role": COMPONENT_ROLE})
                         f.write(json.dumps(row) + "\n")
+            # Keep publishing once every market has closed: this is exactly
+            # when the night's WIN/LOSS cards are worth looking at.
+            try:
+                pub = publish(render_dashboard([], results))
+            except Exception as ex:                        # noqa: BLE001
+                pub = None
+                print(f"[monitor] dashboard ERR {type(ex).__name__}: {ex}")
+            print(f"[monitor] {dt.datetime.utcnow().strftime('%H:%M:%S')}Z "
+                  f"no open markets  settled {len(results)}"
+                  f"{'  unsettled ' + str(unsettled) if unsettled else ''}"
+                  f"{'  s3:' + pub if pub else ''}")
             idle_since = idle_since or time.time()
             if unsettled:                     # hold the loop open for finals
                 idle_since = time.time()
@@ -422,12 +567,15 @@ def main():
                     print(f"[monitor] {evt}: {len(would)} WOULD-TRADE row(s) "
                           f"(E={would[0]['E']}, best edge {max(w['edge'] for w in would):.3f})")
         try:
-            render_dashboard(dash_events)
+            pub = publish(render_dashboard(dash_events, results))
         except Exception as ex:                                # noqa: BLE001
+            pub = None
             print(f"[monitor] dashboard ERR {type(ex).__name__}: {ex}")
         print(f"[monitor] {dt.datetime.utcnow().strftime('%H:%M:%S')}Z "
               f"{len(by_event)} event(s)  joined "
-              f"{sum(1 for e in dash_events if e['state'])}")
+              f"{sum(1 for e in dash_events if e['state'])}"
+              f"{'  settled ' + str(len(results)) if results else ''}"
+              f"{'  s3:' + pub if pub else ''}")
         time.sleep(POLL_S)
     print("[monitor] done.")
 

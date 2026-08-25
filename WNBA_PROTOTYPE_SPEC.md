@@ -234,3 +234,55 @@ rule would consume. That comparison is a SEASON-END exercise on the frozen
 season's data, or a design decision for the NBA spec (s10) — not a live
 refit, which would make M3 unanswerable by grading each game against a
 different model.
+
+## 15. Dashboard publication + post-game results — addendum 2026-08-25
+
+**The dashboard is now published to S3, and the target bucket is PUBLIC.**
+`s3://kalshi-strat/dashboard.html` (us-east-1) carries a `PublicReadWebsite`
+policy granting `s3:GetObject` to `Principal: "*"`, has every public-access
+block disabled, and serves static website hosting with `dashboard.html` as
+the index document — i.e. the page is world-readable at
+`http://kalshi-strat.s3-website-us-east-1.amazonaws.com/` to anyone who has
+the URL. That configuration predates this change and is the operator's
+standing choice; it is recorded here because of WHAT the page now contains:
+live per-rung edges, the would-trade recommendations, the realized results,
+and the frozen rule's coefficients in the header line. Publishing is a
+display convenience, so anyone wanting the signal without the exposure
+should either drop the rule line from the published copy or replace the
+public policy with presigned URLs. No credentials or log data are uploaded —
+only the rendered HTML.
+
+- Push happens each poll after render, keyed `dashboard.html`, written
+  `text/html; charset=utf-8` with `no-cache, no-store, must-revalidate` so
+  the hosted copy is never served stale against the page's 30s refresh.
+- Identical content is skipped by md5, so a quiet ladder costs no requests.
+- `publish()` NEVER raises. boto3 missing, credentials absent, bucket gone,
+  network down — each degrades to a logged line and the loop keeps polling.
+  Logging is the component's job; publication is not allowed to interrupt it.
+  Verified against a nonexistent bucket: returns "error", does not crash.
+- Toggle with `PUBLISH_S3 = False`; bucket and key are module constants.
+- Credentials come from the machine's ambient AWS config
+  (`C:\Users\rando\.aws`), never from this repo. boto3 was installed into the
+  Anaconda `Core` environment for this.
+
+**Post-game WIN/LOSS cards.** Once a game finalizes its markets leave the
+`status=open` query and the game used to vanish from the dashboard entirely.
+Settled games now persist as result cards showing the matchup, final score,
+realized total, and — where a wager was recommended — a per-threshold table
+with a result column and P&L, a per-game WIN/LOSS badge, and a session
+tally. Games that concluded with no recommendation say so explicitly rather
+than being omitted, so an empty night is distinguishable from a broken one.
+The dashboard also keeps rendering and publishing after every market closes,
+which is exactly when those cards are worth reading.
+
+The cards use the SAME canonical selection as the grader of record —
+`wnba_reconcile.canonical_trade`, imported rather than reimplemented — so
+the live display and the season panel cannot tell different stories. If that
+import fails the monitor degrades to listing every graded row and says so;
+grading of record is unaffected either way. Cards are in-memory and do not
+survive a restart; `wnba_reconcile.py` remains the durable record.
+
+**The acting boundary (s5) is unchanged.** Publishing a view of observations
+is not acting on them: there is still no order-placement code, the Kalshi
+client is still GET-only, and `COMPONENT_ROLE = "OBSERVER"` is still written
+into every log row and shown on the page.
