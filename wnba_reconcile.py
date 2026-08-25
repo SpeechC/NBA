@@ -37,9 +37,23 @@ import pandas as pd
 
 OUT_DIR = (r"D:\Kalshi\wnba_monitor" if os.name == "nt"
            else "/mnt/d/Kalshi/wnba_monitor")
-REPO = os.path.dirname(os.path.abspath(__file__))
-BREF = os.path.join(REPO, "wnba_2026_halves.csv")
-PANEL = os.path.join(REPO, "outputs", "wnba_live_panel.csv")
+HERE = os.path.dirname(os.path.abspath(__file__))
+# The script is deployed to D:\Kalshi\code while the scraped finals live in
+# the repo, so resolve the CSV across both homes rather than silently finding
+# nothing (an absent file would zero the fallback with no visible error).
+BREF_CANDIDATES = [
+    os.path.join(HERE, "wnba_2026_halves.csv"),
+    os.path.join(HERE, os.pardir, "wnba_2026_halves.csv"),
+    (r"D:\Kalshi\wnba_2026_halves.csv" if os.name == "nt"
+     else "/mnt/d/Kalshi/wnba_2026_halves.csv"),
+    ("/home/dpope/projects/nba_entropy_replication/wnba_2026_halves.csv"
+     if os.name != "nt" else
+     r"\\wsl.localhost\Ubuntu\home\dpope\projects\nba_entropy_replication"
+     r"\wnba_2026_halves.csv"),
+]
+BREF = next((p for p in BREF_CANDIDATES if os.path.exists(p)),
+            BREF_CANDIDATES[0])
+PANEL = os.path.join(HERE, "outputs", "wnba_live_panel.csv")
 THRESHOLDS = (0.03, 0.05, 0.08)
 
 # Duplicated from wnba_monitor.py deliberately: importing that module would
@@ -82,8 +96,8 @@ def event_date(evt):
         return None
 
 
-def bref_totals(path):
-    """-> {(date, "AWAYHOME"): (total, h1, n_ot)}
+def bref_totals(path, with_count=False):
+    """-> {(date, "AWAYHOME"): (total, h1, n_ot)}, optionally with game count
 
     Keyed by the CONCATENATED code pair exactly as the Kalshi ticker tail
     spells it, with one key per code variant: Kalshi writes Las Vegas as LV,
@@ -92,9 +106,9 @@ def bref_totals(path):
     lookup a direct hit instead of a guess.
     """
     if not os.path.exists(path):
-        return {}
+        return ({}, 0) if with_count else {}
     df = pd.read_csv(path)
-    out = {}
+    out, n = {}, 0
     for _, r in df.iterrows():
         def codes(name):
             for city, cs in CITY_CODES.items():
@@ -107,10 +121,11 @@ def bref_totals(path):
         d = dt.datetime.strptime(str(r["date"]), "%Y%m%d").date()
         h1 = r["a_q1"] + r["a_q2"] + r["h_q1"] + r["h_q2"]
         val = (int(r["a_final"] + r["h_final"]), int(h1), int(r["n_ot"]))
+        n += 1
         for a in acs:
             for h in hcs:
                 out[(d, a + h)] = val
-    return out
+    return (out, n) if with_count else out
 
 
 def bref_lookup(evt, table):
@@ -171,8 +186,16 @@ def main(out_dir=OUT_DIR):
         print(f"  {feed_err} feed_err row(s) logged — see M2/uptime notes")
 
     ev = collect(rows)
-    table = bref_totals(BREF)
-    print(f"  {len(ev)} event(s) seen; bref table has {len(table)} game(s)")
+    table, n_bref = bref_totals(BREF, with_count=True)
+    if not table:
+        print(f"  [WARN] no basketball-reference finals found "
+              f"(looked for {os.path.basename(BREF)} in "
+              f"{len(BREF_CANDIDATES)} locations) — the fallback outcome "
+              f"source is OFF; only monitor settlement rows will resolve.")
+    else:
+        print(f"  bref finals: {os.path.basename(BREF)} ({n_bref} game(s), "
+              f"latest {max(d for d, _ in table)})")
+    print(f"  {len(ev)} event(s) seen")
 
     recs, unresolved = [], []
     for e, d in sorted(ev.items()):
