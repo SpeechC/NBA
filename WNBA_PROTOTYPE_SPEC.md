@@ -148,3 +148,28 @@ from the sandbox while cdn.wnba.com did not.
 
 Flip conditions F1-F4 unchanged; F2 simply cannot be evaluated until Phase B
 exists, which is itself a gate.
+
+## 13. Relocation to D:\Kalshi — addendum 2026-08-25 (per the change rule)
+
+The prototype moved to its own home on the operator's machine, mid-capture on
+2026-08-25. Sections 1-10 are unchanged; this records the operational facts:
+
+- Runner: `D:\Kalshi\code\WNBA_Observer.py` (a path-edited copy of this
+  repo's `wnba_monitor.py`), executed by the Windows Anaconda `Core` python.
+  curl_cffi 0.16.2 was installed into the Anaconda base and `Core`
+  environments on 2026-08-25; no other dependency changed.
+- Support files copied beside it into `D:\Kalshi\`: `kalshi_client.py`,
+  `kalshi_credentials.json` + `credentials\kalshi_private_key.pem`,
+  `wnba_deploy_rule.json`, `wnba_deploy_residuals.npy`. The frozen rule and
+  residual CDF are byte-identical to the repo copies (s11).
+- **`D:\Kalshi\wnba_monitor\` replaces `C:\NBA2\wnba_monitor\` as the
+  canonical log location (amends s6).** Append-only discipline unchanged.
+- The 2026-08-25 capture spans the migration in three segments, all now in
+  the canonical directory, none ever rewritten:
+  `monitor_20260825.jsonl` (Phase-A logger, WSL, 12:18-12:26Z),
+  `monitor2_20260825_wsl.jsonl` (v2 on WSL, 12:28-12:48Z, stopped at
+  hand-over), `monitor2_20260825.jsonl` (v2 on Windows, 12:47Z onward).
+  The ~1-minute overlap is benign duplication; graders read all segments.
+- Date correction: the "2026-08-26" datestamps in s11-s12 and in
+  PREREG_wnba_halftime.md were in fact written 2026-08-25 (git commit
+  timestamps are authoritative). Recorded here rather than edited.
