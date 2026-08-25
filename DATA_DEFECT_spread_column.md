@@ -73,3 +73,71 @@ MOVE_COMBINED uses OPENING SPREAD_H (clean in these rows) and totals, so the
 frozen 2026-27 forward test is NOT affected. Verified: all four corrupt values
 are in the CLOSING column; the OPENING values (+1.5, -2.5, +1.5, +7.5) are
 normal.
+
+---
+
+## UPDATE 2026-08-24 — the gate found two MORE, and they DO hit MOVE_COMBINED
+
+Wiring the range gate into the loaders surfaced two cells I had not found by
+hand, in a different column:
+
+| GAME-ID | date | matchup | **OPENING TOTAL_H** | closing total | actual |
+|---|---|---|---|---|---|
+| 22200314 | 2022-11-30 | Boston v Miami | **109.5** | 225.0 | 255 |
+| 22500967 | 2026-03-13 | Portland v Utah | **136.5** | 235.5 | 238 |
+
+Both are a team total or half total written into the full-game opening total.
+
+**This corrects what I said earlier.** I checked only `CLOSING SPREAD_H`, found
+MOVE_COMBINED used `OPENING SPREAD_H`, and reported the forward test
+unaffected. That was wrong: `OPENING TOTAL_H` is a MOVE_COMBINED feature, the
+bet price, AND the definition of the target `tmove = ot_close - ot_open`.
+
+As the model saw them:
+
+```
+22200314   tmove = +115.5     te_open = +145.5
+22500967   tmove =  +99.0     te_open = +101.5
+legitimate tmove range: -15.5 .. +19.5,  sd 3.18
+```
+
+Two rows inflated the TARGET's standard deviation by **11.44%** (3.175 ->
+3.538) and sat 30+ sigma out. `te_open` feeds `hse`/`ase`, which feed 20-game
+rolling means for both teams, so a +145 outlier contaminates tens of downstream
+feature rows, not two.
+
+### Remediation
+
+Range gates now applied at load in `prepare_data.sanitize_market()` /
+`read_master()`, and wired into `opening_line_error_decomposition.load()`,
+`move_combined_live._load_master()`, `dis_open_live.build_panel()` and the
+inlined copy in `MOVE_COMBINED_2027.py`. Values are scrubbed to NaN; rows are
+NOT dropped and **the source CSV is never modified**.
+
+Latent artifact re-frozen on gated data BEFORE the season begins — a data
+repair, not a specification change, and permissible only because 2026-27 has
+not started:
+
+```
+                 K    n_train    in-sample R2
+before gate     17      8,426        +0.0307
+after  gate     17      8,413        +0.0386
+max |beta change| across 18 coefficients: 0.0453
+```
+
+K is unchanged at 17, so the PCA structure is stable; the coefficients move
+modestly and the in-sample fit improves, consistent with removing 30-sigma
+target outliers. `move_combined_latent_2027.pkl.PRE_GATE` is kept for audit.
+
+### The generalised lesson
+
+Three gate types are now needed, and each catches what the others cannot:
+
+| gate | catches | blind to |
+|---|---|---|
+| CONTENT (null rate, validity) | missing or malformed values | valid floats in the wrong column |
+| ERA STABILITY (rows per unit) | systematic under-ingestion | a handful of bad rows |
+| **RANGE (physical plausibility)** | **wrong-column leakage** | subtle within-range errors |
+
+And: **a regression on a market column must report its highest-leverage
+observations before its coefficient is believed.**

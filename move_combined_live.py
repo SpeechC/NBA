@@ -105,7 +105,8 @@ def _load_master(paths):
     for p in paths:
         if not p or not os.path.exists(p):
             continue
-        raw = pd.read_csv(p, low_memory=False)
+        from prepare_data import read_master
+        raw = read_master(p, verbose=False)   # market range gates
         raw["__src"] = os.path.basename(p)
         frames.append(raw)
     if not frames:

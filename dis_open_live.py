@@ -58,7 +58,8 @@ def _rest_from_schedule(panel):
 
 def build_panel(raw):
     """build_panel_ext's recipe, on a supplied raw frame (may include pending)."""
-    raw = raw.copy()
+    from prepare_data import sanitize_market
+    raw, _ = sanitize_market(raw, verbose=False)   # market range gates
     raw["GAME-ID"] = raw["GAME-ID"].astype(str).str.strip()   # mixed int/str
     raw["season"] = season_label(raw)
     raw = raw[raw["season"].astype(str).str.contains(

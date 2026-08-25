@@ -30,6 +30,76 @@ VARS = ["2PA", "2P%", "3PA", "3P%", "FTA", "FT%", "ORB", "DRB",
 SEASON_COLS = ["DATASET_H", "BIGDATABALL\nDATASET_H"]
 
 
+# ---------------------------------------------------------------- market gates
+# RANGE gates on market columns, added 2026-08-24 after four cells in
+# CLOSING SPREAD_H were found to contain a PRICE (-110, +110, +112) or a TOTAL
+# (+243). See DATA_DEFECT_spread_column.md. Those four cells alone moved the
+# pooled Mincer-Zarnowitz spread slope from 1.0043 to 0.9368 and manufactured a
+# p = 0.0015 "market inefficiency", because OLS weights by squared deviation and
+# a point at 112 against |spread| <= 24.5 elsewhere carries ~250x normal leverage.
+#
+# Content and era-stability gates CANNOT catch this: -110, 112 and 243 are valid
+# floats and plausible values for SOME betting column, and it is four rows rather
+# than a systematic shift. Only a plausible-RANGE check finds it.
+#
+# Offending values are set to NaN rather than dropping the row, so analyses that
+# never touch the column keep their sample, and each analysis's own dropna
+# handles it. The SOURCE CSV IS NEVER MODIFIED.
+MARKET_GATES = {
+    "OPENING SPREAD_H": (-30.0, 30.0),      # largest genuine NBA line seen: 24.5
+    "CLOSING SPREAD_H": (-30.0, 30.0),
+    "OPENING TOTAL_H": (150.0, 300.0),
+    "CLOSING TOTAL_H": (150.0, 300.0),
+}
+# a moneyline is never strictly inside (-100, 100)
+ML_COLS = ["MONEYLINE_H", "MONEYLINE_R"]
+ML_ABS_MAX = 20000.0
+
+
+def sanitize_market(raw, verbose=True):
+    """Scrub physically impossible market values to NaN. Returns (frame, report).
+
+    Does not drop rows and does not touch the source file.
+    """
+    raw = raw.copy()
+    rep = {}
+    for col, (lo, hi) in MARKET_GATES.items():
+        if col not in raw.columns:
+            continue
+        v = pd.to_numeric(raw[col], errors="coerce")
+        bad = v.notna() & ((v < lo) | (v > hi))
+        if bad.any():
+            rep[col] = int(bad.sum())
+            ids = raw.loc[bad, "GAME-ID"].astype(str).tolist()[:6] if "GAME-ID" in raw else []
+            if verbose:
+                print(f"  [market gate] {col}: scrubbed {int(bad.sum())} value(s) "
+                      f"outside [{lo:g},{hi:g}]"
+                      + (f"  GAME-IDs {ids}" if ids else ""))
+            raw.loc[bad, col] = np.nan
+    for col in ML_COLS:
+        if col not in raw.columns:
+            continue
+        v = pd.to_numeric(raw[col], errors="coerce")
+        bad = v.notna() & ((v.abs() < 100) | (v.abs() > ML_ABS_MAX))
+        if bad.any():
+            rep[col] = int(bad.sum())
+            if verbose:
+                print(f"  [market gate] {col}: scrubbed {int(bad.sum())} value(s) "
+                      f"(|ML| < 100 or > {ML_ABS_MAX:g})")
+            raw.loc[bad, col] = np.nan
+    if verbose and not rep:
+        print("  [market gate] clean: no impossible market values")
+    return raw, rep
+
+
+def read_master(path=None, sanitize=True, verbose=True, **kw):
+    """Preferred entry point for the vendor master. Applies the range gates."""
+    raw = pd.read_csv(path or CSV, low_memory=False, **kw)
+    if sanitize:
+        raw, _ = sanitize_market(raw, verbose=verbose)
+    return raw
+
+
 def season_label(raw):
     return raw[SEASON_COLS[0]].fillna(raw[SEASON_COLS[1]])
 

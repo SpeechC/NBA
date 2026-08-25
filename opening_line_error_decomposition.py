@@ -45,7 +45,8 @@ def season_label(raw):
 
 # ----------------------------------------------------------------- load
 def load():
-    raw = pd.read_csv(CSV, low_memory=False)
+    from prepare_data import read_master
+    raw = read_master(CSV, verbose=False)   # market range gates
     lbl = season_label(raw).astype(str)
     d = raw[lbl.str.contains("Regular Season", na=False)].copy()
     d["season"] = lbl[lbl.str.contains("Regular Season", na=False)]

@@ -116,6 +116,41 @@ def season_label(raw):
     return a.fillna(b)
 
 
+MARKET_GATES = {"OPENING SPREAD_H": (-30.0, 30.0), "CLOSING SPREAD_H": (-30.0, 30.0),
+                "OPENING TOTAL_H": (150.0, 300.0), "CLOSING TOTAL_H": (150.0, 300.0)}
+
+
+def sanitize_market(raw, verbose=True):
+    """Scrub physically impossible market values to NaN (see DATA_DEFECT notes).
+
+    Six cells in the vendor master carry a price or a total in the wrong column.
+    Two of them are in OPENING TOTAL_H and produce tmove values of +115.5 and
+    +99.0 against a legitimate range of -15.5..+19.5, inflating the target's sd
+    by 11.4%. Range gates are the only check that finds these: every offending
+    value is a valid float and plausible for SOME betting column.
+    """
+    raw = raw.copy()
+    for col, (lo, hi) in MARKET_GATES.items():
+        if col not in raw.columns:
+            continue
+        v = pd.to_numeric(raw[col], errors="coerce")
+        bad = v.notna() & ((v < lo) | (v > hi))
+        if bad.any():
+            if verbose:
+                print(f"  [market gate] {col}: scrubbed {int(bad.sum())} impossible value(s)")
+            raw.loc[bad, col] = np.nan
+    for col in ("MONEYLINE_H", "MONEYLINE_R"):
+        if col not in raw.columns:
+            continue
+        v = pd.to_numeric(raw[col], errors="coerce")
+        bad = v.notna() & ((v.abs() < 100) | (v.abs() > 20000))
+        if bad.any():
+            if verbose:
+                print(f"  [market gate] {col}: scrubbed {int(bad.sum())} impossible value(s)")
+            raw.loc[bad, col] = np.nan
+    return raw
+
+
 def load_raw(paths):
     frames = []
     for p in paths:
@@ -126,7 +161,8 @@ def load_raw(paths):
         raise FileNotFoundError(f"none of these exist: {paths}")
     raw = pd.concat(frames, ignore_index=True)
     raw["GAME-ID"] = raw["GAME-ID"].astype(str).str.strip()
-    return raw.drop_duplicates("GAME-ID", keep="last").reset_index(drop=True)
+    raw = raw.drop_duplicates("GAME-ID", keep="last").reset_index(drop=True)
+    return sanitize_market(raw)
 
 
 def build_games(raw):
