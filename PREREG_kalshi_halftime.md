@@ -45,3 +45,50 @@ at corr .992.)
 ## 5. Prohibited
 Re-timing the halftime window after results; alternative L estimators; any
 tradability claim from this document; touching the curated DB in write mode.
+
+---
+
+## 6. RESULT — 2026-08-25. s(H1) = 0.628 (se 0.043): PARTIAL STALENESS, reported as-is
+
+### Estimation history, disclosed in full
+Two invalid steps preceded the valid run, neither a look at a favourable
+result:
+1. **My positive control was hypothesis-contaminated.** "corr(L_half, H1+...)
+   >= 0.9" PRESUPPOSES the price tracks H1 — a frozen price fails it with
+   perfect plumbing. The legitimate plumbing control (pregame L vs the master
+   closing total on the same joined games) passes at **corr +0.9966, mean gap
+   0.45 pts, zero mismatches**, and is substituted WITH THIS DISCLOSURE.
+   Lesson-8 family, fourth instance: a control must be satisfiable under BOTH
+   hypothesis outcomes.
+2. **The first run used the wrong H1.** Vendor column `HALFTIME_H/R` is NOT
+   the halftime score: 27% coverage, sd 5.8, and **corr -0.06 with the true
+   quarter-sum H1**. It is a captured line-like object (its coverage matches
+   PREREG_h2's "2H line" table season by season). True H1 = 1Q+2Q both sides,
+   100% coverage, sd 12.5. Recorded in MARKET_COLUMN_AUDIT as a naming trap.
+
+### The valid result (n = 111 games with usable halftime ladder)
+
+    L_half = a + 0.649*pre + 0.628*H1        s(H1) se 0.043
+    benchmarks: efficient ~ 0.97   frozen ~ 0
+    realized on same games: s' = 1.244 (se 0.134), CI covers 0.97
+
+Kalshi's halftime price incorporates about **two-thirds of the realized first
+half** and over-weights the pregame prior (b(pre) 0.649 vs the efficient
+~0.49). Under-reaction, ~8 sigma from efficient, ~15 sigma from frozen. This
+is heavily TRADED staleness, not resting quotes: 425/426 events have volume in
+the halftime window (median 3,743 contracts).
+
+Decision per s3: s in (0.50, 0.80) -> **reported as-is, no follow-up** — one
+season cannot refine it, and the pre-set bin holds.
+
+### Descriptive economics (pre-specified)
+Deviation from the s20-rule efficient price: median |dev| 3.26 pts, **27%
+beyond 5 pts** (the ~round-trip cost at 15c spreads), 15% beyond 7. Monotone
+in H1 surprise (quartile means -6.0 / -3.0 / -0.1 / +1.8): the price lags in
+BOTH directions, more after cold halves. Suggestive that the tail could clear
+in-game friction; not a tradability claim, and none is made.
+
+### Limitations
+Halftime-timing fuzz (fixed window T+63..77, untunable per s5) biases s in
+unknown direction; 111 games; one partial season; the efficient benchmark is
+the s20 book rule, itself an estimate.

@@ -71,3 +71,12 @@ MONEYLINE_H/R              |ML| in [100, 20000]
 Deliberately NOT gated: the polymorphic columns, `SPREAD_TO_LINE`, and the
 MODEL columns. Gating a polymorphic or derived column produces exactly the
 false positives catalogued above.
+
+
+## Addendum 2026-08-25 — `HALFTIME_H/R` is NOT the halftime score
+
+corr with the true quarter-sum halftime total: **-0.056**. Coverage 27%,
+sd 5.8 (a real H1 total has sd ~12.5). It is a captured LINE-like object whose
+season coverage matches PREREG_h2's "2H line" table. Use `1Q_+2Q_` sums for
+halftime scores. Same trap class as MODEL1_SPREAD: the name is not the
+semantics.
