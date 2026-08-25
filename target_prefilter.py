@@ -82,7 +82,7 @@ CPP = 2.59
 def pull(tag, db, like):
     con = sqlite3.connect(db)
     d = pd.read_sql(
-        "select event_ticker e, end_period_ts ts, yes_bid_close b, "
+        "select ticker, event_ticker e, end_period_ts ts, yes_bid_close b, "
         "yes_ask_close a, volume v from candles where period_interval=1 "
         f"and ticker like '{like}'", con)
     con.close()
@@ -92,7 +92,7 @@ def pull(tag, db, like):
     d = d[(d.mid > 0.2) & (d.mid < 0.8)]          # priced region only
     d["board"] = tag
     d["k"] = d.e.str.split("-").str[1]
-    return d[["board", "e", "k", "ts", "sp", "v", "mid"]]
+    return d[["board", "ticker", "e", "k", "ts", "sp", "v", "mid"]]
 
 
 def main():
@@ -162,16 +162,22 @@ def main():
               f"a maker needs fills; this is the flow available to rest against.")
 
     print("\nT7  INJURY-NEWS LATENCY -> does the pregame board JUMP?")
-    # NB: diff WITHIN each ticker (rung). Diffing within an event mixes
+    # NB: diff WITHIN each TICKER (one rung). Diffing within an EVENT mixes
     # different strikes and manufactures fake 'jumps' (93% false positive).
-    f2 = f.sort_values(["e", "ts"])
-    f2["dmid"] = f2.groupby("e").mid.diff().abs()
-    big = f2[f2.dmid > 0.03]
-    print(f"    pregame bars {len(f2):,}; moves >3c in one minute: "
-          f"{len(big):,} ({len(big)/max(1,len(f2)):.2%})")
-    print(f"    games with >=1 such jump: {big.k.nunique()} of {f2.k.nunique()}")
-    print(f"    VERDICT: {'PASS' if len(big)/max(1,len(f2)) > 0.002 else 'FAIL'}"
-          f" — jumps are where news arrives; no jumps means nothing to be early to.")
+    f2 = f.sort_values(["ticker", "ts"]).copy()
+    f2["gap_s"] = f2.groupby("ticker").ts.diff()
+    f2["dmid"] = f2.groupby("ticker").mid.diff().abs()
+    f2 = f2[f2.gap_s <= 90]          # consecutive minutes on the same rung
+    big = f2[f2.dmid > 0.05]
+    rate = len(big) / max(1, len(f2))
+    print(f"    consecutive rung-minutes {len(f2):,}; moves >5c: {len(big):,} "
+          f"({rate:.3%}); games with >=1: {big.k.nunique()} of {f2.k.nunique()}")
+    if len(big):
+        print(f"    those bars: median volume {big.v.median():.0f} (vs "
+              f"{f2.v.median():.0f} normal), median spread {big.sp.median():.1f}c "
+              f"(vs {f2.sp.median():.1f}c)")
+    print(f"    VERDICT: {'PASS' if rate > 0.002 else 'FAIL'} — jumps on ZERO "
+          f"volume with wide spreads are quote flicker, not news repricing.")
 
 
 if __name__ == "__main__":
