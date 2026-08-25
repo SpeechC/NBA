@@ -29,3 +29,5 @@ liveball_sample.csv
 oreb_possessions.csv
 bonus_game_team.csv
 rotation_game_team.csv
+outputs/
+*.log

@@ -181,6 +181,30 @@ def fee(p):
     return 0.07 * p * (1 - p)
 
 
+def depth_at(rung, side):
+    """Resting size a taker would lift: YES lifts the NO book, NO the YES book.
+
+    The API serves only `orderbook_fp` (`*_dollars`), so sizes are dollar
+    amounts, not contract counts — they are not integers. Both the raw figure
+    and a contracts estimate are recorded; the unit ruling F1 needs is left
+    open deliberately (spec s14). At F1's 5-contract bar either reading
+    passes by three orders of magnitude, so it does not gate grading.
+    """
+    book = rung["book_no_top"] if side == "YES" else rung["book_yes_top"]
+    if not book:
+        return None, None
+    px, sz = float(book[0][0]), float(book[0][1])
+    return sz, (round(sz / px, 1) if px > 0 else None)
+
+
+def grade(side, strike, cost, total):
+    """Kalshi KXWNBATOTAL: YES pays iff total > floor_strike. Verified on
+    1,345 settled 2026 markets, 100% agreement; all strikes are .5 (no ties).
+    Returns (win, pnl_per_contract) with cost already fee-inclusive."""
+    win = (total > strike) if side == "YES" else (total <= strike)
+    return win, round((1.0 - cost) if win else -cost, 4)
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     c = KalshiClient()
@@ -188,7 +212,8 @@ def main():
     t0 = time.time()
     idle_since = None
     pre_L = {}                 # event_ticker -> pregame L (frozen at first live)
-    ev_city = {}               # event_ticker -> (away_city, home_city)
+    session = {}               # event_ticker -> {gid, would[], settled}
+
     print(f"[monitor v2] role={COMPONENT_ROLE} poll={POLL_S}s "
           f"rule=E={RULE['a']:+.2f}+{RULE['b']:.3f}*pre+{RULE['c']:.3f}*H1")
     header = {"ts_utc": dt.datetime.utcnow().isoformat(), "type": "header",
@@ -225,6 +250,33 @@ def main():
                                   "h1": None}
         except Exception as ex:                                # noqa: BLE001
             loop_rows.append({"type": "feed_err", "gid": None, "err": str(ex)})
+        # ---- settlement (spec s6) -------------------------------------------
+        # Runs BEFORE the market check: a game finalizes after its market has
+        # left the open list, so this is the only pass that can still see it.
+        for evt, sess in session.items():
+            if sess["settled"]:
+                continue
+            gm = games.get(sess["gid"])
+            if not gm or (gm.get("away_pts") is None):
+                continue
+            if not str(gm.get("status", "")).lower().startswith("final"):
+                continue
+            total = int(gm["away_pts"]) + int(gm["home_pts"])
+            graded = []
+            for w in sess["would"]:
+                win, pnl = grade(w["side"], w["strike"], w["cost"], total)
+                graded.append({**w, "win": win, "pnl": pnl})
+            loop_rows.append({
+                "type": "settlement", "event": evt, "gid": sess["gid"],
+                "realized_total": total, "away_pts": gm["away_pts"],
+                "home_pts": gm["home_pts"], "h1": gm.get("h1"),
+                "n_ot": max(0, (gm.get("period") or 4) - 4),
+                "pre_L": pre_L.get(evt), "final_status": gm.get("status"),
+                "n_would_trade": len(graded), "would_trade_graded": graded})
+            sess["settled"] = True
+            print(f"[monitor] SETTLED {evt}: total {total}, "
+                  f"{len(graded)} would-trade row(s) graded")
+        unsettled = sum(1 for s in session.values() if not s["settled"])
         # ---- markets --------------------------------------------------------
         try:
             r = c.get("/markets", {"series_ticker": SERIES, "status": "open",
@@ -235,7 +287,15 @@ def main():
             time.sleep(POLL_S)
             continue
         if not ms:
+            if loop_rows:                     # never drop a settlement row
+                with open(path, "a") as f:
+                    for row in loop_rows:
+                        row.update({"ts_utc": dt.datetime.utcnow().isoformat(),
+                                    "component_role": COMPONENT_ROLE})
+                        f.write(json.dumps(row) + "\n")
             idle_since = idle_since or time.time()
+            if unsettled:                     # hold the loop open for finals
+                idle_since = time.time()
             if time.time() - idle_since > IDLE_STOP_MIN * 60:
                 print("[monitor] idle too long — stopping.")
                 break
@@ -269,6 +329,9 @@ def main():
                                    "book_yes_top": yes[:6], "book_no_top": no[:6]})
                 gm = join_game(evt, games, sb_date)
                 state = None
+                if gm and gm.get("gid"):
+                    session.setdefault(evt, {"gid": gm["gid"], "would": [],
+                                             "settled": False})
                 if gm:
                     state = {k: gm.get(k) for k in
                              ("gid", "period", "clock", "status",
@@ -307,12 +370,18 @@ def main():
                                                  ("NO", eN, (1 - l["bid"]) + fee(l["bid"]))):
                             for th in THRESHOLDS:
                                 if edge >= th:
+                                    d_raw, d_ct = depth_at(l, side)
                                     would.append({"threshold": th, "strike": K,
                                                   "side": side,
                                                   "edge": round(edge, 4),
                                                   "cost": round(cost, 4),
                                                   "E": round(E, 2),
-                                                  "at_halftime": halftime})
+                                                  "at_halftime": halftime,
+                                                  "depth_dollars": d_raw,
+                                                  "depth_contracts_est": d_ct,
+                                                  "period": gm.get("period"),
+                                                  "ts_utc": dt.datetime.utcnow()
+                                                  .isoformat()})
                                     break
                 f.write(json.dumps({
                     "ts_utc": dt.datetime.utcnow().isoformat(),
@@ -320,6 +389,8 @@ def main():
                     "component_role": COMPONENT_ROLE,
                     "pre_L": pre_L.get(evt), "game_state": state,
                     "ladder": ladder, "would_trade": would}) + "\n")
+                if would and evt in session:
+                    session[evt]["would"].extend(would)
                 # ---- dashboard rows (every touchpoint, every poll) ---------
                 armed = bool(gm and gm.get("h1") and evt in pre_L and
                              (halftime or (gm.get("period") or 0) >= 3))

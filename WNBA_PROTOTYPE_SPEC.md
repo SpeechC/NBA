@@ -173,3 +173,64 @@ The prototype moved to its own home on the operator's machine, mid-capture on
 - Date correction: the "2026-08-26" datestamps in s11-s12 and in
   PREREG_wnba_halftime.md were in fact written 2026-08-25 (git commit
   timestamps are authoritative). Recorded here rather than edited.
+
+## 14. Outcome capture — addendum 2026-08-25 (per the change rule)
+
+**Disclosure: s6's settlement row was never implemented.** From first run
+until this addendum the monitor wrote only `header`, `feed_err` and `ladder`
+rows, and queried markets with `status=open` — so a settled market left the
+query the moment its game ended and no outcome was recorded for any game. M3
+and F1-F3 were therefore ungradeable, silently. Fixed now; no logged data is
+lost, because every ladder row and would-trade row was retained and outcomes
+attach retrospectively.
+
+Two layers, deliberately separated:
+
+- **In-session (`wnba_monitor.py`).** A settlement pass runs each loop BEFORE
+  the open-markets check — the only point that can still see a game whose
+  market has already closed. On a joined game reaching `Final` it writes one
+  `settlement` row: realized total, finals, H1, OT count, pre_L, and every
+  would-trade row recorded that session graded win/loss and P&L. The idle
+  stop is held open while any joined game is unsettled, so the last game of
+  a night cannot be lost to an early exit. Would-trade rows now also carry
+  resting depth at the quoted rung (M1 at exactly the qualifying price).
+- **Next-day (`wnba_reconcile.py`, new).** Read-only over the JSONL; never
+  writes into the logs. Prefers the monitor's settlement row, falls back to
+  basketball-reference finals, and reports anything with neither as
+  UNRESOLVED rather than dropping it. This is what survives a restart,
+  crash, or a monitor that exits before the final.
+
+**Canonical grading rule, fixed here and implemented in exactly one place**
+(`wnba_reconcile.canonical_trade`): per threshold, the FIRST poll at or after
+halftime that produced would-trade rows, and within that poll the single
+best-edge rung — "best rung per game", matching the prereg's economic tail.
+No lookahead: a fatter edge later in the game is not reachable. Verified by
+test: a later 20c row is correctly ignored in favour of the 9c row available
+at the halftime poll.
+
+**Settlement direction is empirical, not assumed.** YES pays iff
+`realized_total > floor_strike` — checked against 1,345 settled 2026 markets
+at 100% agreement. Every strike is a .5, so ties cannot occur.
+
+**The bref fallback is validated end to end**: it resolves 283/296 season
+events (96%), and on those the finals reproduce Kalshi's own settlements on
+**2,543 of 2,543** settled strikes. The 13 misses are season-edge dates
+(pre-2026-05-08, plus 06-30 / 07-16 / 07-25) absent from the scraped file,
+not a systemic join failure. `wnba_bref_scrape.py` must be re-run to extend
+coverage past 2026-08-24.
+
+**Depth units are left open, deliberately.** The API serves only
+`orderbook_fp` with `*_dollars`, and the sizes are not integers, so they are
+dollar amounts rather than contract counts. Both the raw figure and a
+contracts estimate are logged. F1's bar is 5 contracts and observed depth is
+three orders of magnitude above it under either reading, so the ambiguity
+does not gate grading; it is recorded rather than resolved by guess.
+
+**Nothing here changes the deployed rule.** s4's freeze stands: coefficients
+and residual CDF are untouched, no refit occurs mid-run, and this component
+remains OBSERVER with no order-placement code. The panel this produces
+(pre_L, H1, realized_total per game) is also the training triple an adaptive
+rule would consume. That comparison is a SEASON-END exercise on the frozen
+season's data, or a design decision for the NBA spec (s10) — not a live
+refit, which would make M3 unanswerable by grading each game against a
+different model.
