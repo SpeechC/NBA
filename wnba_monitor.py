@@ -71,6 +71,70 @@ def boxscore(gid):
             "h1": (half("awayTeam") + half("homeTeam"))}
 
 
+
+def median_cross(pairs):
+    """pairs: [(strike, prob), ...] -> implied line at the 0.5 crossing."""
+    q=[(float(k),p) for k,p in pairs if p is not None]
+    if len(q)<4: return None
+    q.sort()
+    xs=[a for a,_ in q]; ps=[b for _,b in q]
+    ab=[i for i,p in enumerate(ps) if p>=0.5]; bl=[i for i,p in enumerate(ps) if p<0.5]
+    if not ab or not bl or max(ab)>min(bl): return None
+    i,j=max(ab),min(bl)
+    return xs[i] if ps[i]==ps[j] else xs[i]+(xs[j]-xs[i])*(ps[i]-0.5)/(ps[i]-ps[j])
+
+
+DASH = os.path.join(OUT_DIR, "dashboard.html")
+
+def render_dashboard(events):
+    """events: list of dicts with evt/state/pre_L/E/L_now/rows/armed/rec."""
+    any_rec = any(e["rec"] for e in events)
+    css = ("body{font-family:Consolas,monospace;background:#111;color:#ddd;"
+           "margin:20px} table{border-collapse:collapse;margin:8px 0 24px}"
+           "td,th{border:1px solid #333;padding:3px 10px;text-align:right}"
+           "th{background:#222} "
+           ".pos{color:#4dd06a;font-weight:bold} .neg{color:#888}"
+           ".hot{background:#173a17} .banner{padding:12px;background:#b3261e;"
+           "color:#fff;font-size:20px;font-weight:bold} .ok{background:#1b5e20}"
+           " h2{margin:18px 0 2px} .meta{color:#999;font-size:13px}")
+    h=[f"<meta http-equiv='refresh' content='15'><style>{css}</style>"]
+    h.append(f"<div class='banner {'':s}{'' if any_rec else 'ok'}'>"
+             + ("&#9888; WAGER RECOMMENDED — see highlighted rows"
+                if any_rec else
+                "monitoring — no recommendation yet (refreshes every 15s)")
+             + "</div>")
+    h.append(f"<div class='meta'>updated {dt.datetime.utcnow().isoformat()}Z"
+             f" &nbsp;|&nbsp; role OBSERVER (display only, no orders)"
+             f" &nbsp;|&nbsp; rule E={RULE['a']:+.2f}+{RULE['b']:.3f}·pre"
+             f"+{RULE['c']:.3f}·H1</div>")
+    for e in events:
+        st=e["state"] or {}
+        h.append(f"<h2>{e['evt']}</h2><div class='meta'>"
+                 f"status {st.get('status','pregame')} | period {st.get('period','-')} "
+                 f"clock {st.get('clock','-')} | score {st.get('away_pts','-')}-"
+                 f"{st.get('home_pts','-')} | H1 {st.get('h1','-')} | "
+                 f"pre_L {e['pre_L'] if e['pre_L'] else '-'} | "
+                 + (f"<b>E = {e['E']:.1f}</b> | market L = "
+                    f"{e['L_now']:.1f} | <b>deviation L−E = "
+                    f"{e['L_now']-e['E']:+.1f} pts</b>" if e["armed"] and e["L_now"]
+                    else "model arms at halftime") + "</div>")
+        h.append("<table><tr><th>strike</th><th>bid</th><th>ask</th>"
+                 "<th>p_true</th><th>mkt p(mid)</th><th>dev pp</th>"
+                 "<th>edge YES</th><th>edge NO</th><th>action</th></tr>")
+        for r in e["rows"]:
+            cls=" class='hot'" if r.get("act") else ""
+            def f(v,fmt="{:+.3f}"):
+                return "-" if v is None else fmt.format(v)
+            h.append(f"<tr{cls}><td>{r['K']}</td><td>{f(r['bid'],'{:.2f}')}</td>"
+                     f"<td>{f(r['ask'],'{:.2f}')}</td><td>{f(r['pt'],'{:.3f}')}</td>"
+                     f"<td>{f(r['mid'],'{:.3f}')}</td><td>{f(r['dev'],'{:+.1f}')}</td>"
+                     f"<td class='{'pos' if (r['eY'] or 0)>0 else 'neg'}'>{f(r['eY'])}</td>"
+                     f"<td class='{'pos' if (r['eN'] or 0)>0 else 'neg'}'>{f(r['eN'])}</td>"
+                     f"<td>{r.get('act','')}</td></tr>")
+        h.append("</table>")
+    with open(DASH,"w") as fh: fh.write("".join(h))
+
+
 def p_over(E, K):
     return 1.0 - np.searchsorted(RESID, K - E, side="right") / len(RESID)
 
@@ -140,6 +204,7 @@ def main():
         by_event = {}
         for m in ms:
             by_event.setdefault(m["event_ticker"], []).append(m)
+        dash_events = []
         with open(path, "a") as f:
             for row in loop_rows:
                 row.update({"ts_utc": dt.datetime.utcnow().isoformat(),
@@ -219,9 +284,40 @@ def main():
                     "component_role": COMPONENT_ROLE,
                     "pre_L": pre_L.get(evt), "game_state": state,
                     "ladder": ladder, "would_trade": would}) + "\n")
+                # ---- dashboard rows (every touchpoint, every poll) ---------
+                armed = bool(gm and gm.get("h1") and evt in pre_L and
+                             (halftime or (gm.get("period") or 0) >= 3))
+                E_val = (RULE["a"] + RULE["b"]*pre_L[evt] + RULE["c"]*gm["h1"]) \
+                        if armed else None
+                L_now = median_cross([(l["strike"],
+                                       (l["bid"]+l["ask"])/2 if l["bid"] is not None
+                                       and l["ask"] is not None else None)
+                                      for l in ladder])
+                drows=[]
+                for l in ladder:
+                    K=float(l["strike"]); bid,ask=l["bid"],l["ask"]
+                    mid=(bid+ask)/2 if bid is not None and ask is not None else None
+                    pt=p_over(E_val,K) if armed else None
+                    eY=(pt-ask-fee(ask)) if (armed and ask is not None) else None
+                    eN=(bid-pt-fee(bid)) if (armed and bid is not None) else None
+                    act=""
+                    for th in THRESHOLDS[::-1]:
+                        if eY is not None and eY>=th: act=f"BUY YES @{ask:.2f} (edge {eY:.2f})"
+                        elif eN is not None and eN>=th: act=f"BUY NO @{1-bid:.2f} (edge {eN:.2f})"
+                        if act: break
+                    drows.append({"K":K,"bid":bid,"ask":ask,"pt":pt,"mid":mid,
+                                  "dev":100*(mid-pt) if (mid is not None and pt is not None) else None,
+                                  "eY":eY,"eN":eN,"act":act})
+                dash_events.append({"evt":evt,"state":state,"pre_L":pre_L.get(evt),
+                                    "armed":armed,"E":E_val,"L_now":L_now,
+                                    "rows":drows,"rec":any(r["act"] for r in drows)})
                 if would:
                     print(f"[monitor] {evt}: {len(would)} WOULD-TRADE row(s) "
                           f"(E={would[0]['E']}, best edge {max(w['edge'] for w in would):.3f})")
+        try:
+            render_dashboard(dash_events)
+        except Exception as ex:                                # noqa: BLE001
+            print(f"[monitor] dashboard ERR {type(ex).__name__}: {ex}")
         print(f"[monitor] {dt.datetime.utcnow().strftime('%H:%M:%S')}Z "
               f"{len(by_event)} event(s)  live-joined "
               f"{sum(1 for e in by_event if any((games.get(k) or {}).get('period') for k in games))}")
