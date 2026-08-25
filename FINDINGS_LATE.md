@@ -908,6 +908,8 @@ function. That converts an unbounded search into bounded tests for STRUCTURE.
 | **5 conditional variance** | corr +0.021 (t=2.02) | **corr +0.057 (t=5.59)** |
 | 6 sign runs | t=−1.41 | t=−0.55 |
 
+**[SUPERSEDED 2026-08-24 — RE-RUN ON GATED DATA. See below.]**
+
 **Three detections.**
 
 **Spread slope 0.9368** (t≈−3.4 from 1.0): the line OVERREACTS — a 10-point
@@ -969,3 +971,63 @@ The other 21 families each tested a NAMED variable. This tests for the SIGNATURE
 of an omission — miscalibration, persistence, clustering, mixture,
 heteroskedasticity, regime structure — and can fire without knowing the cause.
 It found in one run what feature-hunting missed in months.
+
+
+---
+
+## 21b. The omnibus, re-run on gated data (2026-08-24)
+
+Six cells in the vendor master carry a price or a total in the wrong column
+(`DATA_DEFECT_spread_column.md`, `MARKET_COLUMN_AUDIT.md`). Four of them were
+in `CLOSING SPREAD_H`, which s21 regressed on. Re-running with
+`prepare_data.read_master()` range gates, 9,486 games:
+
+| test | s21 (ungated) | gated | change |
+|---|---|---|---|
+| **1 MZ sides** | **slope 0.9368, p=0.0015** | **slope 1.00423, p=0.4311** | **DETECTION GONE** |
+| 1 MZ totals | slope 1.0027, p=0.023 | slope 1.00254, p=0.0247 | unchanged |
+| 2 serial totals | +0.0150 (t=2.06) | +0.0149 (t=+2.04) | unchanged |
+| 2 serial sides | -0.0069 (t=-0.94) | -0.0075 (t=-1.02) | unchanged |
+| **3 variance, totals by month** | **100th pctile** | **100.0 pctile** | **SURVIVES** |
+| 3 variance, sides team-season | 97th | 96.8 | unchanged |
+| 4 mixture | 1-comp preferred | 1-comp; kurtosis +0.40/+0.50 (z=6.6/8.0) | unchanged |
+| 5 cond. variance totals | +0.021 (t=2.02) | +0.0207 (t=+2.02) | unchanged |
+| **5 cond. variance sides** | **+0.057 (t=+5.59)** | **-0.0310 (t=-3.02)** | **SIGN REVERSED** |
+| 6 sign runs | t=-1.41 / -0.55 | t=-1.37 / -0.51 | unchanged |
+
+### Both detections that were pursued were data artifacts
+
+- **MZ sides** (p=0.0015): four corrupt cells. A point at spread 112 against
+  |spread| <= 24.5 elsewhere carries ~250x normal leverage in an OLS slope.
+  Gated, the NBA closing spread is an unbiased margin forecast (slope 1.0042,
+  p=0.43).
+- **Conditional variance on sides** (t=+5.59): not merely weakened but
+  **reversed** to t=-3.02. Its follow-up (`PREREG_spread_ml_variance.md`) had
+  already found it was one decile on development that flipped sign on holdout;
+  gating shows the pooled statistic itself was corruption-driven.
+
+### The one detection that survives is the one already acted on
+
+**Monthly clustering in totals residuals, 100th percentile** — unchanged by
+gating, and already converted into the end-of-season effect (s21's "April vs
+rest, t=+3.75") and thence into paper seat 6 (final-week overs). Nothing else
+in the omnibus clears a bar that survives correction.
+
+### Two honest notes
+
+1. **Test 1 TOTALS still rejects at p=0.0247, but not via the slope.** Observed
+   slope deviation is 0.0025 against a smallest-detectable-at-80%-power of
+   0.0512; the joint Wald is being driven by the intercept. Not a slope story.
+2. **Excess kurtosis is now reported and is strongly significant** (+0.396,
+   z=+6.64 totals; +0.498, z=+8.04 sides) while BIC still prefers one
+   component. Fat tails without a separable second regime — consistent with the
+   already-known OT mixture, not a new detection.
+
+### Method note
+
+The omnibus remains the highest-yield instrument in the program: it found in
+one run what feature-hunting missed in months. But its outputs are LEVERAGE-
+SENSITIVE by construction — slopes, variance ratios and group dispersions all
+weight extreme observations heavily, which is exactly what a wrong-column value
+produces. **Standing rule: run the omnibus only on gated data, and decompose
+any detection by decile before promoting it.**

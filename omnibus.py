@@ -51,8 +51,13 @@ RNG = np.random.default_rng(0)
 
 
 def load():
-    from prepare_data import CSV, season_label
-    raw = pd.read_csv(CSV, low_memory=False)
+    from prepare_data import CSV, read_master, season_label
+    # market RANGE gates: six cells in the vendor master carry a price or a
+    # total in the wrong column. Ungated, four of them fabricated this file's
+    # own Mincer-Zarnowitz detection (slope 0.9368, p=0.0015 -> 1.0043, t=+0.22)
+    # and two inflated the movement target's sd by 11.4%.
+    # See DATA_DEFECT_spread_column.md / MARKET_COLUMN_AUDIT.md.
+    raw = read_master(CSV, verbose=True)
     raw["season"] = season_label(raw).astype(str)
     d = raw[raw["season"].str.contains("Regular Season", na=False)].copy()
     d["date"] = pd.to_datetime(d["DATE"], errors="coerce")
