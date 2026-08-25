@@ -77,16 +77,24 @@ def main():
                 ladder = []
                 for m in sorted(rungs, key=lambda x: float(x.get("floor_strike") or 0)):
                     try:
-                        ob = (c.get(f"/markets/{m['ticker']}/orderbook", {})
-                              or {}).get("orderbook", {}) or {}
+                        resp = c.get(f"/markets/{m['ticker']}/orderbook", {}) or {}
+                        # response nests under 'orderbook_fp' with
+                        # yes_dollars/no_dollars [[price, size], ...]
+                        ob = resp.get("orderbook_fp") or resp.get("orderbook") or {}
                     except Exception:                 # noqa: BLE001
                         ob = {}
+                    yes = ob.get("yes_dollars") or ob.get("yes") or []
+                    no = ob.get("no_dollars") or ob.get("no") or []
+                    # best levels sit at the HIGHEST price on each side
+                    yes = sorted(yes, key=lambda x: float(x[0]), reverse=True)
+                    no = sorted(no, key=lambda x: float(x[0]), reverse=True)
+                    touch_bid = float(yes[0][0]) if yes else None
+                    touch_ask = round(1 - float(no[0][0]), 4) if no else None
                     ladder.append({
                         "strike": m.get("floor_strike"),
-                        "bid": m.get("yes_bid"), "ask": m.get("yes_ask"),
+                        "touch_bid": touch_bid, "touch_ask": touch_ask,
                         "last": m.get("last_price"), "vol": m.get("volume"),
-                        "book_yes": (ob.get("yes") or [])[:6],
-                        "book_no": (ob.get("no") or [])[:6]})
+                        "book_yes_top": yes[:8], "book_no_top": no[:8]})
                 f.write(json.dumps({
                     "ts_utc": dt.datetime.utcnow().isoformat(),
                     "type": "ladder", "event": evt,
