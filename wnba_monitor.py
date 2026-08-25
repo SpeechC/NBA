@@ -21,10 +21,9 @@ import time
 import numpy as np
 
 COMPONENT_ROLE = "OBSERVER"
-KALSHI_DIR = r"C:\NBA2\Kalshi" if os.name == "nt" else "/mnt/c/NBA2/Kalshi"
-OUT_DIR = r"C:\NBA2\wnba_monitor" if os.name == "nt" else "/mnt/c/NBA2/wnba_monitor"
-REPO = (r"C:\NBA2" if os.name == "nt"
-        else "/home/dpope/projects/nba_entropy_replication")
+KALSHI_DIR = r"D:\Kalshi" if os.name == "nt" else "/mnt/d/Kalshi"
+OUT_DIR = r"D:\Kalshi\wnba_monitor" if os.name == "nt" else "/mnt/d/Kalshi/wnba_monitor"
+REPO = r"D:\Kalshi" if os.name == "nt" else "/mnt/d/Kalshi"
 SERIES = "KXWNBATOTAL"
 POLL_S = 30
 MAX_HOURS = 9
@@ -39,7 +38,13 @@ from curl_cffi import requests as cr            # noqa: E402
 RULE = json.load(open(os.path.join(REPO, "wnba_deploy_rule.json")))
 RESID = np.load(os.path.join(REPO, "wnba_deploy_residuals.npy"))
 CDN = "https://cdn.wnba.com/static/json/liveData"
-CITY2CODE = {}          # scoreboard city -> kalshi event side, learned per day
+CITY_CODES = {                   # scoreboard teamCity -> Kalshi ticker code(s)
+    "Atlanta": ("ATL",), "Chicago": ("CHI",), "Connecticut": ("CONN",),
+    "Dallas": ("DAL",), "Golden State": ("GSV", "GS"), "Indiana": ("IND",),
+    "Las Vegas": ("LVA", "LV"), "Los Angeles": ("LAS", "LA"),
+    "Minnesota": ("MIN",), "New York": ("NYL", "NY"), "Phoenix": ("PHX",),
+    "Portland": ("PDX", "POR"), "Seattle": ("SEA",), "Toronto": ("TOR",),
+    "Washington": ("WSH", "WAS")}
 
 
 def fetch_json(url):
@@ -51,7 +56,33 @@ def fetch_json(url):
 
 def scoreboard():
     js = fetch_json(f"{CDN}/scoreboard/todaysScoreboard_10.json")
-    return js.get("scoreboard", {}).get("games", [])
+    return js.get("scoreboard", {})
+
+
+def join_game(evt, games, sb_date):
+    """Kalshi event -> scoreboard game. Exact away+home code pair on the
+    ticker tail (city[:3] prefix as fallback); no join across dates — the CDN
+    serves yesterday's slate until it rolls over."""
+    tail = evt.rsplit("-", 1)[-1]
+    try:
+        if sb_date and dt.datetime.strptime(tail[:7], "%y%b%d").date() != \
+                dt.datetime.strptime(sb_date[:10], "%Y-%m-%d").date():
+            return None
+    except ValueError:
+        pass
+    pair = tail[7:]
+    for g in games.values():
+        ac, hc = g.get("away_city") or "", g.get("home_city") or ""
+        if ac and hc and any(
+                a + h == pair
+                for a in CITY_CODES.get(ac, (ac.upper()[:3],))
+                for h in CITY_CODES.get(hc, (hc.upper()[:3],))):
+            return g
+    for g in games.values():
+        ac, hc = g.get("away_city") or "", g.get("home_city") or ""
+        if ac and hc and (ac.upper()[:3] in evt or hc.upper()[:3] in evt):
+            return g
+    return None
 
 
 def boxscore(gid):
@@ -97,11 +128,12 @@ def render_dashboard(events):
            ".hot{background:#173a17} .banner{padding:12px;background:#b3261e;"
            "color:#fff;font-size:20px;font-weight:bold} .ok{background:#1b5e20}"
            " h2{margin:18px 0 2px} .meta{color:#999;font-size:13px}")
-    h=[f"<meta http-equiv='refresh' content='15'><style>{css}</style>"]
+    h=[f"<meta charset='utf-8'><meta http-equiv='refresh' content='30'>"
+       f"<style>{css}</style>"]
     h.append(f"<div class='banner {'':s}{'' if any_rec else 'ok'}'>"
              + ("&#9888; WAGER RECOMMENDED — see highlighted rows"
                 if any_rec else
-                "monitoring — no recommendation yet (refreshes every 15s)")
+                "monitoring — no recommendation yet (refreshes every 30s)")
              + "</div>")
     h.append(f"<div class='meta'>updated {dt.datetime.utcnow().isoformat()}Z"
              f" &nbsp;|&nbsp; role OBSERVER (display only, no orders)"
@@ -109,10 +141,16 @@ def render_dashboard(events):
              f"+{RULE['c']:.3f}·H1</div>")
     for e in events:
         st=e["state"] or {}
-        h.append(f"<h2>{e['evt']}</h2><div class='meta'>"
-                 f"status {st.get('status','pregame')} | period {st.get('period','-')} "
-                 f"clock {st.get('clock','-')} | score {st.get('away_pts','-')}-"
-                 f"{st.get('home_pts','-')} | H1 {st.get('h1','-')} | "
+        title=e["evt"]
+        if st.get("away_city") and st.get("home_city"):
+            title=f"{st['away_city']} @ {st['home_city']}"
+            if st.get("away_pts") is not None:
+                title+=f" &nbsp;{st['away_pts']}&ndash;{st['home_pts']}"
+        h.append(f"<h2>{title}</h2><div class='meta'>"
+                 f"{e['evt']} | "
+                 f"status {st.get('status') or 'pregame'} | period {st.get('period') or '-'} "
+                 f"clock {st.get('clock') or '-'} | score {st.get('away_pts','-')}-"
+                 f"{st.get('home_pts','-')} | H1 {st.get('h1') or '-'} | "
                  f"pre_L {e['pre_L'] if e['pre_L'] else '-'} | "
                  + (f"<b>E = {e['E']:.1f}</b> | market L = "
                     f"{e['L_now']:.1f} | <b>deviation L−E = "
@@ -132,7 +170,7 @@ def render_dashboard(events):
                      f"<td class='{'pos' if (r['eN'] or 0)>0 else 'neg'}'>{f(r['eN'])}</td>"
                      f"<td>{r.get('act','')}</td></tr>")
         h.append("</table>")
-    with open(DASH,"w") as fh: fh.write("".join(h))
+    with open(DASH,"w",encoding="utf-8") as fh: fh.write("".join(h))
 
 
 def p_over(E, K):
@@ -167,8 +205,11 @@ def main():
         loop_rows = []
         # ---- scores ---------------------------------------------------------
         games = {}
+        sb_date = None
         try:
-            for g in scoreboard():
+            sb = scoreboard()
+            sb_date = sb.get("gameDate")
+            for g in sb.get("games", []):
                 gid = g.get("gameId")
                 if g.get("gameStatus") in (2, 3) and gid:      # live or final
                     try:
@@ -226,17 +267,12 @@ def main():
                                    "bid": float(yes[0][0]) if yes else None,
                                    "ask": round(1 - float(no[0][0]), 4) if no else None,
                                    "book_yes_top": yes[:6], "book_no_top": no[:6]})
-                # join a game by city names (learned once per event)
-                gm = None
-                for g in games.values():
-                    ac, hc = g.get("away_city") or "", g.get("home_city") or ""
-                    if ac and hc and (ac.upper()[:3] in evt or hc.upper()[:3] in evt):
-                        gm = g
-                        break
+                gm = join_game(evt, games, sb_date)
                 state = None
                 if gm:
                     state = {k: gm.get(k) for k in
                              ("gid", "period", "clock", "status",
+                              "away_city", "home_city",
                               "away_pts", "home_pts", "h1")}
                     live = (gm.get("period") or 0) >= 1
                     if live and evt not in pre_L:
@@ -319,8 +355,8 @@ def main():
         except Exception as ex:                                # noqa: BLE001
             print(f"[monitor] dashboard ERR {type(ex).__name__}: {ex}")
         print(f"[monitor] {dt.datetime.utcnow().strftime('%H:%M:%S')}Z "
-              f"{len(by_event)} event(s)  live-joined "
-              f"{sum(1 for e in by_event if any((games.get(k) or {}).get('period') for k in games))}")
+              f"{len(by_event)} event(s)  joined "
+              f"{sum(1 for e in dash_events if e['state'])}")
         time.sleep(POLL_S)
     print("[monitor] done.")
 
