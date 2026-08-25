@@ -45,9 +45,33 @@ volume **0**. Net −0.8c/contract. No slow-pinning edge exists.
 - **Dispersion is the story: |gap| > 3 pts in 16% of events, > 5 pts in 8%** —
   versus 0% beyond 3 pts for the half/quarter identities. This board pair is
   genuinely looser than the internally-arbitraged ones.
-- NOT yet costed: the team-total leg spreads are unmeasured, and it is a
-  three-leg trade. Sample is 25 events. **Most promising of the three, and
-  the one needing more data rather than a verdict.**
+### Deep re-test (`team_total_additivity.py`) — VERDICT: DEAD, well-characterised
+No more history exists (team totals begin 2026-08-10; `/historical/markets`
+returns nothing for this series). But the first pass used one snapshot per
+market out of 731,901 candles. Walking the full minute-by-minute history:
+
+- **3,606 simultaneous three-board minutes across all 41 events** (median 78
+  per event), versus 25 snapshots before.
+- Gap = (TT_a+TT_b) − full: mean −0.50, median −0.17, sd 2.71.
+  |gap|>2pts 23%, >3 14%, >5 6%. **Directional**: CI [−0.86,−0.13] — the
+  team pair sits systematically BELOW the game line.
+- **The team legs are demonstrably the mispriced side.** Regressing the
+  5-minute change on the gap: the full board moves +0.043 per point
+  (se .019, i.e. barely), the team pair moves **−0.543** (se .021). The thin
+  boards drift and snap back to the liquid one. Persistence +0.414 — a gap
+  decays ~59% in five minutes.
+- **And it is untradeable, by a mile.** Team-leg spread is **38.9c** (full
+  board: 1.5c). A three-leg round trip costs ~44.9c = **17.3 points of
+  total**. The gap clears that bar in **0.2%** of minutes, in 4 episodes of
+  median 2 minutes, none lasting 5.
+
+**The general law this makes explicit: a board's spread is the market's own
+statement about how much attention it receives.** Team totals are mispriced
+BECAUSE nobody watches them, and untouchable for exactly the same reason.
+The viable target profile is therefore narrow: **tight spread (so it can be
+traded) AND low analytical attention (so it is wrong)** — which is why the
+10–20c tail rungs on LIQUID boards (6c spread) survived as target 1, while
+this did not.
 
 ## Standing
 1 → forward-test the longshot fade as a maker (fits target 6's machinery).
