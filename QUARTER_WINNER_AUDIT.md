@@ -158,3 +158,62 @@ The standing rule survives and is sharpened: verify a derivative market
 exists, trades and has depth before modelling — but verify EXISTENCE by
 enumerating the series index, and verify TRADING from candles, not from a
 listing field that may be null.
+
+---
+
+## STAGE 2 RE-RUN 2026-08-26 — done correctly this time. Verdict: FAIL on spread
+
+Both fetches completed. Volume measured from CANDLES per the corrected rule.
+
+### KXNBA2HSPREAD and every NBA derivative: registered, zero markets
+
+```
+KXNBA2HSPREAD    0 markets      KXNBA3QWINNER    0 markets
+KXNBA1HWINNER    0 markets      KXNBA2HWINNER    0 markets
+KXNBA1QWINNER    0 markets
+```
+
+The series are registered in Kalshi's index but no markets have been
+instantiated — the NBA season starts 2026-10-20. Nothing historical exists to
+test. Whether these list once the season opens is an OPEN QUESTION for
+October, not a closed one; the 2026-27 capture should probe them on opening
+night.
+
+### KXWNBA2HWINNER: it DOES trade — and that is not enough
+
+60,281 candle rows, 483 markets, 161 events. Against the totals ladder we know
+trades heavily:
+
+| | 2H WINNER | TOTALS (benchmark) |
+|---|---|---|
+| bars with volume > 0 | 7.0% | 43.8% |
+| per-event median volume | 2,824 | 672,872 |
+| **median spread** | **30c** | **1c** |
+| two-sided bars | 95% | — |
+
+Every event traded something (161/161), so the market is alive — my earlier
+"dead market" call was wrong on this too. But the **median spread is 30
+cents**, with the 25th percentile at 18c. Per-event volume is 0.4% of the
+totals ladder's.
+
+### Why this kills the margin-instrument idea on this venue
+
+The garbage-time effect is worth +1.65 points of Q4 margin. Converted to win
+probability on a half-winner contract that is single-digit percentage points —
+call it 3-6c at the most favourable Q3 states. **The round trip costs 30c.**
+The instrument taxes the effect by roughly an order of magnitude.
+
+This is the same wall the halftime totals strategy hit (15c spreads), except
+twice as high. The pattern across every Kalshi derivative tested in this
+program now reads: **the thinner the contract, the wider the quote, and the
+width scales faster than any edge we have measured.**
+
+### What stays open
+
+The Stage-1 mechanical fact (trailing teams +1.65 at leads >= 12, monotone,
+8/8 seasons) is unaffected and remains unexpressed. The instruments that
+would express it cleanly — live sportsbook spreads and live team totals — are
+not in our data and would need acquisition, against a poor prior that a 60%
+regularity this visible is priced by live-line algorithms.
+
+NBA derivative markets in October are the one genuinely untested venue.
