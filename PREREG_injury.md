@@ -235,3 +235,88 @@ header on every page while the new one prints it on page 1 only -- so pages
 eras)** was added and is now part of the Stage-0 verdict; the old panel scores
 5.7x FAIL, the repaired one 1.25x PASS. Repaired totals: 1,224,205 rows,
 13,219 reports, 1,028 players.
+
+---
+
+# P&L ADDENDUM 2026-08-26 — read-only. **B does not trade, in either direction.**
+
+Run as the third of a series applying the same economic check to every signal
+this program holds. Nothing refitted; `injury_market.build()` called as frozen.
+B fires on 1,409 games with both lines present.
+
+## The two variants that must not be conflated
+
+`OUT_late` is defined as the difference between the **earliest** and **latest**
+pregame report. The latest report exists ~30 minutes before tip. So betting the
+opener on it uses information that **does not exist at the opener** — leakage by
+construction, reported only to bound what a latency edge could ever be worth.
+
+| variant | bets | hit | profit | ROI | z | ROI 95% CI |
+|---|---|---|---|---|---|---|
+| **UPPER BOUND @ opener** (leakage) | 1,408 | 51.14% | −$3,345 | −2.38% | −0.93 | [−7.36%, +2.61%] |
+| **ACTIONABLE @ close** | 1,393 | 48.17% | −$11,200 | **−8.04%** | **−3.14** | [−13.05%, −3.03%] |
+
+**Even the unattainable upper bound loses money.** Perfect foresight of late-out
+news, acted on at the opener, returns −2.38%. There is no latency race worth
+winning here, because the thing you would win does not pay.
+
+The actionable variant loses **significantly** — the ROI interval excludes zero
+— and does so in every season: −7.08 / −11.70 / −7.71 / −2.78 / −10.12.
+
+## The flip does not rescue it — vig eats the over-reaction
+
+Betting the close in B's direction losing 8.04% means the market **over-adjusts
+downward** on late absences. The natural next thought is to take the other side.
+It does not work:
+
+| variant | bets | hit | ROI | z |
+|---|---|---|---|---|
+| B direction (UNDER) @ close | 1,393 | 48.17% | −8.04% | −3.14 |
+| **OPPOSITE (OVER) @ close** | 1,393 | **51.83%** | **−1.05%** | −0.41 |
+
+51.83% against a required **52.381%**. The over-reaction is real but **smaller
+than the vig**. Both sides of the market lose. Recorded explicitly so the flip
+is not attempted later as an obvious-looking rescue.
+
+## What B actually is — and it is not nothing
+
+```
+CLV in B's direction:  +0.7754 pts   t = +7.93   beat the close 55.6%
+```
+
+The line genuinely moves toward B's direction between open and close. **That
+movement IS Hypothesis B.** B was pre-registered as a decomposition of *market
+movement*, and it passes as exactly that: late status changes are a third,
+partly-independent source of open→close total movement.
+
+What this addendum establishes is that **the movement is not informative about
+outcomes.** The market moves on late outs, moves slightly too far, and the
+residual is inside the vig. That is a coherent picture and it is consistent
+with Hypothesis A having failed: the market prices injuries correctly — if
+anything, marginally over-correctly.
+
+## Disposition — the prereg's own language was right
+
+§9 already stated B "is NOT a tradable edge as it stands" and that converting it
+to P&L is "a latency question, not a research one." This addendum sharpens that:
+**it is not even a latency question**, because the upper bound available to an
+infinitely fast trader is −2.38%.
+
+B stands as a decomposition result. Nothing is traded on it. The
+`PREREG_move_injury_combined` extension should be read in light of this: adding
+LATE to a movement model may improve the *movement* forecast without improving
+the *outcome* forecast, and those are now known to be different things here.
+
+## Series note
+
+Three signals, three economic checks, one pattern: **CLV and P&L are different
+endpoints and this program's signals separate them sharply.**
+
+| signal | CLV | outcome P&L |
+|---|---|---|
+| MOVE_COMBINED | +1.337 pts, t = +16.42 | +2.02%, CI **includes 0** |
+| injury B | +0.775 pts, t = +7.93 | **−8.04%**, CI excludes 0 |
+| cohesion | n/a (no line-movement claim) | −3.56% |
+
+Only MOVE_COMBINED has an outcome P&L that is even positive, and its interval
+still includes zero.
