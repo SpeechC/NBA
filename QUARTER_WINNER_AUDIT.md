@@ -111,3 +111,50 @@ Closed as a distinct candidate. The staleness result itself already stands
 recorded in PREREG_kalshi_halftime.md s7 (the checkpoint trajectory), where
 Q3 was measured at s=0.629 in the NBA — consistent with the 0.354 here, given
 the WNBA is the thinner market.
+
+---
+
+## CORRECTION 2026-08-26 — my Stage-2 gate was wrong twice
+
+The user pushed on whether spread/quarter ladders exist. Enumerating
+`/series` (rather than guessing tickers) shows they largely DO:
+
+```
+KXNBA3QWINNER      NBA 3rd Quarter Winner
+KXWNBA1QWINNER     Women's 1st Quarter Winner        477 markets
+KXWNBA1HWINNER     Women's 1st Half Winner           500 markets
+KXWNBA2HWINNER     Women's 2nd Half Winner           498 markets
+KXNBA2HSPREAD      Pro Basketball 2nd Half Spread    (listed; no live markets)
+```
+
+**Error 1 — I probed guessed tickers.** Stage 2 tested KXNBA4QWINNER / KXNBAQ4
+/ KXNBAQUARTER and concluded "no NBA quarter markets exist." The actual ticker
+is KXNBA3QWINNER, and half-winner and 2H-SPREAD series exist too. Enumerating
+the series index is the correct discovery method and costs one call.
+
+**Error 2 — the "zero volume" was an API artifact.** I read
+`volume: 0 / max 0 / zero-vol 200/200` as a dead market. But the same field
+returns `None` for **KXWNBATOTAL** — the ladder we independently know traded
+heavily all season (median 3,743 contracts in the halftime window, measured
+from CANDLES). The listing and single-market endpoints simply do not populate
+volume/open_interest/liquidity for this account or these series; my summing
+turned `None` into 0.
+
+**Volume must be measured from CANDLE data, never from the market listing.**
+That is how the totals depth was measured correctly earlier in this thread;
+I failed to apply the same standard when gating quarter markets.
+
+### Status of the branch
+
+REOPENED as untested rather than closed. What the corrected gate establishes:
+the venues exist and quote two-sided (2-12c spreads on active markets, touch
+sizes $3-$1,749). What remains genuinely unknown: whether they TRADE, which
+requires fetching their candles — the same method that answered it for totals.
+
+The Stage-1 mechanical finding is unaffected: trailing teams outscore leaders
+by +1.65 at leads >= 12, monotone, 8/8 seasons.
+
+The standing rule survives and is sharpened: verify a derivative market
+exists, trades and has depth before modelling — but verify EXISTENCE by
+enumerating the series index, and verify TRADING from candles, not from a
+listing field that may be null.
