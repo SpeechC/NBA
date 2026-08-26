@@ -286,3 +286,41 @@ survive a restart; `wnba_reconcile.py` remains the durable record.
 is not acting on them: there is still no order-placement code, the Kalshi
 client is still GET-only, and `COMPONENT_ROLE = "OBSERVER"` is still written
 into every log row and shown on the page.
+
+## 16. Arming window + late-start guard — addendum 2026-08-26
+
+Two defects found on night 1 (2026-08-25, see `NIGHT_2026-08-25.md`), both
+fixed before the second slate. Neither changes the frozen rule, the residual
+CDF, the thresholds or the canonical grading; both narrow WHEN the rule is
+allowed to speak.
+
+**1. Arm only inside the halftime break.** The rule armed on
+`(halftime or period >= 3)` while `E = a + b*pre + c*H1` uses the FIRST-half
+total and never updates. It therefore stayed armed for the rest of the game
+comparing a halftime snapshot against a market that had absorbed live
+scoring. On CHI@CONN it showed a 22c "edge" in Q3 while a time-updated
+version of this same model sat 0.6 pts from the market — the market had
+correctly priced 10 points scored in 72 seconds. Replayed over night 1, the
+old predicate armed on 408 polls and the new one on 81: **80% of armed polls
+were post-halftime drift.** All 81 retained polls are inside the break
+(26-28 per game, consistent with a 15-minute break at 30s polling).
+
+The grader of record was never affected — `wnba_reconcile.canonical_trade`
+takes the EARLIEST armed poll — so this changes no historical result. It
+removes noise from the log and stops the dashboard asserting edges that are
+an artefact of a stale E.
+
+**2. Late-start guard on `pre_L`.** `pre_L` freezes at the first poll where a
+game reads live and is never recomputed, so starting the monitor after tip
+would capture a MID-GAME ladder and label it "pregame", silently poisoning E
+for that game all night. The monitor now freezes `pre_L` only when the game
+is still in period 1 with no points on the board; otherwise it writes one
+`pre_L_missed` row and leaves the game unarmed for the session.
+
+Replayed over night 1: all three games had a qualifying fresh poll, so every
+`pre_L` would still have been captured, and nothing would have been flagged
+missed. The guard is protective without being restrictive when the monitor is
+started before tip — which remains the operating instruction.
+
+**New row type:** `pre_L_missed` {event, period, away_pts, home_pts, note}.
+An unarmed game is a recorded fact, not a silent gap.

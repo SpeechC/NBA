@@ -328,6 +328,7 @@ def main():
     pre_L = {}                 # event_ticker -> pregame L (frozen at first live)
     session = {}               # event_ticker -> {gid, would[], settled}
     results = {}               # event_ticker -> settled card (WIN/LOSS display)
+    pre_missed = set()         # events seen first AFTER tip -> never armed
 
     print(f"[monitor v2] role={COMPONENT_ROLE} poll={POLL_S}s "
           f"rule=E={RULE['a']:+.2f}+{RULE['b']:.3f}*pre+{RULE['c']:.3f}*H1")
@@ -483,7 +484,26 @@ def main():
                               "away_city", "home_city",
                               "away_pts", "home_pts", "h1")}
                     live = (gm.get("period") or 0) >= 1
-                    if live and evt not in pre_L:
+                    # LATE-START GUARD (added 2026-08-26, spec s16). pre_L is
+                    # frozen once and never recomputed, so starting the monitor
+                    # after tip would capture a MID-GAME ladder and label it
+                    # "pregame" -- silently poisoning E for the rest of the
+                    # night. Only freeze if the game is still in Q1 with
+                    # nothing on the board; otherwise mark it and stay disarmed.
+                    fresh = ((gm.get("period") or 0) == 1
+                             and not (gm.get("away_pts") or 0)
+                             and not (gm.get("home_pts") or 0))
+                    if live and evt not in pre_L and not fresh:
+                        if evt not in pre_missed:
+                            pre_missed.add(evt)
+                            loop_rows.append({
+                                "type": "pre_L_missed", "event": evt,
+                                "period": gm.get("period"),
+                                "away_pts": gm.get("away_pts"),
+                                "home_pts": gm.get("home_pts"),
+                                "note": "monitor started after tip; this game "
+                                        "cannot be armed"})
+                    if live and evt not in pre_L and fresh:
                         # freeze pregame L: median crossing on current ladder
                         q = [(l["strike"], (l["bid"] + l["ask"]) / 2)
                              for l in ladder
@@ -499,10 +519,16 @@ def main():
                                     (ps[i] - 0.5) / (ps[i] - ps[j]) \
                                     if ps[i] != ps[j] else xs[i]
                 would = []
+                # ARM ONLY INSIDE THE HALFTIME BREAK (fixed 2026-08-26, s16).
+                # E = a + b*pre + c*H1 uses the FIRST-half total and never
+                # updates, so arming through Q3/Q4 compares a halftime snapshot
+                # against a market that has absorbed live scoring. On night 1
+                # that produced a 22c phantom edge in Q3 on CHI@CONN while a
+                # time-updated version of this same model sat 0.6 pts from the
+                # market, and left 733 of 874 graded rows as drift.
                 halftime = bool(gm and gm.get("period") == 2 and
                                 str(gm.get("status", "")).lower().startswith("half"))
-                if gm and gm.get("h1") and evt in pre_L and \
-                        (halftime or (gm.get("period") or 0) >= 3):
+                if gm and gm.get("h1") and evt in pre_L and halftime:
                     E = RULE["a"] + RULE["b"] * pre_L[evt] + RULE["c"] * gm["h1"]
                     for l in ladder:
                         if l["bid"] is None or l["ask"] is None:
@@ -537,8 +563,7 @@ def main():
                 if would and evt in session:
                     session[evt]["would"].extend(would)
                 # ---- dashboard rows (every touchpoint, every poll) ---------
-                armed = bool(gm and gm.get("h1") and evt in pre_L and
-                             (halftime or (gm.get("period") or 0) >= 3))
+                armed = bool(gm and gm.get("h1") and evt in pre_L and halftime)
                 E_val = (RULE["a"] + RULE["b"]*pre_L[evt] + RULE["c"]*gm["h1"]) \
                         if armed else None
                 L_now = median_cross([(l["strike"],
