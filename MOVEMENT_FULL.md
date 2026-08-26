@@ -50,3 +50,92 @@ Bets graded from **2018-02-22** to **2026-04-12** (8183 games with a prediction)
 
 
 Seasons with a winning record: **6 of 10**. Seasons with positive CLV: **9 of 10**.
+
+---
+
+# P&L RE-CHECK 2026-08-26 — read-only, frozen signal untouched
+
+Run after the `cohesion` branch showed a statistical pass that did not trade.
+Nothing here modifies the estimator, weights, thresholds or rule. Reproduces
+`PREREG_move_combined` exactly (53.44% / +2.02% at ≥1.0; 54.42% / +3.90% at
+≥1.5), so the artifacts are intact.
+
+## The contrast with cohesion is the point
+
+| | MOVE_COMBINED | cohesion |
+|---|---|---|
+| evaluated on | **covers** (sign of actual−line) | points, then assumed to convert |
+| points of edge required at −110 | 1.071 | 0.775 |
+| points of edge available | **1.610** (mean \|m\| at ≥1.0) | 0.412 / 0.575 |
+| ratio available/required | **1.50×** | 0.53–0.74× |
+| implied hit rate | 53.58% | 51.27% |
+| **realised hit rate** | **53.44%** | 50.51% |
+| realised ROI | **+2.02%** | −3.56% |
+
+**MOVE_COMBINED does not have the cohesion pathology.** For a totals bet the
+cover *is* the sign of (actual − line), so this signal was always measured on
+the tradeable quantity. And realised 53.44% lands almost exactly on the implied
+53.58% — the model behaves as the arithmetic of a stale opener says it should.
+
+The tail diagnostic (outcome-conditioned, diagnostic only) shows no
+concentration pathology either: near the number 53.37%, middle 50.34%, blowout
+tail 56.62%. With ~595 bets per cell (se 2.05pp) these are mutually
+indistinguishable — the split is uninformative rather than damning, which is
+itself the answer: the edge is not confined to already-decided games the way
+cohesion's was.
+
+## But the P&L is still NOT statistically established
+
+```
+|m| >= 1.0   n=1,787  hit 53.44%  ROI +2.02%
+             hit 95% CI [51.12%, 55.76%]  ->  ROI 95% CI [-2.40%, +6.45%]  INCLUDES 0
+             z vs break-even +0.90   one-sided p = 0.1849
+
+|m| >= 1.5   n=814    hit 54.42%  ROI +3.90%
+             hit 95% CI [50.99%, 57.86%]  ->  ROI 95% CI [-2.66%, +10.46%]  INCLUDES 0
+```
+
+Season by season at ≥1.0: **54.98 / 48.24 / 55.96 / 54.33 / 53.89** — 2022 lost
+7.91% ROI over 369 bets. Equity path at ≥1.0: final +$3,618 against a **max
+drawdown of −$4,073 (41 units)**, 20% of the path below zero, worst point
+−$1,373. The confirmatory ≥1.5 cell is smoother (max drawdown 28 units, 3%
+below zero) but on half the bets.
+
+**This is exactly what `PREREG_move_combined` §2 fixed in advance:** ROI at
+53.44% needs ~17,500 bets ≈ 49 seasons to establish, so ROI "can never be the
+decision variable; it is secondary by necessity, not choice."
+
+## The primary endpoint is the one that IS established
+
+```
+CLV at |m| >= 1.0   n=1,792   mean +1.3367 pts   t = +16.42
+                    beat the close 62.2%, tied 6.3%
+  2021 +1.116 (t=+6.86)   2022 +1.067 (t=+6.32)   2023 +1.827 (t=+9.29)
+  2024 +1.390 (t=+7.10)   2025 +1.381 (t=+7.24)
+```
+
+**Positive in all five seasons, including the season that lost money.** That is
+the whole argument for CLV as the endpoint: 2022 returned −7.91% ROI while
+still beating the close by +1.067 points at t = +6.32. The signal was right
+about the number and wrong about the outcomes, which is what a real edge looks
+like over 369 bets.
+
+## A second arithmetic error, caught and corrected here
+
+My first pass computed the ROI confidence interval as `2.1·hit − 1`. The
+correct multiplier is `1 + 90.909/100 = 1.90909`. The wrong version reported
+the ≥1.0 ROI CI as [+7.36%, +17.10%] — excluding zero and implying an
+established edge. **The correct CI is [−2.40%, +6.45%], which includes zero.**
+Same family of slip as the cohesion §7 error: the point estimates were right
+and the conversion to a decision quantity was not.
+
+## Disposition — unchanged, and that was already the right call
+
+`PREREG_move_combined` already excludes live capital on this signal at a −110
+venue, on the grounds that the net edge at the decision threshold is ~1.1pp,
+inside single-season noise. This re-check confirms the number (+1.06pp realised
+at ≥1.0) and adds that the ROI interval includes zero. **Nothing changes.**
+
+The signal is real where it was claimed to be real — CLV, t = +16.42, five
+seasons out of five. It is unproven where it was always going to be unproven,
+and the prereg said so before the P&L existed.
