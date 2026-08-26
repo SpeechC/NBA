@@ -60,3 +60,54 @@ quarters (sportsbook quarter lines are not in our data and would need
 acquisition). Its prior should be poor — a 60% regularity this visible is the
 kind of thing a quarter-line maker prices first — but the gate that failed
 here was availability, not efficiency.
+
+---
+
+## ADDENDUM 2026-08-26 — the SYNTHETIC Q4 market (user's construction)
+
+Stage 2 failed on venue availability, but buying the TOTAL after Q3 is a
+synthetic Q4 bet: three quarters are banked, so `L_q3 - Q123` is the market's
+implied Q4 scoring. That venue does exist and does trade. Tested on the WNBA
+in-game candles, 119 non-OT games, end-of-Q3 window fixed before running
+(conv-38..-26 min, target -32; WNBA plays 10-minute quarters).
+
+### It is mostly the SAME staleness, measured later
+
+    L_q3 = a + 0.767*pre + 0.354*Q123        se 0.038,  (s-1)/se = -17.1
+
+Kalshi gives three banked quarters only **35%** weight — versus 28% at
+halftime. So the post-Q3 price is the halftime finding continued, not a new
+phenomenon: the market never catches up to the scoreboard at any checkpoint.
+Implied Q4 averages 42.12 against a realized 43.76 (**+1.64 points low**),
+which is the same direction and roughly the same size as the halftime lag.
+
+### The garbage-time asymmetry does NOT show through
+
+The Stage-1 mechanism predicts the gap should GROW with the Q3 lead (bigger
+lead -> more garbage time -> trailing team pads -> higher Q4). It does not:
+
+| Q3 lead | n | implied Q4 | actual Q4 | gap | t |
+|---|---|---|---|---|---|
+| 0-6 | 45 | 44.15 | 43.78 | -0.37 | -0.3 |
+| 6-12 | 26 | 40.16 | 45.38 | +5.22 | +2.6 |
+| **12+** | **48** | **41.28** | **42.85** | **+1.57** | **+1.1** |
+
+Non-monotone, and the largest-lead bucket — where Stage 1's effect is
+STRONGEST (61.1% at 20+ in the NBA) — shows the weaker gap. The 6-12 cell at
+t=2.6 is one bucket of three on 26 games; with the neighbours at -0.3 and
++1.1 it reads as noise, and promoting it would be exactly the cell-picking the
+program's phantom-book work exists to prevent.
+
+### Verdict
+
+The synthetic Q4 market is a real, tradable venue — the user was right that it
+exists where the explicit quarter market does not. But what it contains is the
+ALREADY-KNOWN in-game staleness, not a separately priced garbage-time
+omission. It therefore inherits that finding's fate: the halftime version of
+this exact edge failed on execution, and nothing here suggests the post-Q3
+version would fare differently, on a venue with the same ~15c in-game spreads.
+
+Closed as a distinct candidate. The staleness result itself already stands
+recorded in PREREG_kalshi_halftime.md s7 (the checkpoint trajectory), where
+Q3 was measured at s=0.629 in the NBA — consistent with the 0.354 here, given
+the WNBA is the thinner market.
