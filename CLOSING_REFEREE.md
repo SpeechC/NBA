@@ -135,3 +135,103 @@ monitor, do not act.
    7-day-block crew permutation is the inference of record.
 5. Coefficients on differently-scaled variables are not comparable. Use
    scale-invariant measures.
+
+---
+
+# P&L RE-CHECK 2026-08-26 — read-only, frozen signal untouched
+
+Fourth and last in the series applying one economic standard to every signal
+this program holds. Reproduces the table above exactly (986/404/1,390 graded
+bets, 55.07 / 54.21 / 54.82, +$5,064 / +$1,409 / +$6,473), so the artifacts are
+intact. Four checks are added.
+
+## 1. The corrected arithmetic FAVOURS this signal
+
+The conversion error found in `PREREG_cohesion` §7 — points → hit-rate uses
+`φ(0)/σ`, and the result must be **compared** to break-even, not added to it —
+applied here:
+
+```
+sd(actual - close)                 18.06   ->  2.21pp per point
+-110 requires                              1.078 POINTS of edge
+realised mean (actual - close) in the firing tail   +1.607 points
+                                           = 1.49x what is required
+implied hit 53.55%      realised 54.82%
+```
+
+CrewShock has **1.49× the points of edge −110 demands** — essentially the same
+ratio as MOVE_COMBINED (1.50×), and against cohesion's 0.53–0.74×. Realised
+beats implied, rather than falling short of it.
+
+## 2. ROI intervals — the closest to established in this program, still not there
+
+| window | bets | hit | ROI | z | ROI 95% CI |
+|---|---|---|---|---|---|
+| development | 986 | 55.07% | +5.14% | +1.69 | [−0.82%, +11.09%] |
+| holdout | 404 | 54.21% | +3.49% | +0.73 | [−5.82%, +12.80%] |
+| **pooled** | **1,390** | **54.82%** | **+4.66%** | **+1.82** | **[−0.36%, +9.67%]** |
+| pooled at OPEN | 1,396 | 54.08% | +3.25% | +1.27 | [−1.76%, +8.26%] |
+
+The pooled interval misses zero by **0.36pp**. This is the nearest any signal in
+this program comes to an established P&L — and it still does not clear a 95%
+bar. The existing text was right: ~3,294 bets ≈ 19 seasons.
+
+Six of eight seasons profitable; 2017-18 −10.77% and 2025-26 −3.74%. Equity
+path: final +$6,473, max drawdown −$2,582 (26 units), 25% of the path below
+zero.
+
+## 3. Tail diagnostic — the edge is available AT THE LINE
+
+| \|actual − close\| | bets | hit | ROI | z |
+|---|---|---|---|---|
+| **near the number** | 474 | **55.49%** | **+5.93%** | +1.35 |
+| middle | 474 | 53.16% | +1.50% | +0.34 |
+| blowout tail | 442 | 55.88% | +6.68% | +1.47 |
+
+**This is the opposite of the cohesion pathology.** There the near-the-number
+cell was flat (t = +0.52) and the whole effect sat in blowouts, so it could not
+be monetised. Here the near-the-number cell is the second strongest. A
+free-throw-mediated effect shifts the whole distribution, including the part
+that decides covers.
+
+## 4. CLV is ~ZERO — and that is the CONFIRMATION, not a failure
+
+```
+mean (close - open) on firing games   +0.0813 pts   t = +0.94
+                    non-firing        -0.0522 pts
+                    difference        +0.1335 pts
+```
+
+The line barely moves on these games. For every other signal in this program a
+null CLV would be damning. **Here it is the finding**: `c_market` is
+statistically zero, the market never prices the crew, and the 4.6% headline is
+exactly this. The edge is not competed away between open and close because
+nobody is competing for it.
+
+## The two structurally different edge types this series exposed
+
+| | mechanism | CLV | outcome P&L |
+|---|---|---|---|
+| **MOVE_COMBINED** | forecast the market's own move | **+1.337, t = +16.42** | +2.02%, CI includes 0 |
+| **injury B** | forecast the market's own move | +0.775, t = +7.93 | **−8.04%**, CI excludes 0 |
+| **CrewShock** | exploit a permanent omission | **~0**, t = +0.94 | **+4.66%**, CI [−0.36%, +9.67%] |
+| **cohesion** | (no movement claim) | n/a | −3.56% |
+
+Two distinct kinds of edge, and they should never again be evaluated on the
+same endpoint:
+
+- **Movement forecasting** earns CLV by anticipating a move that is going to
+  happen anyway. Injury B is the proof that this can be strong on CLV and
+  *significantly negative* on outcomes at the same time.
+- **Permanent omission** earns no CLV at all — the line never moves — and pays
+  only in outcomes. CrewShock is the only signal here of this type, and it has
+  both the best ROI and the best near-the-number behaviour.
+
+## Disposition — unchanged
+
+Nothing modified. The existing verdict stands and is now better supported:
+**the science is stronger than the economics.** The added checks say the
+economics are better than the rest of this program's, and still short of
+established. The documented 2025-26 weakness
+(`REFEREE_PROPENSITY_PERSISTENCE_WEAKENED`, −3.74% that season) remains the
+live concern — monitor, do not act.
