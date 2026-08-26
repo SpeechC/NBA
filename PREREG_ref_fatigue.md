@@ -99,3 +99,53 @@ switching to spreads.
 - individual-official effects (that is CrewShock's territory, already frozen)
 - promoting a wrong-signed result
 - any Kalshi/derivative expression from this document
+
+---
+
+## 7. RESULT — run once, 2026-08-26. Verdict: NULL, branch closes
+
+5,066 games after the 10-prior-game warm-up (dev 3,729 / holdout 1,337).
+Frozen dev Q75 of CREW_LOAD7 = 7.0; CREW_FATIGUE fires on 680 games (13.4%),
+identically in dev and holdout.
+
+**Positive control PASSES**: CrewShock -> fouls on this exact sample and
+estimator gives +1.0619, t = +10.63 (bar was |t| >= 4). The harness detects a
+real officiating effect; the fatigue null is therefore a finding, not broken
+plumbing.
+
+### The chain (development)
+
+| link | coef | t | predicted |
+|---|---|---|---|
+| 1 fatigue -> fouls | **+0.5815** | 1.95 | negative |
+| 2 fatigue -> FTA | +0.4932 | 0.97 | negative |
+| 3 fatigue -> ACTUAL total | +0.8970 | 1.00 | negative |
+| 4 fatigue -> CLOSING total | +0.2180 | 0.99 | ~zero |
+| 5 fatigue -> closing residual | +0.6790 | 0.78 | negative |
+
+Permutation on link 5: **p = 0.4227**. Holdout link 5 +1.0385 (t = 0.73).
+
+### Decision
+
+Three of five criteria fail. Links 1-3 are not merely insignificant but
+**positively signed** — the opposite of the committed direction. Per section 2
+that is a REFUTATION of the stated mechanism; the sign is not relabelled and
+no "fatigue raises whistles" variant is pursued under this document. The only
+two criteria that pass are the ones a null trivially satisfies (link 4 absent,
+holdout agreeing in a sign that is itself wrong).
+
+Worth recording honestly: link 1 at t = 1.95 is the largest cell, and a
+results-first program would have flipped the hypothesis and called it
+"fatigued crews call MORE fouls." Its permutation-tested descendant (link 5)
+sits at p = 0.42, so that story would not have survived either.
+
+### What this closes and what it does not
+
+Closed: **crew-level SCHEDULE fatigue as a totals signal**, on this data, with
+these definitions. Not closed, and deliberately out of scope here: individual
+official heterogeneity (CrewShock, already frozen and working) and any
+non-schedule officiating state.
+
+The inattention framework survives the null intact — it predicts WHERE to
+look, not that every unattended input is priced wrong. Referee rest is
+genuinely unattended by the market; it also appears not to matter.
