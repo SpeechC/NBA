@@ -303,3 +303,102 @@ fragile one looks like.
 not exist in this store and 2026-27 has not been played. Nothing should be
 traded on this before the feature is frozen, written down with its exact
 construction, and run forward on data that does not exist yet.
+
+---
+
+# P&L ADDENDUM — run 2026-08-26. **The finding does not trade.**
+
+## The strategy loses money in every form and every period
+
+Rule: bet the side with higher prior-only cohesion. $100/game at −110
+(break-even 52.381%). No threshold, no sizing — §4 forbids threshold selection.
+
+| period | bets | hit | profit | ROI | vs break-even |
+|---|---|---|---|---|---|
+| development (5 seasons) | 5,557 | 50.46% | −$20,391 | −3.67% | −1.92pp |
+| holdout 2023-24 | 1,171 | 49.96% | −$5,418 | −4.63% | −2.42pp |
+| holdout 2024-25 | 1,165 | 49.61% | −$6,155 | −5.28% | −2.77pp |
+| **holdout pooled** | **2,336** | **49.79%** | **−$11,573** | **−4.95%** | −2.59pp |
+| full sample | 7,893 | 50.26% | −$31,964 | −4.05% | −2.12pp |
+
+The naive rule is partly betting favourites (`corr(C_diff, sp_close) = −0.40`).
+Residualising `C_diff` on the controls — the form the coefficient actually
+describes, fitted on development, applied to holdout — does not save it:
+
+| residualised rule | bets | hit | profit | ROI |
+|---|---|---|---|---|
+| development | 5,557 | 50.13% | −$23,827 | −4.29% |
+| holdout | 2,336 | 50.51% | −$8,327 | −3.56% |
+
+Holdout 95% CI [48.49%, 52.54%], z = −1.80 against break-even.
+
+The |C_diff| quintiles are non-monotone — +0.33%, −8.80%, **−12.96%**, −7.61%,
++4.32% — which is noise, not dose-response. A real tradeable edge rises with
+signal strength.
+
+## AN ERROR IN §7 THAT I MUST CORRECT
+
+§7 reported "1.27pp edge over the 52.38% break-even → 53.65% hit rate." **That
+is wrong.** The density conversion gives the probability shift **from 50%**, so
+0.412 points → **51.27%**, which must then be *compared* to break-even, not
+added to it. The correct reading is 51.27% against a required 52.38% —
+**already unprofitable, by 1.11pp.**
+
+Restated correctly:
+
+```
+break-even at -110                     52.381%
+required shift from 50%                 2.381pp
+density                                 3.073pp per point of spread edge
+POINTS OF EDGE REQUIRED                 0.775
+points of edge observed                 0.412 (dev) / 0.575 (holdout)
+```
+
+**The effect is roughly half to three-quarters of what −110 demands.** It never
+implied a profitable strategy; I mis-stated the arithmetic, and the P&L above
+is what that error was hiding.
+
+## Why it fails even beyond the arithmetic — the effect is in the tail
+
+Splitting by the realised margin (outcome-conditioned, so **diagnostic only**,
+never a predictive claim):
+
+| where | n | beta | t | mean abs dev_s |
+|---|---|---|---|---|
+| near the number | 2,694 | +0.0636 | +0.52 | 2.5 |
+| middle | 2,669 | +0.1128 | +0.30 | 8.5 |
+| **blowout tail** | 2,682 | **+2.8247** | **+3.28** | 19.7 |
+
+**The entire effect lives in games that were already decided.** Cohesion widens
+blowouts; it does not move covers. Directly:
+
+```
+cover-probability ~ C_diff:   development +0.0311 (t = +2.07)
+                              holdout     +0.0164 (t = +0.79)   <- not significant
+```
+
+This is the same structural lesson this program recorded for overtime and
+garbage time: **a mean effect overstates the betting edge when the effect sits
+in the tail rather than at the line.**
+
+## Revised disposition
+
+`PREREG_cohesion` P1 **passes on its registered terms** — `C_diff` genuinely
+predicts `dev_s`, on holdout, robust across the parameter grid. That result
+stands and is not withdrawn.
+
+But the registered target was a **continuous margin residual**, and a
+coefficient on points is not an edge on covers. **There is no strategy here.**
+The correct summary is:
+
+> Lineup familiarity has a real, out-of-sample, unpriced effect on margin of
+> about 0.4–0.6 points — which is below the ~0.78 points −110 requires, and
+> which is concentrated in blowouts where it cannot be monetised.
+
+Nothing is to be traded on this. The feature's remaining value is as a
+**candidate control** in other models, not as a signal.
+
+**A process lesson, recorded:** the economic translation should be computed at
+the same time as the statistical one, not after. Had §7's arithmetic been done
+correctly, this branch would have been reported as unprofitable at the moment
+P1 passed.
