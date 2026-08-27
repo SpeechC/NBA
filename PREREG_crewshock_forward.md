@@ -137,3 +137,33 @@ the record cannot be quietly revised.
 - BigDataBall must land before the next day's run or histories go stale by a
   day. The runbook treats a stale-history run as a hard stop.
 - A single vendor's closing total, as throughout.
+
+### A GLOBALLY-TRUE / LOCALLY-FALSE risk, added 2026-08-26
+
+**The frozen threshold is not a frozen selectivity.** `CrewShock >= 0.8682` was
+fixed as the development Q85, but the statistic's own spread moves across
+seasons, so what the threshold SELECTS does not stay fixed:
+
+| season | 17-18 | 18-19 | 20-21 | 21-22 | 22-23 | 23-24 | 24-25 | 25-26 |
+|---|---|---|---|---|---|---|---|---|
+| fires | 92 | 220 | 142 | 210 | 195 | 139 | 167 | **238** |
+| share | 7.5% | 17.9% | 13.1% | 17.1% | 15.9% | 12.0% | 14.3% | **20.5%** |
+
+Firing share ranges **7.5% to 20.5% (2.74x)**; season CrewShock sd ranges
+0.574 to 0.912 (1.59x). `CLOSING_REFEREE` rule 1 already records that a frozen
+threshold against a moving spread "bit twice" — it is recorded here as a
+FORWARD risk before 2026-27 rather than diagnosed afterwards.
+
+**Consequence, fixed now:** the 2026-27 firing count and share are reported
+alongside every result, and a bet count far outside the historical 92-238 band
+is a **data/regime flag, not a finding**. The threshold itself is NOT adjusted
+under any circumstance — doing so would unfreeze the signal. If selectivity
+lands outside the band, M1 is still read on its own §4 rule, and the P&L is
+reported with the caveat that its marginal games are not comparable to the
+historical set.
+
+**Related, and it makes §6 weaker than it looks:** the P&L's implied precision
+assumes independent bets. It has 1,403 firing games across only 843 nights and
+104 officials — about 40 firings per official, each driven by the SAME 60-game
+estimate. Effective n is below nominal, so "~3,294 bets / ~19 seasons" is the
+optimistic bound, not the honest one.
