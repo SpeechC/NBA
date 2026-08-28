@@ -496,13 +496,20 @@ def main():
                     if live and evt not in pre_L and not fresh:
                         if evt not in pre_missed:
                             pre_missed.add(evt)
-                            loop_rows.append({
+                            # write DIRECTLY to f: loop_rows was already
+                            # flushed at the top of this with-block, so an
+                            # append here would be silently discarded on the
+                            # next iteration (the v2.3 bug -- the guard fired
+                            # correctly on 26AUG27GSNY but left no record).
+                            f.write(json.dumps({
+                                "ts_utc": dt.datetime.utcnow().isoformat(),
                                 "type": "pre_L_missed", "event": evt,
+                                "component_role": COMPONENT_ROLE,
                                 "period": gm.get("period"),
                                 "away_pts": gm.get("away_pts"),
                                 "home_pts": gm.get("home_pts"),
-                                "note": "monitor started after tip; this game "
-                                        "cannot be armed"})
+                                "note": "first seen after tip; not armed "
+                                        "this session"}) + "\n")
                     if live and evt not in pre_L and fresh:
                         # freeze pregame L: median crossing on current ladder
                         q = [(l["strike"], (l["bid"] + l["ask"]) / 2)
