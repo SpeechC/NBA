@@ -329,6 +329,7 @@ def main():
     session = {}               # event_ticker -> {gid, would[], settled}
     results = {}               # event_ticker -> settled card (WIN/LOSS display)
     pre_missed = set()         # events seen first AFTER tip -> never armed
+    pre_prov = {}              # event_ticker -> rolling pregame L (s17)
 
     print(f"[monitor v2] role={COMPONENT_ROLE} poll={POLL_S}s "
           f"rule=E={RULE['a']:+.2f}+{RULE['b']:.3f}*pre+{RULE['c']:.3f}*H1")
@@ -484,17 +485,48 @@ def main():
                               "away_city", "home_city",
                               "away_pts", "home_pts", "h1")}
                     live = (gm.get("period") or 0) >= 1
-                    # LATE-START GUARD (added 2026-08-26, spec s16). pre_L is
-                    # frozen once and never recomputed, so starting the monitor
-                    # after tip would capture a MID-GAME ladder and label it
-                    # "pregame" -- silently poisoning E for the rest of the
-                    # night. Only freeze if the game is still in Q1 with
-                    # nothing on the board; otherwise mark it and stay disarmed.
+                    quotes = [(l["strike"], (l["bid"] + l["ask"]) / 2)
+                              for l in ladder
+                              if l["bid"] is not None and l["ask"] is not None]
+                    # ROLLING PREGAME LINE (added 2026-08-29, spec s17).
+                    # pre_L is a PREGAME quantity, so take it from the pregame
+                    # board instead of waiting for tip. Every pre-tip poll
+                    # overwrites a provisional line and the last one standing
+                    # is frozen the moment the game goes live. The old rule
+                    # froze only at period==1 with the score still 0-0, a
+                    # window the 35s poll missed in 4 of the first 6 games --
+                    # disqualifying two thirds of the season on poll cadence,
+                    # not on any absence of data.
+                    if not live and evt not in pre_L:
+                        Lp = median_cross(quotes)
+                        if Lp is not None:
+                            pre_prov[evt] = Lp
+                    # LATE-START GUARD (added 2026-08-26, spec s16), retained.
+                    # pre_L is frozen once and never recomputed, so a monitor
+                    # started after tip would capture a MID-GAME ladder and
+                    # label it "pregame", silently poisoning E for the rest of
+                    # the night. With no pregame provisional and the game
+                    # already under way, mark it and stay disarmed.
                     fresh = ((gm.get("period") or 0) == 1
                              and not (gm.get("away_pts") or 0)
                              and not (gm.get("home_pts") or 0))
-                    if live and evt not in pre_L and not fresh:
-                        if evt not in pre_missed:
+                    if live and evt not in pre_L:
+                        src = Lp = None
+                        if evt in pre_prov:
+                            src, Lp = "pregame_last", pre_prov[evt]
+                        elif fresh:
+                            src, Lp = "tip_0_0", median_cross(quotes)
+                        if Lp is not None:
+                            pre_L[evt] = Lp
+                            f.write(json.dumps({
+                                "ts_utc": dt.datetime.utcnow().isoformat(),
+                                "type": "pre_L_frozen", "event": evt,
+                                "component_role": COMPONENT_ROLE,
+                                "pre_L": Lp, "source": src,
+                                "period": gm.get("period"),
+                                "away_pts": gm.get("away_pts"),
+                                "home_pts": gm.get("home_pts")}) + "\n")
+                        elif not fresh and evt not in pre_missed:
                             pre_missed.add(evt)
                             # write DIRECTLY to f: loop_rows was already
                             # flushed at the top of this with-block, so an
@@ -508,23 +540,9 @@ def main():
                                 "period": gm.get("period"),
                                 "away_pts": gm.get("away_pts"),
                                 "home_pts": gm.get("home_pts"),
-                                "note": "first seen after tip; not armed "
-                                        "this session"}) + "\n")
-                    if live and evt not in pre_L and fresh:
-                        # freeze pregame L: median crossing on current ladder
-                        q = [(l["strike"], (l["bid"] + l["ask"]) / 2)
-                             for l in ladder
-                             if l["bid"] is not None and l["ask"] is not None]
-                        if len(q) >= 4:
-                            xs = [float(a) for a, _ in q]
-                            ps = [b for _, b in q]
-                            ab = [i for i, p in enumerate(ps) if p >= 0.5]
-                            bl = [i for i, p in enumerate(ps) if p < 0.5]
-                            if ab and bl and max(ab) < min(bl):
-                                i, j = max(ab), min(bl)
-                                pre_L[evt] = xs[i] + (xs[j] - xs[i]) * \
-                                    (ps[i] - 0.5) / (ps[i] - ps[j]) \
-                                    if ps[i] != ps[j] else xs[i]
+                                "note": "no pregame ladder captured and game "
+                                        "already under way; not armed this "
+                                        "session"}) + "\n")
                 would = []
                 # ARM ONLY INSIDE THE HALFTIME BREAK (fixed 2026-08-26, s16).
                 # E = a + b*pre + c*H1 uses the FIRST-half total and never

@@ -324,3 +324,71 @@ started before tip — which remains the operating instruction.
 
 **New row type:** `pre_L_missed` {event, period, away_pts, home_pts, note}.
 An unarmed game is a recorded fact, not a silent gap.
+
+## 17. Rolling pregame line — addendum 2026-08-29 (per the change rule)
+
+s16's late-start guard froze `pre_L` only when a game read live in period 1
+with no points on the board. That predicate was validated on night 1, where
+all three games happened to produce a qualifying poll. Four nights of data
+show it does not hold: at a 35s poll and with WNBA teams typically scoring
+inside 20 seconds, **the 0-0 window is a coin flip.**
+
+| game | polls in period 1 | polls at 0-0 |
+|---|---|---|
+| 26AUG27WSHPHX | 47 | 3 |
+| 26AUG28PDXATL | 42 | 3 |
+| 26AUG27GSNY | 42 | **0** |
+| 26AUG28CONNIND | 46 | **0** |
+| 26AUG28WSHLA | 42 | **0** |
+| 26AUG28TORLV | 39 | **0** |
+
+Four of six games were disqualified on poll cadence alone. This was never a
+data problem: CONN@IND sat on the board with a quoted ladder for a full day
+before tip and still never received a line. The monitor was healthy
+throughout — 8h continuous on the night of 28 Aug, zero polling gaps over
+90s, dashboard rewritten every poll. What was frozen was the *content*: three
+of four games showed "model arms at halftime" all night, including through
+their own halftimes, because `pre_L` was never captured.
+
+**The change.** `pre_L` is a PREGAME quantity, so it is now taken from the
+pregame board rather than from a moment defined relative to tip. Every
+pre-tip poll overwrites a provisional line (`pre_prov`, median crossing on
+the current ladder); the last one standing is frozen the instant the game
+reads live and is never recomputed thereafter. The old tip-time capture is
+retained as a fallback for a monitor started between tip and the first
+basket (`source: "tip_0_0"`).
+
+**The s16 guard is retained unchanged in effect.** With no pregame
+provisional AND the game already under way, the monitor writes one
+`pre_L_missed` row and leaves the game unarmed for the session. A monitor
+started mid-game still cannot mislabel a live ladder as pregame — which was
+the whole point of s16.
+
+**Replay over all four logged nights (9 games):**
+
+| | old rule | s17 |
+|---|---|---|
+| `pre_L` captured | 2 / 9 | **9 / 9** |
+| unarmed for want of a line | 7 | 0 |
+
+Critically, on the two games where both rules fire the value barely moves —
+WSH@PHX 165.30 → 165.68, PDX@ATL 178.64 → 178.86. **The fix changes the
+availability of the measurement, not the measurement.** That is the
+condition under which widening a capture window is legitimate rather than a
+silent redefinition, and it is stated here so it can be checked.
+
+Sample rate for the remaining ~6 weeks goes up roughly 4.5x. No historical
+result changes: `wnba_reconcile.canonical_trade` remains the grader of
+record, and no already-graded trade had its `pre_L` altered.
+
+**New row type:** `pre_L_frozen` {event, pre_L, source, period, away_pts,
+home_pts}, where `source` is `pregame_last` or `tip_0_0`. A captured line is
+now a recorded fact with a stated provenance, symmetric with `pre_L_missed`.
+`pre_L_missed`'s note text changes to reflect the new predicate.
+
+**Standing caveat, unchanged by this addendum.** Raising the sample rate
+raises the rate of *observations*, not of edge. Through four nights the
+ledger is 5 graded entries, and the only game in which the model materially
+disagreed with the market and was right is PDX@ATL (E 181.03, market L
+177.67, realized 184). s17 buys statistical power to settle the question
+sooner; it is not evidence for either answer.
