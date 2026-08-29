@@ -300,10 +300,11 @@ series **KXNBATOTAL**, 1-minute candles, 1,256,843 rows over 62 game-dates
 (2025-10-21 → 2025-12-22, ending at the documented CDN wall). Tip times joined
 from `tipoffs_espn.csv`: **4,719 / 4,719 markets matched**.
 
-**Data trap, recorded:** this store prices in **CENTS (0–100)** while
-`kalshi_wnba_candles.sqlite` prices in **DOLLARS (0–1)**. A near-the-money
-filter written for one silently returns zero rows on the other — it did here
-before it was caught.
+**Data trap, recorded:** this store prices in **CENTS (0–100)**. Other Kalshi
+capture stores in this project price in **DOLLARS (0–1)**, so a near-the-money
+filter carried over from one silently returns zero rows on the other — it
+returned zero on 691,234 quotes here before it was caught. Check the price
+units before every Kalshi query.
 
 ### The spread is 2c and FLAT across the whole pregame window
 
