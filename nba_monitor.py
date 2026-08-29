@@ -1,4 +1,4 @@
-"""NBA MONITOR 2026-27 — four signals, one slate, LOG ONLY.
+"""NBA MONITOR 2026-27 — five signals, one slate, LOG ONLY.
 
 =============================================================================
  THIS PROGRAM PLACES NO BETS. No order-placement code exists here and none is
@@ -6,7 +6,7 @@
 =============================================================================
 
 SIGNALS, and their status is NOT uniform — this is the whole point of the
-layout. Three may be actioned; one may not.
+layout. Three may be actioned; TWO may not.
 
   CrewShock      FROZEN / validated. OVER when CrewShock >= 0.8682.
                  CLOSING_REFEREE.md. Pooled 54.82%, ROI +4.66%,
@@ -24,6 +24,14 @@ layout. Three may be actioned; one may not.
   MOVE_COMBINED  FROZEN. m = 0.0337 + 0.8402*ridge + 0.6869*latent,
                  |m| >= 1.0 primary / 1.5 confirmatory. CLV is the endpoint;
                  ROI CI includes zero (MOVEMENT_FULL.md).
+  roll7          *** UNTESTED — DISPLAY ONLY, NEVER ACTIONED ***
+                 Trailing 7-CALENDAR-DAY rolling mean of (actual - closing)
+                 per team, strictly prior. A RECENT-FORM signal with no prereg
+                 and no result in this program. Distinct from final7, which is
+                 an END-OF-SEASON window, not a rolling one. Prior is poor:
+                 BETTING_TOTALS.md has every totals variant at ~50% / ROI -4
+                 to -5%, and CLOSING.md's lesson is that predictability of
+                 basketball is not predictability of market error.
 
 CALENDAR WINDOWS COME FROM THE PUBLISHED SCHEDULE, NOT FROM PLAYED GAMES.
 `days_left` was defined in backtest as max(season date) - date. Live you do
@@ -66,7 +74,9 @@ STATUS = {
     "final7": ("VALIDATED 55.29% OOS", True),
     "pre_asb3": ("NOT VALIDATED (family-wise p=0.0712)", False),   # never action
     "move_combined": ("FROZEN", True),
+    "roll7": ("UNTESTED — no prereg, no result in this program", False),
 }
+ROLL7_DAYS = 7             # rolling calendar window. UNTESTED.
 
 
 def load_schedule(path=SCHEDULE_CSV):
@@ -116,6 +126,56 @@ def calendar_flags(day, cal):
         out["days_to_break"] = dtb
         out["pre_asb3"] = 0 <= dtb <= PRE_ASB_DAYS - 1
     return out
+
+
+def panel_roll7(day, boxscore_paths, window_days=7):
+    """Trailing ROLLING window of overs. *** UNTESTED IN THIS PROGRAM ***
+
+    Definition, fixed here so it is not re-chosen later: for each team, the mean
+    of (actual_total - closing_total) over that team's games in the trailing
+    `window_days` CALENDAR days, strictly BEFORE `day`. Prior-only. The game
+    figure is the mean of the two teams' values; the over-rate and the game
+    count travel with it because a 2-game window and a 6-game window are not
+    the same evidence.
+
+    This is a RECENT-FORM signal and it has never been pre-registered or tested
+    here. This program's own record gives it a poor prior: BETTING_TOTALS.md
+    shows every totals variant at ~50% and ROI -4% to -5%, and CLOSING.md's
+    headline lesson is that predictability of basketball is not predictability
+    of market error. DISPLAY ONLY until it has its own prereg.
+    """
+    from prepare_data import read_master, season_label
+    frames = []
+    for p in [q for q in boxscore_paths if q and os.path.exists(q)]:
+        raw = pd.read_csv(p, low_memory=False)
+        raw = raw[season_label(raw).astype(str).str.contains(
+            "Regular Season|In-Season", na=False)].copy()
+        tot = pd.to_numeric(raw["CLOSING TOTAL_H"], errors="coerce")
+        act = (pd.to_numeric(raw["PTS_H"], errors="coerce")
+               + pd.to_numeric(raw["PTS_R"], errors="coerce"))
+        f = pd.DataFrame({"date": pd.to_datetime(raw["DATE"], errors="coerce"),
+                          "home": raw["TEAM_H"].astype(str).str.strip(),
+                          "away": raw["TEAM_R"].astype(str).str.strip(),
+                          "close": tot, "actual": act})
+        frames.append(f.dropna(subset=["date", "close", "actual"]))
+    if not frames:
+        return None, "no box-score file available"
+    g = pd.concat(frames, ignore_index=True)
+    g["dev"] = g.actual - g.close
+    day = pd.Timestamp(day)
+    lo = day - pd.Timedelta(days=window_days)
+    w = g[(g.date >= lo) & (g.date < day)]                 # strictly prior
+    if w.empty:
+        return None, (f"no completed games in the {window_days}d window "
+                      f"{lo.date()}..{(day - pd.Timedelta(days=1)).date()}")
+    long = pd.concat([w[["home", "dev"]].rename(columns={"home": "team"}),
+                      w[["away", "dev"]].rename(columns={"away": "team"})])
+    per = long.groupby("team").dev.agg(["mean", "size"])
+    per["over_rate"] = long.groupby("team").dev.apply(lambda s: (s > 0).mean())
+    note = (f"window {lo.date()}..{(day - pd.Timedelta(days=1)).date()}  "
+            f"{len(w)} league games  league mean dev {w.dev.mean():+.2f}  "
+            f"over-rate {100*(w.dev > 0).mean():.1f}%")
+    return per, note
 
 
 def panel_crewshock(day, boxscore_paths):
@@ -189,6 +249,27 @@ def run(day, preseason=False, lines_csv=LINES_CSV):
     print(f" [3] pre_asb3      days_to_break={flags['days_to_break']}  "
           f"-> {'IN WINDOW' if flags['pre_asb3'] else 'no'}")
     print(f"     *** {STATUS['pre_asb3'][0]} — DISPLAY ONLY, NEVER ACTIONED ***")
+
+    # ---- roll7 (rolling 7-day overs) ---------------------------------------
+    print(f"\n [5] roll7  trailing {ROLL7_DAYS}-day overs  "
+          f"({STATUS['roll7'][0]})")
+    per, rnote = panel_roll7(day, (BOXSCORE_HIST, BOXSCORE_CURRENT), ROLL7_DAYS)
+    print(f"     {rnote}")
+    if per is not None:
+        tm = sorted(set(today.home_abbr.tolist() + today.away_abbr.tolist())) \
+            if len(today) else []
+        show = per.sort_values("mean", ascending=False)
+        head = show.head(5); tail = show.tail(3)
+        print(f"     {'team':<16}{'mean dev':>10}{'games':>7}{'over%':>8}")
+        for lab, blk in (("hottest", head), ("coldest", tail)):
+            for t, r in blk.iterrows():
+                print(f"     {t:<16}{r['mean']:>+10.2f}{int(r['size']):>7}"
+                      f"{100*r['over_rate']:>8.0f}")
+        for t, r in per.iterrows():
+            rows.append({"signal": "roll7", "team": t, "mean_dev": float(r["mean"]),
+                         "games": int(r["size"]),
+                         "action": "DISPLAY_ONLY_UNTESTED"})
+    print(f"     *** {STATUS['roll7'][0]} — DISPLAY ONLY, NEVER ACTIONED ***")
 
     # ---- CrewShock ----------------------------------------------------------
     print(f"\n [1] CrewShock  ({STATUS['crewshock'][0]}, threshold {CREW_THR})")

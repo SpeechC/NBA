@@ -3,7 +3,7 @@
 **Places no bets.** `nba_monitor.py` has no order-placement code and none is to
 be added. It prints a table and appends to `nba_monitor_log.jsonl`. Structural.
 
-## The four signals do NOT share a status. This is the point of the layout.
+## The five signals do NOT share a status. This is the point of the layout.
 
 | # | signal | status | rule | source |
 |---|---|---|---|---|
@@ -11,6 +11,18 @@ be added. It prints a table and appends to `nba_monitor_log.jsonl`. Structural.
 | 2 | **final7** | **VALIDATED** 55.29% OOS, 454 bets, 97.2nd pct null, 7/8 seasons | OVER when `days_left <= 7` | `CLOSING.md` |
 | 3 | **pre_asb3** | **NOT VALIDATED** — family-wise `p = 0.0712` | **display only, never actioned** | `CLOSING.md` |
 | 4 | **MOVE_COMBINED** | FROZEN | `m = 0.0337 + 0.8402·ridge + 0.6869·latent`, \|m\| ≥ 1.0 / 1.5 | `PREREG_move_combined.md` |
+| 5 | **roll7** | **UNTESTED** — no prereg, no result here | **display only, never actioned** | new |
+
+**On signal 5.** A trailing **7-calendar-day rolling** mean of
+`actual_total − closing_total` per team, strictly prior. This is a different
+thing from `final7`, which is an end-of-season window. It has never been tested
+in this program and its prior is poor: `BETTING_TOTALS.md` shows every totals
+variant at ~50% with ROI −4% to −5%, and `CLOSING.md`'s headline lesson is that
+predictability of basketball is not predictability of market error. The monitor
+displays it with the game count and over-rate attached — a 2-game window and a
+6-game window are not the same evidence — and emits
+`DISPLAY_ONLY_UNTESTED`. It needs its own pre-registration before it can be
+actioned.
 
 **On signal 3.** `CLOSING.md` records 60.47% over on the pre-All-Star 3-day
 window — but it was the best of seven pre-specified regimes and does not clear
