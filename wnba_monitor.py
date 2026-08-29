@@ -27,7 +27,7 @@ KALSHI_DIR = r"D:\Kalshi" if os.name == "nt" else "/mnt/d/Kalshi"
 OUT_DIR = r"D:\Kalshi\wnba_monitor" if os.name == "nt" else "/mnt/d/Kalshi/wnba_monitor"
 REPO = r"D:\Kalshi" if os.name == "nt" else "/mnt/d/Kalshi"
 SERIES = "KXWNBATOTAL"
-POLL_S = 30
+POLL_S = 20                              # spec s2: 20s in-game (s19)
 MAX_HOURS = 9
 IDLE_STOP_MIN = 120
 THRESHOLDS = (0.03, 0.05, 0.08)          # labels, not knobs (spec s4)
@@ -411,6 +411,9 @@ def main():
               "frozen_rule": RULE, "thresholds": THRESHOLDS, "poll_s": POLL_S}
     wrote_header = set()
     while time.time() - t0 < MAX_HOURS * 3600:
+        loop_t0 = time.time()          # s19: cadence is measured from
+                                       # loop START, so POLL_S is the
+                                       # actual period, not period+work
         day = dt.datetime.utcnow().strftime("%Y%m%d")
         path = os.path.join(OUT_DIR, f"monitor2_{day}.jsonl")
         if day not in wrote_header:
@@ -493,7 +496,7 @@ def main():
             ms = r.get("markets", [])
         except Exception as ex:                                # noqa: BLE001
             print(f"[monitor] kalshi ERR {ex}")
-            time.sleep(POLL_S)
+            time.sleep(max(0.0, POLL_S - (time.time() - loop_t0)))
             continue
         if not ms:
             if loop_rows:                     # never drop a settlement row
@@ -519,7 +522,7 @@ def main():
             if time.time() - idle_since > IDLE_STOP_MIN * 60:
                 print("[monitor] idle too long — stopping.")
                 break
-            time.sleep(POLL_S)
+            time.sleep(max(0.0, POLL_S - (time.time() - loop_t0)))
             continue
         idle_since = None
         by_event = {}
@@ -761,7 +764,7 @@ def main():
               f"{sum(1 for e in dash_events if e['state'])}"
               f"{'  settled ' + str(len(results)) if results else ''}"
               f"{'  s3:' + pub if pub else ''}")
-        time.sleep(POLL_S)
+        time.sleep(max(0.0, POLL_S - (time.time() - loop_t0)))
     print("[monitor] done.")
 
 

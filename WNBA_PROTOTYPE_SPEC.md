@@ -504,3 +504,61 @@ both, the shadow's role is diagnostic and it is discarded with the prototype.
 
 **New row type:** `shadow` {variant, event, E, mkt_mu, mkt_sigma,
 model_sigma, n_rungs_fit, n_frozen_rungs, would_trade[]}, one per armed poll.
+
+## 19. Poll cadence restored to spec, M2 remeasured — addendum 2026-08-29
+
+### The cadence was out of spec
+
+§2 specifies 20s in-game polling. The deployed monitor was running
+`POLL_S = 30`, drifted in during the dashboard work and never reconciled.
+Observed cadence was ~35s (30s sleep + ~5s of work), because the sleep ran
+after the work rather than being measured from the top of the loop.
+
+Two changes: `POLL_S = 20`, and the sleep is now
+`max(0, POLL_S - (time.time() - loop_t0))` at all three sleep sites, so
+POLL_S is the actual period rather than period-plus-work. Measured against
+860 logged loops: median work 2.0s, p95 4.4s, max 4.9s, so 20s leaves 15.1s
+of headroom; request rate at the observed worst case is 2.6 req/s against
+§2's 8 req/s ceiling.
+
+### The old M2 result was an artefact and is withdrawn
+
+Comparing our halftime stamp to the next repricing WE observe measures our
+own poll grid. Over 9 games it returned 9/9 "ahead" with leads of 34, 36, 34,
+36, 35, 35, 35, 34, 34 seconds — one poll interval, every time. **A censored
+measurement that always passes is not a measurement**, and the apparent F2
+pass it produced is withdrawn.
+
+### M2 remeasured against ground truth (`m2_latency.py`)
+
+`espn_clocks_wnba.csv` gives the real halftime buzzer per game and
+`kalshi_wnba_candles.sqlite` gives 1-minute bars per rung, so the MARKET's
+reaction time can be measured with no reference to the monitor at all — over
+**250 games** rather than 9.
+
+Time from halftime buzzer to the ladder's first movement:
+**median 32s, p10 9s, p90 57s.** The market has effectively finished
+reacting inside a minute (98% of games).
+
+| our detection latency | ahead in | F2 (>=80%) |
+|---|---|---|
+| 10s (POLL_S=20, mean) | 87% | PASS |
+| 20s (POLL_S=20, worst) | 71% | FAIL |
+| 15s (POLL_S=30, mean) | 80% | PASS |
+| 30s (POLL_S=30, worst) | **53%** | **FAIL** |
+| 60s | 2% | FAIL |
+
+**At the cadence actually deployed for the first four nights we were ahead of
+the market in barely half of games** — the opposite of what the self-referential
+measurement reported. At 20s we pass on the mean case and fail on the worst.
+Clearing F2 on worst-case detection requires `POLL_S <= 15s`.
+
+**Two limitations, both cutting against us.** Candles are 1-minute bars, so a
+movement is located to its containing bar, biasing measured market latency
+upward. And the score feed's own lag is unmeasured and adds to our detection
+latency. Every figure above is an **upper bound on how far ahead we are.**
+
+This is the M2 the spec asked for: not "did we see it first in our own log"
+but "are we ahead of the marginal trader". The answer is: at 30s, no; at 20s,
+marginally; and the honest number needs the feed lag measured before F2 can
+be called either way.
