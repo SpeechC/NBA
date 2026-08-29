@@ -428,3 +428,79 @@ finer than the spacing between competing edges, and this one does not have
 it.** A successor should either smooth `p_over`, or select on a criterion
 robust to 1.27pp jitter (e.g. require a margin over the runner-up rung), or
 size across qualifying rungs rather than picking one.
+
+## 18. Shadow variant `market_sigma` — addendum 2026-08-29 (log-only)
+
+**Status: LOG ONLY. The frozen rule (s4) is unchanged and remains the graded
+rule of record.** This adds a parallel book written to its own row type. It
+does not touch arming, `would_trade`, `canonical_trade`, the dashboard, or
+any flip condition. Nothing about the forward test is altered.
+
+### Why — the diagnosis, which uses no outcomes
+
+The frozen `p_over` interpolates the 79 stored fit residuals, whose sd is
+**8.4 pts**. The halftime ladders the monitor is already logging imply
+**12.0**. Realised out-of-sample error over the first 9 games is **10.0**.
+
+| sigma | source | P(total > E + 15) |
+|---|---|---|
+| 8.4 | model, in-sample fit | 0.037 |
+| 10.0 | realised, n=9 | 0.067 |
+| 12.0 | market-implied | 0.107 |
+
+A too-narrow CDF makes every wing look cheap *mechanically*. The consequence
+is visible in where the rule bets: over the 9 games, **24 of 53 qualifying
+rungs sat on games where model and market agreed on the LINE to within 1.5
+pts.** On CHI@CONN the two were 0.2 pts apart and the rule still fired six
+rungs. Those are not line bets — they are bets that the model's distribution
+is narrower than the market's, which is the one thing now known to be wrong.
+
+This diagnosis is derived **entirely from quotes**. The model's sigma and the
+market's sigma are both observable before any game finishes. That is what
+makes it legitimate to act on at n=9, and it is the standard this programme
+should hold future changes to: *if a proposed change needs the P&L to justify
+it, at this sample size it is fitting noise.*
+
+### The variant
+
+Location from the model, scale from the market:
+
+    mu    = E = a + b*pre_L + c*H1        (frozen rule, unchanged)
+    sigma = the ladder's own implied width
+    P(over K) = 1 - Phi((K - mu) / sigma)
+
+`sigma` comes from `market_scale()`: a totals ladder is a sampled survival
+function, so `K = mu + sigma * Phi^-1(1-p)` and a weighted regression of
+strike on probit recovers both, with no bracketing requirement. This is
+`implied_line.probit_line` inlined, with `_ndtri` written out, so the monitor
+acquires no scipy dependency on the Windows host. **Zero free parameters and
+nothing fitted to any outcome.**
+
+### Replay over the 9 logged games (structure, not P&L)
+
+| | frozen | shadow |
+|---|---|---|
+| qualifying rungs @3% | 53 | 33 (−38%) |
+| games with no trade | 0 | **4** |
+
+The four silent games are exactly the four with `|E − mkt_mu| < 1.5`. The
+variant declines to bet when it has no view the market does not already hold,
+which is the intended behaviour and the reason for building it.
+
+**The P&L of this variant is deliberately NOT offered as justification.** At
+n=9 the frozen rule's own ROI is −9.8% with a bootstrap CI of [−54%, +29%],
+its sign flips with the threshold examined (−9.8% at 3c, −12.7% at 5c, +1.2%
+at the 8c decision cohort), and a model-free control that buys every rung on
+both sides loses 4.4% — so most of the headline loss is venue cost, not the
+model. Nothing about profitability is yet measurable in either direction.
+
+### Decision rule for the shadow, recorded now
+
+The shadow may be PROPOSED as a successor rule only after the logged season,
+and only on: (i) the same F1-F4 conditions in s9, evaluated on its own book;
+and (ii) a head-to-head on games where BOTH fire, so the comparison is not
+an artefact of the shadow's smaller, differently-selected sample. Absent
+both, the shadow's role is diagnostic and it is discarded with the prototype.
+
+**New row type:** `shadow` {variant, event, E, mkt_mu, mkt_sigma,
+model_sigma, n_rungs_fit, n_frozen_rungs, would_trade[]}, one per armed poll.

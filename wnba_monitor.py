@@ -15,6 +15,7 @@
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -293,6 +294,78 @@ def p_over(E, K):
 
 def fee(p):
     return 0.07 * p * (1 - p)
+
+
+def _ndtri(p):
+    """Inverse standard normal CDF (Acklam), |err| < 1.2e-9 on (0,1).
+
+    Written out rather than imported: this component runs unattended on the
+    Windows host and must not acquire a scipy dependency to keep logging.
+    """
+    if not 0.0 < p < 1.0:
+        return float("nan")
+    a = (-3.969683028665376e+01, 2.209460984245205e+02,
+         -2.759285104469687e+02, 1.383577518672690e+02,
+         -3.066479806614716e+01, 2.506628277459239e+00)
+    b = (-5.447609879822406e+01, 1.615858368580409e+02,
+         -1.556989798598866e+02, 6.680131188771972e+01,
+         -1.328068155288572e+01)
+    c = (-7.784894002430293e-03, -3.223964580411365e-01,
+         -2.400758277161838e+00, -2.549732539343734e+00,
+         4.374664141464968e+00, 2.938163982698783e+00)
+    d = (7.784695709041462e-03, 3.224671290700398e-01,
+         2.445134137142996e+00, 3.754408661907416e+00)
+    lo, hi = 0.02425, 1 - 0.02425
+    if p < lo:
+        q = math.sqrt(-2 * math.log(p))
+        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+               ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    if p > hi:
+        q = math.sqrt(-2 * math.log(1 - p))
+        return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
+                ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+    q = p - 0.5
+    r = q * q
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / \
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
+
+
+def market_scale(quotes):
+    """The ladder's own (mu, sigma), read off the quotes it is already making.
+
+    A totals ladder is a sampled survival function: P(total > K). Under a
+    normal, K = mu + sigma * Phi^-1(1 - p), so a regression of strike on
+    probit gives the market's implied line AND its implied width, with no
+    bracketing requirement (this is `implied_line.probit_line`, inlined to
+    keep the monitor dependency-free). Weights p(1-p): the market's quotes
+    carry most information near the middle of the ladder.
+
+    quotes: [(strike, mid), ...]  ->  (mu, sigma) or (None, None).
+    """
+    pts = [(float(k), float(p)) for k, p in quotes
+           if p is not None and 0.02 < p < 0.98]
+    if len(pts) < 4:
+        return None, None
+    xs = [_ndtri(1 - p) for _, p in pts]
+    ys = [k for k, _ in pts]
+    ws = [p * (1 - p) for _, p in pts]
+    sw = sum(ws)
+    if sw <= 0:
+        return None, None
+    mx = sum(w * x for w, x in zip(ws, xs)) / sw
+    my = sum(w * y for w, y in zip(ws, ys)) / sw
+    den = sum(w * (x - mx) ** 2 for w, x in zip(ws, xs))
+    if den <= 0:
+        return None, None
+    sigma = sum(w * (x - mx) * (y - my) for w, x, y in zip(ws, xs, ys)) / den
+    if not (sigma > 0) or not math.isfinite(sigma):
+        return None, None
+    return my - sigma * mx, sigma
+
+
+def p_over_normal(E, K, sigma):
+    """P(total > K) with the model's LOCATION and the market's SCALE."""
+    return 0.5 * (1.0 - math.erf((K - E) / (sigma * math.sqrt(2.0))))
 
 
 def depth_at(rung, side):
@@ -579,6 +652,68 @@ def main():
                                                   "ts_utc": dt.datetime.utcnow()
                                                   .isoformat()})
                                     break
+                # ---- SHADOW VARIANT (added 2026-08-29, spec s18) ----------
+                # LOG ONLY. Does not touch `would`, arming, or grading: the
+                # frozen rule (s4) runs on untouched and stays the graded
+                # rule of record. This writes a PARALLEL book to its own row
+                # type so the two can be compared head to head on identical
+                # games at season end.
+                #
+                # WHY. The frozen p_over is built on the fit residuals' sd of
+                # 8.4 pts; the halftime ladders imply 12.0 and realised OOS
+                # error is 10.0. A too-narrow CDF makes every wing look cheap
+                # mechanically, and over the first 9 games 24 of 53 qualifying
+                # rungs sat on games where the model and the market agreed on
+                # the LINE to within 1.5 pts -- bets on distribution shape
+                # alone, which is the one thing we know the model has wrong.
+                # This variant keeps the model's LOCATION (E) and takes the
+                # SCALE from the market's own ladder. No free parameters, and
+                # nothing fitted to any outcome.
+                if would or (gm and gm.get("h1") and evt in pre_L and halftime):
+                    q_now = [(l["strike"], (l["bid"] + l["ask"]) / 2)
+                             for l in ladder
+                             if l["bid"] is not None and l["ask"] is not None]
+                    m_mu, m_sd = market_scale(q_now)
+                    sh = []
+                    if m_sd:
+                        E_s = RULE["a"] + RULE["b"] * pre_L[evt] \
+                            + RULE["c"] * gm["h1"]
+                        for l in ladder:
+                            if l["bid"] is None or l["ask"] is None:
+                                continue
+                            K = float(l["strike"])
+                            pt = p_over_normal(E_s, K, m_sd)
+                            for side, edge, cost in (
+                                    ("YES", pt - l["ask"] - fee(l["ask"]),
+                                     l["ask"] + fee(l["ask"])),
+                                    ("NO", l["bid"] - pt - fee(l["bid"]),
+                                     (1 - l["bid"]) + fee(l["bid"]))):
+                                for th in THRESHOLDS:
+                                    if edge >= th:
+                                        d_raw, d_ct = depth_at(l, side)
+                                        sh.append({
+                                            "threshold": th, "strike": K,
+                                            "side": side,
+                                            "edge": round(edge, 4),
+                                            "cost": round(cost, 4),
+                                            "p_true": round(pt, 4),
+                                            "depth_dollars": d_raw,
+                                            "depth_contracts_est": d_ct,
+                                            "period": gm.get("period"),
+                                            "ts_utc": dt.datetime.utcnow()
+                                            .isoformat()})
+                                        break
+                    f.write(json.dumps({
+                        "ts_utc": dt.datetime.utcnow().isoformat(),
+                        "type": "shadow", "variant": "market_sigma",
+                        "event": evt, "component_role": COMPONENT_ROLE,
+                        "E": round(E_s, 2) if m_sd else None,
+                        "mkt_mu": round(m_mu, 2) if m_sd else None,
+                        "mkt_sigma": round(m_sd, 2) if m_sd else None,
+                        "model_sigma": round(float(RESID.std()), 2),
+                        "n_rungs_fit": len(q_now),
+                        "n_frozen_rungs": len(would),
+                        "would_trade": sh}) + "\n")
                 f.write(json.dumps({
                     "ts_utc": dt.datetime.utcnow().isoformat(),
                     "type": "ladder", "event": evt,
