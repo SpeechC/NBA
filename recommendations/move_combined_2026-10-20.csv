@@ -1,0 +1,4 @@
+gid,date,home,away,ot_open,ridge,h_nprior,a_nprior,latent,m,eligible,side,action,generated,spec
+PEND_20261020_BOSDET,2026-10-20,Detroit,Boston,225.0,,0,0,,,False,UNDER,no bet (scope),2026-08-29T12:02:35.998939+00:00,"MOVE_COMBINED (frozen, full feature set)"
+PEND_20261020_OKCSAS,2026-10-20,San Antonio,Oklahoma City,225.0,,0,0,,,False,UNDER,no bet (scope),2026-08-29T12:02:35.998939+00:00,"MOVE_COMBINED (frozen, full feature set)"
+PEND_20261020_PHINYK,2026-10-20,New York,Philadelphia,225.0,,0,0,,,False,UNDER,no bet (scope),2026-08-29T12:02:35.998939+00:00,"MOVE_COMBINED (frozen, full feature set)"
