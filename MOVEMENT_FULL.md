@@ -139,3 +139,79 @@ at ≥1.0) and adds that the ROI interval includes zero. **Nothing changes.**
 The signal is real where it was claimed to be real — CLV, t = +16.42, five
 seasons out of five. It is unproven where it was always going to be unproven,
 and the prereg said so before the P&L existed.
+
+---
+
+# AGENT REPORT 2026-08-29 — the incumbent re-proposed as a discovery
+
+The structural research agent flagged the movement chain's control column as
+"the single largest effect anywhere in 114 outcome looks" and stated it "has
+never been graded as a wager." **The effect size claim is right. The
+never-graded claim is wrong**, and the inference built on it is the error this
+program corrected twice on 2026-08-26.
+
+## It has been graded, pre-registered, and re-checked
+
+| subset | n | CLV | t | **realised hit** | **realised ROI** | z |
+|---|---|---|---|---|---|---|
+| all games | 5,158 | +0.618 | +13.23 | 51.10% | **−2.45%** | −1.84 |
+| selective \|m\| ≥ 1.0 | 1,792 | +1.337 | +16.42 | 53.44% | **+2.02%** | +0.90 |
+
+`PREREG_move_combined.md` §2 fixed CLV as the primary endpoint **precisely
+because** ROI at 53.44% needs ~17,500 bets ≈ 49 seasons, and §9 already
+excludes live capital at −110. The agent's figures (CLV 0.655 / 1.424 on
+n = 2,072 / 696) track ours closely but sit on roughly a third of the data —
+two seasons against five.
+
+## The CLV → implied-ROI step is not valid, and we have the counterexample
+
+The agent converts CLV to an implied win rate to an implied ROI (+3.5%).
+**CLV and outcome P&L are different endpoints and this program has a decisive
+case where they diverge in sign:**
+
+```
+injury Hypothesis B:  CLV +0.775 pts, t = +7.93   ->   P&L -8.04%, CI EXCLUDES 0
+```
+
+Strong CLV with significantly negative realised P&L, simultaneously. A line
+moving toward you is not a game landing on you. Here the realised 53.44% is
+actually *better* than the CLV-implied 52.97% — the conversion is noisy in both
+directions, which is the point: it is not a substitute for grading.
+
+## What the agent got right, and what it earned
+
+The effect *is* the largest thing in the program, and that is exactly why it is
+the incumbent — everything else has been measured against it. The agent
+rediscovered its own control. That is a real observation about the search, not
+a new asset.
+
+Its four-item recommendation was good. Two were already done (bet-level ROI;
+season-by-season stability, in `MONITOR_SEASON_PNL.md`). One was genuinely
+undone and is now done:
+
+**Block-bootstrap inference on the selective subset** — the naive binomial CI
+assumes independent bets, but bets on a night share a league state and bets in
+a season share a regime:
+
+| method | ROI 95% CI | P(ROI > 0) |
+|---|---|---|
+| naive binomial | [−2.40%, +6.45%] | — |
+| block bootstrap **by night** (629 blocks) | [−2.37%, +6.43%] | **81.0%** |
+| block bootstrap **by season** (5 blocks) | [−3.52%, +5.57%] | **76.4%** |
+
+Night-level clustering barely widens the interval — within-night correlation is
+small. Season-level clustering widens it more, because there are only five
+blocks. Either way the interval includes zero and P(ROI > 0) is 76–81%.
+
+## The one item still open, and it is the one that matters
+
+**Is the opener transactable?** MOVE_COMBINED bets AT THE OPENER by
+construction. Every number above assumes you can get that number. This program
+has died on execution before — the Kalshi derivatives quoted 15–30c against
+edges worth 3–6c. Nothing here establishes that the opening total is available
+in size, or at −110, or at all. That is an execution study, not a research one,
+and it has never been run.
+
+**Disposition unchanged.** No capital. The agent's proposal to characterise
+rather than search is sound; two of its four items were already answered, one
+is answered above, and the fourth is the real question.
