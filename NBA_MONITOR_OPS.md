@@ -89,6 +89,14 @@ crews, and MOVE_COMBINED asking for `--lines`.
    enter the crew's own prior window. Fine for plumbing tests, invalid as a
    signal. Live this cannot happen — tonight's games are not yet in history.
 
+## Queued research, end of 2026-27
+
+`PREREG_density_crewshock.md` is registered and **held for forward data**. It
+runs after the 2026-27 regular season, at the same time as
+`PREREG_crewshock_forward.md` §4's M1/M2 read. Not authorised on historical
+data. Its positive control runs first and can close the branch before the
+primary is computed.
+
 ## Hard stops
 
 - `crewshock_live.py validate` must print `OVERALL: PASS` before opening night.

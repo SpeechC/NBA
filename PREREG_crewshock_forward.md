@@ -167,3 +167,21 @@ assumes independent bets. It has 1,403 firing games across only 843 nights and
 104 officials — about 40 firings per official, each driven by the SAME 60-game
 estimate. Effective n is below nominal, so "~3,294 bets / ~19 seasons" is the
 optimistic bound, not the honest one.
+
+
+---
+
+## QUEUED FOR THE SAME END-OF-SEASON READ
+
+`PREREG_density_crewshock.md` — schedule-density fatigue × CrewShock — was
+registered 2026-08-29 and is **held for 2026-27 forward data by agreement**.
+It is not authorised to run on 2017–2026.
+
+It becomes runnable at the **same moment** this document's M1/M2 are read:
+after the 2026-27 regular season, ~1,230 games, ~200 with CrewShock firing.
+Whoever reads §4 here should read that prereg too — it is the only queued test
+in the program, and a prereg written in August for an April run is the kind of
+thing that quietly disappears.
+
+**Order matters:** its P3 positive control (`opponent_FTA ~ DENSE`) is reported
+BEFORE its P1 is computed. If P3 fails, the branch closes and P1 is never run.
