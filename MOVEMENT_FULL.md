@@ -291,3 +291,77 @@ particular amount. Openers are conventionally posted at low limits.
 Both remaining questions require **timestamped quote capture against a real
 book**, which this program does not have and cannot reconstruct. That is a data
 acquisition task, not an analysis one.
+
+## Part 2 — KALSHI EARLY-PREGAME SPREADS. Run 2026-08-29
+
+Kalshi is not the venue MOVE_COMBINED assumes, but it is the only venue where
+we hold timestamped two-sided quotes pregame. Store: `kalshi_nba_candles.sqlite`,
+series **KXNBATOTAL**, 1-minute candles, 1,256,843 rows over 62 game-dates
+(2025-10-21 → 2025-12-22, ending at the documented CDN wall). Tip times joined
+from `tipoffs_espn.csv`: **4,719 / 4,719 markets matched**.
+
+**Data trap, recorded:** this store prices in **CENTS (0–100)** while
+`kalshi_wnba_candles.sqlite` prices in **DOLLARS (0–1)**. A near-the-money
+filter written for one silently returns zero rows on the other — it did here
+before it was caught.
+
+### The spread is 2c and FLAT across the whole pregame window
+
+427,199 near-the-money (mid 35–65c) two-sided pregame quotes:
+
+| hours to tip | quotes | med spread | p25 | p75 | vol/min | % minutes traded |
+|---|---|---|---|---|---|---|
+| 8–24h | 43,721 | **2.0c** | 1.0c | 3.0c | 10.1 | 5.5% |
+| 4–8h | 171,148 | **2.0c** | 1.0c | 3.0c | 16.5 | 7.1% |
+| 2–4h | 94,122 | **2.0c** | 1.0c | 3.0c | 20.6 | 10.3% |
+| 1–2h | 55,660 | **2.0c** | 1.0c | 3.0c | 37.8 | 13.6% |
+| 30–60m | 29,608 | **2.0c** | 1.0c | 3.0c | 65.4 | 16.8% |
+| 0–30m | 32,940 | **2.0c** | 1.0c | 3.0c | 106.9 | 22.1% |
+
+The spread does not widen early. Only *volume* thins — 10 contracts/min at
+8–24h against 107/min inside 30 minutes.
+
+### The cost stack — the first venue where this is even close
+
+```
+signal edge (CLV 1.337 pts x 2.2pp/pt)          +2.94c
+cross the 2c spread (half from mid)             -1.00c
+Kalshi TAKER fee 0.07*p*(1-p)                   -1.75c
+------------------------------------------------------
+NET as a TAKER                                  +0.19c
+
+NET as a MAKER, if filled (earn half-spread,
+maker fee 25% of taker)                         +3.50c
+
+break-even spread for a taker at this edge:      2.38c
+```
+
+**As a taker the strategy is a rounding error: +0.19c on a 2.94c edge, with the
+fee costing almost as much as the spread.** The median 2c spread sits just
+inside the 2.38c break-even, so a 3c spread — the p75 — is already
+loss-making. As a maker it is comfortably positive, but that assumes fills, and
+at 10 contracts/minute in the early window fills are the whole question.
+
+### Three things this does NOT establish
+
+1. **The edge is imported, not measured.** +2.94c is a *sportsbook* CLV
+   translated into probability. Kalshi quotes continuously and has no "opener",
+   so the right test is whether the **Kalshi price itself** moves toward the
+   signal between an early timestamp and tip. That has not been run.
+2. **Volume is not depth.** These candles carry traded volume, not size at the
+   touch. 10 contracts/min says almost nothing about how many you could lift at
+   the 2c quote. The order-book store (`kalshi_nba_triangle.sqlite`, 3.2GB) may
+   answer this; it has not been opened.
+3. **62 game-dates, one partial season**, ending at the December CDN wall.
+
+### Where this leaves transactability
+
+| question | status |
+|---|---|
+| sportsbook **price** at the opener | **answered** — −111.30 observed, edge ~1/3 smaller than assumed |
+| sportsbook **timing** | unanswerable here — quotes carry no timestamps |
+| sportsbook **size** | unanswerable here |
+| Kalshi **spread** early pregame | **answered** — 2.0c, flat from 24h out |
+| Kalshi **fee-inclusive economics** | **answered** — taker +0.19c, maker +3.50c |
+| Kalshi **depth** | open — needs the order-book store |
+| Kalshi **CLV measured on Kalshi** | open — needs a run, and it is the next thing worth doing |
