@@ -392,3 +392,39 @@ ledger is 5 graded entries, and the only game in which the model materially
 disagreed with the market and was right is PDX@ATL (E 181.03, market L
 177.67, realized 184). s17 buys statistical power to settle the question
 sooner; it is not evidence for either answer.
+
+### s17 AMENDMENT — same day, before the rule ran live
+
+s17 above claims: "The fix changes the AVAILABILITY of the measurement, not
+the measurement." **That claim is too strong and is corrected here.** It holds
+for the VALUE of `pre_L` (the two overlapping games move 0.38 and 0.22 pts).
+It does NOT hold for the trade that value selects.
+
+Replaying WSH@PHX 27 Aug through both capture rules:
+
+| `pre_L` | E | canonical trade @3% | result |
+|---|---|---|---|
+| 165.30 (`tip_0_0`, as graded live) | 161.37 | NO @171.5, cost 0.8494 | WIN +0.151 |
+| 165.68 (`pregame_last`, s17) | 161.58 | YES @153.5, cost 0.7824 | **LOSS −0.782** |
+
+A **0.38-point** change in an input flips the canonical trade and swings P&L
+by **0.93 per contract**. The cause is not s17: `p_over` interpolates a step
+function over the 79 stored residuals, so probability moves in jumps of
+1/79 = 1.27pp. At halftime the top four rung-edges routinely sit inside one
+such step of each other and of the 3% threshold, so "best edge" is decided by
+rounding noise, not by conviction. s17 merely exposed it.
+
+**Consequence for the record.** Already-graded trades are unaffected in fact —
+`canonical_trade` reads logged `would_trade` rows and no log was rewritten —
+but they are now known to be less determinate than they looked. The two live
+wins are one input-perturbation away from being one win and one loss.
+
+**No change is made to the rule on this basis.** The rule is frozen (s4) and
+was fit on those 79 residuals; re-specifying `p_over` after seeing outcomes is
+exactly the move the freeze exists to prevent. This is recorded as a measured
+property of the frozen rule, to be carried into any successor: **a
+best-edge-across-rungs selector needs a probability model with resolution
+finer than the spacing between competing edges, and this one does not have
+it.** A successor should either smooth `p_over`, or select on a criterion
+robust to 1.27pp jitter (e.g. require a margin over the runner-up rung), or
+size across qualifying rungs rather than picking one.
