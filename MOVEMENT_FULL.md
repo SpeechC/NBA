@@ -215,3 +215,79 @@ and it has never been run.
 **Disposition unchanged.** No capital. The agent's proposal to characterise
 rather than search is sound; two of its four items were already answered, one
 is answered above, and the fourth is the real question.
+
+---
+
+# IS THE OPENER TRANSACTABLE? Part 1 — the PRICE. Run 2026-08-29
+
+The agent's fourth item. Transactability has three parts — **price**, **timing**,
+**size**. Only the first is answerable from data in hand; this section answers
+it and states plainly what the other two need.
+
+## The price IS partly recoverable, contrary to the standing note
+
+`pre_asb.py` recorded that "real juice is unavailable and −110 is assumed."
+That is too pessimistic: `OPENING ODDS_H/_R` carry `<total><o|u> <juice>` —
+`232.5o -10`, `218.5u -15` — on **7,747 distinct games**, where the two-digit
+token is the American price with the leading 1 dropped.
+
+```
+-105  37     -110  4,882 (63.0%)     -113   270
+-108 177     -111     17             -115 1,720
+-109 271     -112    342
+```
+
+**RANGE gate:** 8 quotes fell outside [−140, −100] (−149 to −188 — moneyline
+contamination of the polymorphic column). Dropped.
+
+## The honest subset: −110 overstates the edge by a third
+
+**Only one side is ever quoted per game — zero games quote both.** So the price
+we would actually pay is *directly observed* on 919 of 1,783 bets and merely
+*assumed* on the rest. Reporting the observed subset alone:
+
+| | bets | hit | mean price | ROI |
+|---|---|---|---|---|
+| **at the ACTUAL opening price** | 919 | 53.32% | **−111.30** | **+1.24%** |
+| same games, −110 assumed | 919 | 53.32% | −110.00 | +1.79% |
+
+**The −110 assumption overstates ROI by 0.55pp — it removes about a third of a
++1.79% edge.** 95% CI at the real price: [−4.38%, +7.96%].
+
+## A first pass that flattered the result, and why
+
+Scoring all 1,786 bets with a complement rule for the unquoted side showed the
+−110 assumption overstating by only **0.03pp** — a reassuring number that was
+an artefact. The complement `−(220 − |J|)` hands back a *favourable* −105
+whenever the quoted side is −115, and that assumption is **untestable here**
+because no game quotes both sides. Bounding it instead:
+
+| complement assumption | mean price | ROI, all 1,783 |
+|---|---|---|
+| favourable `−(220−\|J\|)` | −110.11 | +2.00% |
+| flat −110 | −110.67 | +1.75% |
+| worst case (same juice as quoted) | −111.23 | **+1.53%** |
+
+**The full-sample ROI is +1.53% to +2.00% depending on an assumption we cannot
+test**, against +2.02% at flat −110. The directly-observed subset, which needs
+no assumption at all, gives **+1.24%**.
+
+## What this does and does not settle
+
+**Settled:** the opening *price* is close to −110 but not free. Real mean is
+−111.30 where observed; 15% of bets are worse than −110; the edge survives but
+is roughly a third smaller than every prior figure in this program stated.
+
+**NOT settled — timing.** `PREREG_quote_path` established that mean
+|quote − close| on totals runs 2.48 → 0.67 by the first recorded reprice:
+**73% of the open→close convergence is already gone by q1.** The quotes carry
+**no timestamps**, so the elapsed time from posting to q1 is unknown and
+unknowable from this file. If that window is minutes, the strategy is a race it
+has not been shown to win.
+
+**NOT settled — size.** Nothing here says the opening total is available in any
+particular amount. Openers are conventionally posted at low limits.
+
+Both remaining questions require **timestamped quote capture against a real
+book**, which this program does not have and cannot reconstruct. That is a data
+acquisition task, not an analysis one.
