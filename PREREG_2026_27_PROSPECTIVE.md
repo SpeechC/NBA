@@ -318,3 +318,98 @@ worst-decile squared error — and isolating it **roughly doubled** the outcome
 relationship relative to the aggregate model gap (t 1.88 -> 3.42). **That is a
 mechanism-first finding, not a feature search.** No further variable may be added
 to this hypothesis before 2026-27 is scored.
+
+---
+---
+
+# AMENDMENT 2 — 2026-08-30, still BEFORE any 2026-27 data exists
+
+## B1. THREE FROZEN COMPETITORS
+
+Registered now, run unchanged all season, never re-tuned:
+
+```
+D          = Pace_hat - Pace_book                      (H1 primary, unchanged)
+D*_drift   = D + mu5_hat        mu5 = prior-5 mean pace-forecast error, both teams
+D*_profile = D + m_hat(X)       m(X) = ridge(lambda=20) on 22 profile features
+```
+
+**`m(X)` frozen specification:** target `dPace`, features
+`pace_H/R, trans_H/R, tov_H/R, tovf_H/R, ftr_H/R, ctrl_H/R, mu5_H/R, ewv_H/R,
+sP, PrefConflict, ControlConflict, TransComp, TovPressure, StyleDist`,
+standardised, intercept unpenalised, chronological fit on all prior seasons.
+**No opener, book pace, or |D| may enter `m(X)`.**
+
+**The secondary endpoint is a COMPARISON, not a significance test:**
+
+```
+does D*_profile beat D?       does D*_drift beat D?      does profile beat drift?
+```
+
+Discovery evidence (n=942, one season): `m(X)` predicts pace error at
+**t = +2.62** vs drift's **t = +2.20**, but with both in the model neither
+dominates (t = +0.62 / +1.54) and they are **67% collinear**. **If drift matches
+profile prospectively, use drift** — simpler and more stable.
+
+## B2. PROBABILITY CALIBRATION — and a caution that matters more than the table
+
+```
+logit p_win = +0.0388 + 0.01606 * |E_pace|      E_pace = D x EffSum/100
+slope se 0.01155,  t = +1.39                    <- NOT SIGNIFICANT
+|E| at which p_win = 52.381%:  3.52 points
+```
+
+| \|E\| >= | model p_win | ACTUAL hit | n | % slate | ROI |
+|---|---|---|---|---|---|
+| 0 | 50.97% | 52.47% | 3,488 | 100.0% | +0.16% |
+| 2 | 51.77% | 53.17% | 2,289 | 65.6% | +1.50% |
+| 5 | 52.97% | 54.01% | 972 | 27.9% | +3.11% |
+| 8 | 54.17% | **56.59%** | 311 | 8.9% | **+8.04%** |
+
+**THE CAUTION.** The hit-rate slope is `t = +1.39` — **not significant** — and the
+decile calibration is non-monotone:
+
+```
+decile   1      2      3      4      5      6      7      8      9     10
+pred  51.09  51.32  51.55  51.79  52.06  52.38  52.71  53.11  53.69  54.97
+act   51.29  54.15  49.86  52.87  53.58  53.01  50.00  52.44  52.44  55.01
+```
+
+**Reconciling this with the H1 primary:** the continuous regression gives
+`beta = 0.222, t = +3.42`, but the binary hit-rate slope gives only `t = +1.39`.
+Both are correct — **the signal is real in POINTS and weak in HIT RATE**, because
+converting to a binary discards outcome magnitude. That is the honest character
+of the edge, and it is why `|E| >= 8 -> 56.59%` must not be read as a strategy.
+
+## B3. ONE FROZEN THRESHOLD, chosen by the CALIBRATION not the outcome table
+
+Selecting a cutoff from the ROI column is exactly the error this programme has
+made before. The threshold is therefore taken from the **fitted logistic**, which
+does not see the ROI ranking:
+
+```
+BET      if  |E_pace| >= 4.77 points   (the |E| at which fitted p_win = 52.881%,
+                                        i.e. break-even + a 0.5pp safety margin)
+PASS     otherwise
+```
+
+Discovery behaviour of that rule: **n = 1,056 (30.3% of slate), hit 53.31%
+(se 1.54pp), ROI +1.78%.** Recorded as a benchmark, **not** as a claim.
+
+**The +0.5pp margin is frozen now and may not be re-optimised.** The 2.0pp
+variant (|E| >= 8.53, n = 248, 60.08%) is **explicitly NOT registered** — it is a
+tail cell of a continuum whose underlying slope is insignificant.
+
+## B4. HIERARCHY, restated
+
+```
+PRIMARY   H1   D -> Actual-Open, continuous, NO THRESHOLD          (unchanged)
+PRIMARY   H2   AggregateGap -> Actual-Close, gamma < 0             (unchanged)
+SECONDARY S1   does D*_profile or D*_drift beat D?
+SECONDARY S2   does the frozen |E| >= 4.77 rule beat betting every game?
+NOT REGISTERED: p_survive; the <220 x high-sigma cell; any |E| threshold
+                other than 4.77
+```
+
+**H1 remains threshold-free.** S2 tests a threshold *against* H1 rather than
+replacing it, so a failure of S2 leaves H1 intact.
