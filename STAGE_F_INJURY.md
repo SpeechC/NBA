@@ -111,3 +111,83 @@ is *mostly* injuries and lineups. Injuries are measurable, significant, and
 account for ~7% of the revision. **91% remains unexplained**, and it is now known
 not to be recent scoring (Stage E), not team dispersion, not Four Factors, and
 not — on this construction — injury reports either.
+
+---
+
+# STAGE F.2 — REPLACEMENT QUALITY AND PROJECTED MINUTES
+
+The raw feature weighted absences by prior PPG, which treats losing a 25-ppg
+scorer backed by a good sixth man the same as losing one backed by nobody. Fixed.
+`vorp_build.py`, `vorp_features.py`, `vorp_test.py`.
+
+## Construction
+
+**Real minutes, not a proxy.** `lineup_stints.csv` gives `STINT_SECONDS` with all
+five player slots; melting and summing yields 215,181 player-games (mean 21.8
+min, p50 22.3, only 0.03% above 50). Joined to `player_game_pts` at 90.2%.
+
+```
+projected minutes / points   prior-only expanding mean, shrunk k=8 to prior season
+player rate                  ppm = projected points / projected minutes
+REPLACEMENT LEVEL            mean ppm of AVAILABLE players ranked 9-12 by projected minutes
+VORP                         sum over absent players of
+                               (ppm_player - ppm_replacement)+ x projected_minutes x status_weight
+```
+
+Roster = players appearing for that team in the prior 30 days, latest prior state.
+
+```
+VORP (net points lost)   mean  5.60   sd  6.78   p90 14.74   max 79.0
+RAW  (gross points out)  mean 22.22   sd 17.71
+replacement ppm 0.4024   minutes out 44.0
+corr(VORP, RAW) = 0.8494   -> replacement quality is NOT redundant
+```
+
+**5.6 net points is a plausible figure; the raw 22.2 was not** — it counted the
+full production of players a replacement partly covers.
+
+## VORP dominates the raw feature on every target
+
+Held-out 2022+, n = 3,181:
+
+| target | model | RMSE | R2 |
+|---|---|---|---|
+| OPENING | baseline M6 + D2 + D4 | 3.203 | 0.8551 |
+| OPENING | + injury RAW | 3.159 | 0.8597 |
+| OPENING | **+ injury VORP** | **3.132** | **0.8615** |
+| OPENING | + both | 3.143 | 0.8613 |
+| CLOSING | baseline | 3.689 | 0.8286 |
+| CLOSING | + injury RAW | 3.505 | 0.8458 |
+| CLOSING | **+ injury VORP** | **3.440** | **0.8509** |
+
+## And it nearly DOUBLES the innovation signal
+
+```
+RAW gross points out     R2 0.0440   raw  -0.0227 (t=-21.2)   opp +0.0077 (t=+7.2)
+VORP net of replacement  R2 0.0795   vorp -0.0897 (t=-29.5)   opp +0.0190 (t=+6.3)
+VORP + change            R2 0.0803                            d_vorp -0.0137 (t=-3.0)
+both                     R2 0.0816   raw collapses to -0.0032 (t=-2.3)
+```
+
+**VORP raises the innovation R2 from 0.0440 to 0.0795 — an 81% improvement — and
+once VORP is in, the raw feature is essentially dead** (coefficient falls from
+−0.0227 to −0.0032). The replacement adjustment is not a refinement; it is what
+makes the injury signal work.
+
+Signs remain correct throughout: own absences lower the quote, opponent absences
+raise it.
+
+## Status
+
+**Best opener forecast: R2 0.8615** (this sample, n=3,181; coverage limited to
+2020-12 to 2025-04 by the injury and stint files).
+
+The honest picture is unchanged in shape but improved in degree: injury
+information is real and now well measured, it explains ~8% of the market's
+between-game revision, and it moves the opener forecast by ~0.6 R2 points.
+**Roughly 92% of the revision remains unexplained.**
+
+**Remaining hygiene, unaddressed:** two-way and G-League players still enter the
+report (the replacement construction mitigates but does not remove this), and
+true opener timestamps still do not exist, so "earliest report" remains a proxy
+for what preceded the number.
