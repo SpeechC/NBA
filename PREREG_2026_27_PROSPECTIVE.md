@@ -462,9 +462,17 @@ bet all      +563.47
 |E| >= 8.53 +3645.44
 ```
 
-**Non-monotone, and one threshold between two profitable ones loses money.** A
-real effect would produce a smooth profit-versus-threshold relationship. This
-landscape is the signature of noise, and it is why:
+**Non-monotone, and one threshold between two profitable ones loses money.**
+
+**CORRECTED READING (the earlier wording overclaimed).** A real effect does NOT
+require a smooth profit-versus-threshold curve — realised P/L from nested finite
+subsamples is legitimately jagged even under a genuine edge. What this landscape
+establishes is narrower and sufficient:
+
+> **This sample cannot locate the economically optimal cutoff.**
+
+That prohibits threshold optimisation. It does not prove the threshold
+relationship is noise. This is why:
 
 1. `4.77` is registered as a **candidate**, not a calibrated cutoff;
 2. no other threshold — including the +3,645 at `|E| >= 8.53` — is registered;
@@ -500,3 +508,68 @@ NOT REGISTERED: p_survive; <220 x high-sigma; every threshold except 4.77;
 ```
 
 **PROJECT FROZEN 2026-08-30.** No further specification work before the season.
+
+---
+
+# AMENDMENT 4 — the economic margin, and the interim-look prohibition
+
+## D1. BET-ALL HAS ESSENTIALLY NO HISTORICAL MARGIN
+
+```
+bet-all hit 52.47%   break-even 52.381%   margin = +0.089 percentage points
+```
+
+**H1 is statistically convincing in points (t = +3.42) and economically negligible
+as an unfiltered strategy.** The practical wagering proposition therefore rests
+entirely on one of two things being true prospectively:
+
+```
+(a) larger pace edges really are substantially better        -> S2
+(b) the drift/profile correction materially improves D       -> S1
+```
+
+**If neither holds, the honest conclusion is that we have found an excellent
+predictor of scoring displacement that the market prices tightly enough to absorb
+through the vig.** That is a legitimate scientific result and must be reported as
+such rather than rescued.
+
+## D2. IMMUTABLE PRE-GAME LOG — required before the first tip
+
+`prospective_log.py`. One row written **before tip**, never overwritten:
+
+```
+PRE-GAME (immutable):
+  game_id, date, TEAM_H, TEAM_R, logged_at_utc
+  open_total, open_spread, open_line_source, open_obtained_at_utc
+  P_hat, P_book, D, EffSum, E_pace
+  mu5, m_X, D_star_drift, D_star_profile
+  bet_flag = 1(|E_pace| >= 4.77)
+  side = sign(E_pace)
+  code_git_sha, model_version
+
+POST-GAME (appended, never replacing):
+  close_total, actual_total, actual_pace, settled_at_utc
+```
+
+`open_obtained_at_utc` is required because the whole programme rests on the
+opener preceding our information — `INJURY_TIMING_AUDIT` found 42% of injury
+reports arrive on game day, and without a timestamp that could not be
+adjudicated. **This season we will have the timestamp we lacked.**
+
+## D3. NO INTERIM LOOKS AT WAGERING PERFORMANCE
+
+**Binding.** Between 2026-10-20 and the season-level evaluation, the following
+may NOT be examined:
+
+- running hit rate, ROI or P/L for any rule;
+- performance of alternative thresholds;
+- Over vs Under splits;
+- team, month, or total-level breakdowns.
+
+Anything noticed anyway is recorded as a **2027-28 hypothesis** and does not touch
+the frozen evaluation. **The unstable threshold landscape in C3 is precisely why**
+— at 200 games, some threshold will look wonderful and 4.77 may look poor, and
+acting on that would convert a preregistered test into a search.
+
+**Permitted in-season:** pipeline health only — did the log write, did fields
+populate, are joins matching. Nothing involving `actual_total`.
