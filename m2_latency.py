@@ -37,7 +37,8 @@ import sys
 DB = "/mnt/c/NBA2/Kalshi/data/kalshi_wnba_candles.sqlite"
 CLOCKS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       "espn_clocks_wnba.csv")
-CODE = {"CON": "CONN"}          # ESPN -> Kalshi team codes where they differ
+CODE = {"CON": "CONN", "POR": "PDX", "GSV": "GS", "LVA": "LV",
+        "WAS": "WSH", "NYL": "NY"}   # ESPN -> Kalshi codes where they differ
 POLL_GRID = ((10, "POLL_S=20, mean case"), (20, "POLL_S=20, worst case"),
              (15, "POLL_S=30, mean case"), (30, "POLL_S=30, worst case"),
              (60, "one minute"), (120, "two minutes"))

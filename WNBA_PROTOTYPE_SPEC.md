@@ -562,3 +562,112 @@ This is the M2 the spec asked for: not "did we see it first in our own log"
 but "are we ahead of the marginal trader". The answer is: at 30s, no; at 20s,
 marginally; and the honest number needs the feed lag measured before F2 can
 be called either way.
+
+## 20. TERMINAL VERDICT — measured, not tradable (2026-08-30)
+
+Invoking §9: *"Failing any -> the prototype's verdict is 'measured, not
+tradable', which is a complete and successful outcome for this component."*
+That is the verdict. It is recorded here with the numbers that produce it.
+
+### Flip conditions
+
+| | condition | result | |
+|---|---|---|---|
+| F1 | depth >=5 contracts at the would-trade price in >=50% of >=8c halftimes | 8/8 games, median 92-10,289 contracts | **PASS** |
+| F2 | our halftime stamp precedes the ladder's first reprice in >=80% of games | 58% at POLL_S=20; **74% even at POLL_S=0** | **FAIL** |
+| F3 | >=8c would-trades hit within 10pp of 84% (i.e. >=74%) | 22/33 = **66.7%** | **FAIL** |
+| F4 | user says go after seeing the season summary | not reached | — |
+
+Two of three fail. No live-trading variant may be proposed. Per §5 this
+component ends its life as it began: `COMPONENT_ROLE = "OBSERVER"`, with no
+order-placement code ever written.
+
+### F2 fails structurally, not for want of engineering
+
+`m2_latency.py` (288 games): the ladder's first post-buzzer movement comes at
+a **median of 32s**, p10 8s. `feed_lag.py` (10 monitored games against ESPN
+play-by-play): the WNBA scoreboard endpoint reports halftime **17.6s** after
+the real buzzer.
+
+    detection latency = feed lag (17.6s) + U(0, POLL_S)
+
+| POLL_S | detection (mean) | ahead in | F2 |
+|---|---|---|---|
+| 30 (as first deployed) | 33s | 49% | FAIL |
+| 20 (s19) | 28s | 58% | FAIL |
+| 10 | 23s | 67% | FAIL |
+| **0 (instantaneous)** | **18s** | **74%** | **FAIL** |
+
+F2 needs detection within 14s. **The feed lag alone is 17.6s, so no poll
+cadence whatsoever clears the bar.** This is not a tuning problem; it is a
+property of the score feed. Beating it would require a faster source of
+halftime truth than cdn.wnba.com, which is a different component with
+different economics, not a parameter change here.
+
+### The three measurements
+
+**M1 DEPTH — delivered, and the most valuable output of the component.**
+40,701 rung-polls. Depth at the touch is ample (F1 passes 8/8). Adverse
+selection is ~0 (+0.09c at 1min, the only significant horizon). **The FEE is
+the binding constraint on making**, not adverse selection: 1.74c fee against
+1.81c half-spread earned, net +0.06c/contract. This needed live order books
+and no statistical power, and it transfers to any Kalshi venue work.
+
+**M2 LATENCY — delivered, and it disqualifies taker strategies here.** See
+above. Note the method: the monitor's own logs could not answer this
+(comparing our stamp to the next reprice WE see returned 9/9 "ahead" with
+leads of exactly one poll interval, s19). The answer came from ESPN buzzers
+plus historical candles — data already on disk.
+
+**M3 CALIBRATION — answered in the negative, and unreachable in the
+affirmative.** The >=8c cohort hits 66.7% against a 74% bar. The cause was
+identified from quotes alone (s18): the frozen CDF's sd is 8.4 pts where the
+ladders imply 12.0 and realised error is 10.0, so the model prices its wings
+as if it were 30% more certain than it is. Ten games of P&L: canonical @3%
+-1.28 on 7.28 staked = **-17.5%, CI [-59%, +22%]**. Every threshold/mode cell
+is negative, which is a mild hardening; the CIs remain useless and always
+would have been. Resolving a realistic effect needs ~1,180 games. **M3 could
+never have passed within one WNBA season, and that should have been computed
+at freeze time.**
+
+### What is inherited by the NBA version, and what is not
+
+§10 says the October NBA version changes only ticker, endpoint, quarter
+arithmetic and rule. That inheritance is **withdrawn for the signal and
+retained for the instrument.**
+
+- **Not inherited: the premise.** The NBA halftime under-reaction was closed
+  on the full 2025-26 season (1,114 games, probit estimator): r2>=0.95 gap
+  -0.022, economically absent against a 1.06-1.25pt round trip. An NBA
+  halftime monitor would be instrumentation for a signal already disproven.
+- **Not inherited: the pipeline's relevance to the one live signal.**
+  CrewShock is pregame and referee-based; it needs assignment scraping at
+  publication and a single market snapshot, not 20s in-game ladder polling.
+- **Inherited: the venue facts** (M1), **the estimator** (`implied_line`),
+  **the measurement method** (ground truth beats self-reference), and the
+  operating discipline of §5.
+- **Carried forward as an open question:** F2's structure. If NBA halftime
+  repricing is faster than WNBA's 32s -- likely, given attention and money --
+  then any in-game NBA taker strategy inherits a *worse* latency problem, and
+  should be checked with `m2_latency.py` against NBA data before anything is
+  built.
+
+### What the component is still worth running for
+
+Nothing that requires checking nightly. The frozen line-momentum shadow
+ledger and the s18 shadow book close on their own at season end. The monitor
+may keep running as a background tape; its P&L is not evidence and should not
+be read as such.
+
+### Honest accounting of process errors
+
+Recorded because the method is the deliverable: (1) the original s=0.276
+staleness finding was an anchor artefact, self-caught; (2) "NBA data cannot
+be backfilled" was wrong -- `/historical/markets` serves it; (3) the WNBA
+over-bias was attributed to attrition and survived the fix, so that
+attribution was wrong; (4) s17's "availability not the measurement" claim was
+too strong and was amended same-day; (5) the first M2 was a censored
+self-comparison that could only ever pass; (6) a missing POR->PDX team-code
+mapping silently dropped 38 games from the M2 sample until caught. Five of
+six were found by adversarial re-testing rather than by the result looking
+wrong, which is the argument for doing it.
