@@ -800,3 +800,40 @@ the break dragging the MID without either tradeable price moving (which is
 also why every |move| figure here is an upper bound on taker capture). It is
 recorded as an anomaly, not a signal; confirming it needs fill-level or
 full-depth data this component does not have.
+
+### s22 AMENDMENT — the signed-drift anomaly resolved, and not tradeable
+
+s22 left the -2.14c / -1.47c signed move open, with microstructure as the
+untested hypothesis. Tested by decomposing the mid into its two sides and
+then pricing the trade at real quotes rather than mids.
+
+| | WNBA | NBA |
+|---|---|---|
+| mean MID move | -2.27c | -1.37c |
+| mean BID move | -2.47c | **-2.26c** |
+| mean ASK move | -2.07c | **-0.48c** |
+| spread, pre -> post | 1.16c -> 1.55c | 1.20c -> **2.98c** |
+
+**The hypothesis was right, most clearly in NBA:** the bid falls 2.26c while
+the ask barely moves (-0.48c) and the spread more than doubles. The mid
+"drops" because market makers pull the bid across the break, not because any
+tradeable price fell. WNBA is more symmetric, so part of its drift is real.
+
+Trading it -- sell YES at the pre-buzzer bid, cover at the post-break ask:
+
+| | gross | net of both fees | CI (clustered by game) |
+|---|---|---|---|
+| WNBA (n=387, 182 games) | **+0.92c** | **-2.28c** | [-3.05, -1.54] |
+| NBA (n=538, 337 games) | -0.72c | **-3.96c** | [-4.59, -3.32] |
+
+NBA is negative before costs. WNBA has a genuine +0.92c gross edge -- and
+loses it entirely to **the fee, charged on BOTH legs**: 0.07*p*(1-p) at p~0.5
+is 1.75c per leg, 3.5c the round trip, against a 0.92c prize. The CIs exclude
+zero on the wrong side in both leagues.
+
+This is the same wall as everywhere else in the programme: **the binding
+constraint is the fee, and any two-legged Kalshi strategy at mid-range prices
+starts 3.5c in the hole.** That is a durable design constraint, not a
+finding about halftimes: it rules out the entire class of open-and-close
+strategies near p=0.5 unless the move exceeds ~4c reliably. The anomaly is
+closed -- artefact in NBA, real but fee-defeated in WNBA.
