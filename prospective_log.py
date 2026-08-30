@@ -16,7 +16,7 @@ PRE = ["game_id","date","TEAM_H","TEAM_R","logged_at_utc",
 POST = ["close_total","actual_total","actual_pace","settled_at_utc"]
 COLS = PRE + POST
 THRESHOLD = 4.77          # FROZEN. See amendment C1/C3. Never re-optimise.
-MODEL_VERSION = "2026-08-30-frozen"
+MODEL_VERSION = "2026-08-30-frozen+a5"
 
 def _sha():
     try:

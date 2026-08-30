@@ -79,6 +79,10 @@ def build_states(g, as_of):
     LO = pd.concat([h.oH.head(500), h.oR.head(500)]).mean() if len(h) else 112.0
     resid = {t: [] for t in teams}          # per-team pace-forecast errors, in order
     fc = []                                 # per-game FORECASTS, for the a,b fit
+    TR = _load_transition()                 # PBP transition store (may be empty)
+    sty = {t: {"pace": [], "trans": [], "tov": [], "tovf": [], "ftr": [],
+               "gp": [], "opp_pref": [], "ctrl_x": [], "ctrl_y": []} for t in teams}
+    prof_rows = []                          # per-game 22-feature rows, for m(X)
     yr = lambda d: d.year if d.month >= 8 else d.year - 1
     prev_season = None
     for r in h.itertuples():
@@ -89,6 +93,7 @@ def build_states(g, as_of):
         hh, aa = ti[r.TEAM_H], ti[r.TEAM_R]
         sP  = LP + (Pst[hh] + Pst[aa]) / 2
         sOH = LO + Ost[hh] + Dst[aa]; sOR = LO + Ost[aa] + Dst[hh]
+        prof_rows.append(_profile_row(r, sty, resid, sP, TR))
         fc.append((r.date, sP, sOH + sOR, r.open))
         ep = r.gpace - sP
         resid[r.TEAM_H].append(ep); resid[r.TEAM_R].append(ep)
@@ -97,10 +102,118 @@ def build_states(g, as_of):
         Ost[hh] += SHARE * aO * eH; Dst[aa] += (1 - SHARE) * aD * eH
         Ost[aa] += SHARE * aO * eR; Dst[hh] += (1 - SHARE) * aD * eR
         LO += aL * (eH + eR) / 2
+        _push_style(r, sty, TR)
     ab = _fit_ab(fc, as_of)
+    mx = _fit_mx(prof_rows, h, as_of)
     return {"teams": teams, "ti": ti, "Pst": Pst, "Ost": Ost, "Dst": Dst,
             "LP": LP, "LO": LO, "resid": resid, "n_games": len(h), "as_of": as_of,
-            "ab": ab}
+            "ab": ab, "mx": mx, "sty": sty, "TR": TR}
+
+_TRC = {}
+def _load_transition():
+    """Team-game transition/live-TO store from pbp_transition.py."""
+    if "d" not in _TRC:
+        try:
+            import pbp_transition as PT
+            d = PT.load()
+            _TRC["d"] = {(pd.Timestamp(r.date), r.team): (r.trans_share, r.live_to)
+                         for r in d.itertuples()} if len(d) else {}
+        except Exception:
+            _TRC["d"] = {}
+    return _TRC["d"]
+
+def _mean(x, n=None):
+    x = [v for v in (x[-n:] if n else x) if v == v]
+    return float(np.mean(x)) if x else np.nan
+
+CTRL_K = 10.0   # shrinkage toward 0.5 (neither team imposes)
+
+def _ctrl(t, sty):
+    """Pace-control coefficient: how far game pace moves toward THIS team's
+    preference rather than the opponent's.
+
+    Slope of (gpace - pref_opp) on (pref_own - pref_opp) over the team's prior
+    games. 1.0 = fully imposes its pace, 0.0 = fully absorbs the opponent's,
+    0.5 = they split it. Shrunk toward 0.5 with k=10, since the regressor is a
+    small difference and the raw slope is wild at low n.
+    """
+    x = np.array(sty[t]["ctrl_x"], float); y = np.array(sty[t]["ctrl_y"], float)
+    m = np.isfinite(x) & np.isfinite(y)
+    x, y = x[m], y[m]
+    n = len(x)
+    if n < 3: return 0.5
+    vx = float(np.dot(x, x))
+    if vx <= 1e-9: return 0.5
+    slope = float(np.dot(x, y) / vx)
+    return (n * slope + CTRL_K * 0.5) / (n + CTRL_K)
+
+def _push_style(r, sty, TR):
+    """Append this game's realised style values to each team's history."""
+    # Both teams' PRIOR pace preferences, captured before either append below.
+    pref = {getattr(r, f"TEAM_{k}"): _mean(sty[getattr(r, f"TEAM_{k}")]["pace"])
+            for k in ("H", "R")}
+    for s_, o_ in (("H","R"), ("R","H")):
+        t_, opp_ = getattr(r, f"TEAM_{s_}"), getattr(r, f"TEAM_{o_}")
+        po, pp = pref[t_], pref[opp_]
+        if po == po and pp == pp:
+            sty[t_]["ctrl_x"].append(po - pp)
+            sty[t_]["ctrl_y"].append(r.gpace - pp)
+        else:
+            sty[t_]["ctrl_x"].append(np.nan); sty[t_]["ctrl_y"].append(np.nan)
+    for s_, o_ in (("H","R"), ("R","H")):
+        t = getattr(r, f"TEAM_{s_}")
+        poss = getattr(r, f"poss{s_}"); popp = getattr(r, f"poss{o_}")
+        fga = getattr(r, f"fga{s_}")
+        sty[t]["pace"].append(getattr(r, f"pace{s_}"))
+        sty[t]["tov"].append(100*getattr(r, f"to{s_}")/poss if poss and poss==poss else np.nan)
+        sty[t]["tovf"].append(100*getattr(r, f"to{o_}")/popp if popp and popp==popp else np.nan)
+        sty[t]["ftr"].append(getattr(r, f"fta{s_}")/fga if fga and fga==fga else np.nan)
+        tr = TR.get((pd.Timestamp(r.date), t))
+        sty[t]["trans"].append(tr[0] if tr else np.nan)
+        sty[t]["gp"].append(r.gpace)
+
+def _profile_row(r, sty, resid, sP, TR):
+    """The 22 frozen features, from PRIOR-ONLY team states."""
+    H, R = r.TEAM_H, r.TEAM_R
+    f = {}
+    for tag, t in (("H", H), ("R", R)):
+        f[f"pace_{tag}"]  = _mean(sty[t]["pace"])
+        f[f"trans_{tag}"] = _mean(sty[t]["trans"])
+        f[f"tov_{tag}"]   = _mean(sty[t]["tov"])
+        f[f"tovf_{tag}"]  = _mean(sty[t]["tovf"])
+        f[f"ftr_{tag}"]   = _mean(sty[t]["ftr"])
+        f[f"ctrl_{tag}"]  = _ctrl(t, sty)
+    f["mu5H"] = _mean(resid[H], 5); f["mu5R"] = _mean(resid[R], 5)
+    f["ewvH"] = float(np.var(resid[H][-10:])) if len(resid[H]) >= 4 else np.nan
+    f["ewvR"] = float(np.var(resid[R][-10:])) if len(resid[R]) >= 4 else np.nan
+    f["sP"] = sP
+    f["PrefConflict"] = abs(f["pace_H"] - f["pace_R"])
+    f["ControlConflict"] = f["PrefConflict"] * f["ctrl_H"] * f["ctrl_R"]
+    f["TransComp"] = f["trans_H"] * f["trans_R"]
+    f["TovPressure"] = f["tovf_H"]*f["tov_R"] + f["tovf_R"]*f["tov_H"]
+    f["StyleDist"] = float(np.sqrt(np.nansum([(f[f"{c}_H"]-f[f"{c}_R"])**2
+                                              for c in ("pace","trans","tov","ftr")])))
+    f["_e"] = r.gpace - sP
+    return f
+
+def _fit_mx(prof_rows, h, as_of):
+    """ridge(lambda=20) on standardised profile features, target = pace error.
+
+    Fitted on COMPLETED PRIOR SEASONS only, matching the a,b rule.
+    """
+    if not prof_rows: return None
+    D = pd.DataFrame(prof_rows)
+    D["date"] = h.date.values[:len(D)]
+    as_of = pd.Timestamp(as_of); cur = as_of.year if as_of.month >= 8 else as_of.year - 1
+    yr = D.date.dt.year.where(D.date.dt.month >= 8, D.date.dt.year - 1)
+    D = D[yr < cur]
+    D = D.dropna(subset=PROFILE + ["_e"])
+    if len(D) < 500: return None
+    mu = D[PROFILE].mean(); sd = D[PROFILE].std().replace(0, 1.0)
+    X = np.column_stack([np.ones(len(D))] + [((D[c]-mu[c])/sd[c]).values for c in PROFILE])
+    P = np.eye(X.shape[1]) * RIDGE_LAMBDA; P[0,0] = 0
+    b = np.linalg.solve(X.T@X + P, X.T@D["_e"].values)
+    return {"b": b, "mu": mu.to_dict(), "sd": sd.to_dict(), "n": len(D)}
 
 def _fit_ab(fc, as_of):
     """Open ~ a + b * (sP_forecast * EffSum_forecast / 100), COMPLETED PRIOR SEASONS only.
@@ -158,6 +271,14 @@ def predict_game(st, prof, team_h, team_r, open_total, open_spread):
     rh, ra = st["resid"].get(team_h, []), st["resid"].get(team_r, [])
     if len(rh) >= 2 and len(ra) >= 2:
         mu5 = (np.mean(rh[-5:]) + np.mean(ra[-5:])) / 2
-    m_X = np.nan                                       # requires PBP-derived profile
+    m_X = np.nan
+    mx, sty, TR = st.get("mx"), st.get("sty"), st.get("TR")
+    if mx is not None and sty is not None:
+        class _R: pass
+        rr = _R(); rr.TEAM_H, rr.TEAM_R, rr.date, rr.gpace = team_h, team_r, st["as_of"], np.nan
+        f = _profile_row(rr, sty, st["resid"], P_hat, TR)
+        if all(f.get(c) == f.get(c) for c in PROFILE):
+            z = [1.0] + [(f[c]-mx["mu"][c])/mx["sd"][c] for c in PROFILE]
+            m_X = float(np.dot(mx["b"], z))
     return {"P_hat": P_hat, "P_book": P_book, "EffSum": EffSum,
             "mu5": mu5, "m_X": m_X}

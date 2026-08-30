@@ -19,6 +19,7 @@ import pandas as pd, numpy as np
 sys.path.insert(0, "/home/dpope/projects/nba_entropy_replication")
 import frozen_models as FM
 import prospective_log as PL
+import pbp_transition as PT
 
 LINES_OUT = "lines_today.csv"
 
@@ -41,6 +42,12 @@ def main(day, path=None):
     if st["ab"] is None:
         print("FAIL no a,b fit -- need >=400 completed prior-season games"); return 1
     print(f"states as of {day}: {st['n_games']:,} prior games, a,b={tuple(round(v,4) for v in st['ab'])}")
+    stale = PT.staleness(day)
+    if not stale["ok"]:
+        # Log m_X EMPTY rather than from a frozen transition state. An empty field
+        # is auditable; a silently-stale one is not.
+        print(f"  WARN {stale['reason']} (last {stale.get('last_game')}) -- m_X will be logged EMPTY")
+        st["mx"] = None
 
     ab = _abbr_map(); rows = []; n_ok = n_skip = 0
     for r in sl.itertuples():

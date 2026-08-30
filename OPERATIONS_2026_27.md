@@ -73,10 +73,24 @@ to `D` and make **S1's profile leg look evaluable when it is inert** — the sam
 silent-zero failure that mis-scored a CrewShock slate via an unmatched official
 name.
 
-**Consequence for the prereg:** `S1` can currently compare `D` vs `D*_drift`
-only. To evaluate `D*_profile`, the PBP transition pipeline (`s2_pbp.py` logic)
-must be added to the daily settle path before 2026-10-20. **If it is not,
-S1's profile leg is reported as not evaluated — not as a null.**
+**Status 2026-08-30 — CLOSED.** `pbp_transition.py` is built, validated against
+the parquet (team-game corr 0.9854, bias −0.21pp) and backfilled over 18,330
+team-games (2017-10-17 .. 2025-04-13). `settle_day.py` calls `PT.update(day)`
+before the state rebuild, so the store advances daily. End-to-end on a simulated
+2026-02-04 slate: `m_X_populated 7/7`, `incomplete_pregame_fields []`, and
+`D*_profile` genuinely separates from `D`. **S1's profile leg is now evaluable.**
+
+**The remaining live dependency is the PBP feed, not the pipeline.** `nba_api`
+is not installed; `update(day, pbp_frame=...)` accepts an injected frame, and a
+2026-27 source must be wired before 2026-10-20.
+
+**Staleness is a hard stop, not a warning.** `_mean()` skips NaN, so a stale
+store does not error — the transition state silently freezes at its last observed
+value and `m(X)` drifts with nothing visible in the output. `PT.staleness(day)`
+fails at >7 days and `capture_openers.py` then logs `m_X` **EMPTY**, which
+`health()` surfaces via `incomplete_pregame_fields`. Verified: against 2026-02-04
+the store reports 297 days stale and every `m_X` logs empty. A stale-store day is
+reported as **profile-leg not evaluated for that day**, never as a null.
 
 ## SEASON CALENDAR
 

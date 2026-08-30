@@ -573,3 +573,40 @@ acting on that would convert a preregistered test into a search.
 
 **Permitted in-season:** pipeline health only — did the log write, did fields
 populate, are joins matching. Nothing involving `actual_total`.
+
+---
+
+## AMENDMENT 5 — `ctrl` implemented (2026-08-30, pre-first-game)
+
+**Defect.** `_profile_row` hardcoded `ctrl_H = ctrl_R = 1.0`. Two consequences,
+both silent:
+
+1. `ctrl_H`/`ctrl_R` were constant columns. `_fit_mx` does `sd.replace(0, 1.0)`,
+   so each standardised to an exactly-zero column and took a ridge coefficient of
+   exactly 0. Inert, not merely weak.
+2. `ControlConflict = PrefConflict × 1 × 1` was an **exact duplicate** of
+   `PrefConflict`. Ridge does not fail on collinearity, it splits the weight — so
+   one effect was carried by two columns.
+
+The declared 22-feature profile was therefore delivering 19.
+
+**Fix.** `ctrl_t` is the shrunk OLS slope of `(gpace − pref_opp)` on
+`(pref_own − pref_opp)` over the team's prior games: 1.0 = imposes its own pace,
+0.0 = absorbs the opponent's, 0.5 = split. Shrunk toward 0.5 with k=10, since the
+regressor is a small difference and the raw slope is unstable at low n. Both
+teams' preferences are captured **before** either team's append, so the state
+stays prior-only. `ControlConflict` drops the `abs()` (`ctrl` is signed by
+construction now, and `abs()` would fold "absorbs hard" onto "imposes hard").
+
+**Effect.** ctrl spans 30 teams at mean 0.479, sd 0.196 (imposes: NYK 0.880,
+ATL 0.842; absorbs: TOR 0.063, HOU 0.145). Ridge weights move off the floor —
+`ctrl_H` +0.0231, `ctrl_R` −0.0081 — and `ControlConflict` (−0.1515) is now
+distinct from `PrefConflict` (−0.2204). Both `ctrl` main effects are small; the
+substantive change is de-duplicating `PrefConflict`, not adding predictive power.
+
+**Legitimacy.** Made before any 2026-27 game was logged, so no outcome data
+informed it. It is not a threshold change, a window change, or a rescue of a
+failed test — the threshold (4.77), shrinkage constants, team-state definitions
+and trading rule are untouched. It brings code into line with a spec written
+before the fix. `MODEL_VERSION` → `2026-08-30-frozen+a5`; any row logged under
+the old version is void (none exist).
