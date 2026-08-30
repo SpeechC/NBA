@@ -13,8 +13,8 @@ def ols(y,X):
     return b,se
 print(f"CONFIRMATORY RUN — n(H1,H3)={G.Z_H1.notna().sum():,}  n(H2)={G.Z_H2.notna().sum():,}")
 print(f"sd(Y = actual - close) = {G.Y.std():.3f}")
-print(f"POWER: se(beta per SD) ~ {G.Y.std()/np.sqrt(len(G)):.4f} -> MDE {1.96*G.Y.std()/np.sqrt(len(G)):.4f} pts")
-print(f"  materiality gate 0.75 pts over a ~1.6-SD quintile gap = {0.75/1.63:.3f} pts/SD -> POWERED\n")
+print("POWER (corrected): MDE at 80% power, one-sided alpha=.05, is (z.95+z.80)*SE = 2.487*SE")
+print("  and under Holm the earliest threshold uses alpha/3, giving 2.970*SE\n")
 res={}
 for k in ["Z_H1","Z_H2","Z_H3"]:
     s=G[G[k].notna()].copy(); Z=(s[k]-s[k].mean())/s[k].std()      # per-SD units
@@ -35,6 +35,12 @@ for k in ["Z_H1","Z_H2","Z_H3"]:
     bv,sev=ols(s.MV.values,Xv)
     res[k]=dict(n=len(s),bl=bl,sl=sl,lo=lo90,hi=hi90,cls=cls,bt=bt,st=st,p1=p1,
                 bv=bv[1],tv=bv[1]/sev[1],Z=Z,s=s)
+print(f"  {'H':<4}{'se_out':>9}{'MDE 80%':>10}{'MDE Holm':>11}{'vs 0.460 target':>18}")
+for i,k in enumerate(["Z_H1","Z_H2","Z_H3"],1):
+    se_=res[k]["st"]; m1,m2=2.4866*se_,2.9696*se_
+    print(f"  H{i:<3}{se_:>9.4f}{m1:>10.4f}{m2:>11.4f}"
+          f"{('powered pre-Holm' if m1<=0.460 else 'UNDERPOWERED'):>18}")
+print()
 print("5. MARKET-INCORPORATION TEST  (TOST, 90% CI vs +-0.25 pts/SD)")
 print(f"  {'H':<4}{'beta_line':>11}{'se':>7}{'90% CI':>22}{'classification':>22}")
 for i,k in enumerate(res,1):
