@@ -593,3 +593,56 @@ this section: reading a persistence correlation without its reliability ceiling,
 and reading a conditional-variance effect off a game-level correlation on
 |dev|. Both understated a real effect. Conditional-variance questions must be
 tested on `dev^2` with the noise floor priced first.
+
+## Link 4b — THE QUESTION THAT WAS ACTUALLY ASKED
+
+Link 4 tested implied sigma against **the line**. The question was whether the
+ladder widens for **high-variance matchups** — a different conditioner, and the
+one that matters. Run on `ladder_matchup.py`, regular season only.
+
+**Why this is answerable where Link 4 was not.** Realised variance on 1,151
+games is hopeless (Link 4: ~22,491 needed). But implied sigma is a *fitted*
+quantity off 11 rungs, not one noisy draw, so **what the ladder BELIEVES is
+measured precisely even when what is TRUE is not.**
+
+```
+bucket             n_lad   LADDER sigma   mean mu  |  n_all   REALISED sd(dev)
+HH both high-var     121        18.344      231.2  |   1006         17.565
+LL both low-var      118        18.272      229.6  |    981         17.358
+ALL games          1,151        18.299      230.7  |   9,489        18.065
+
+LADDER  HH-LL implied sigma  +0.0719  (t=+0.34, p=0.7352)   MDE 0.4163 pts
+REALITY HH/LL sd ratio        1.0119  (F p=0.7087)
+```
+
+```
+implied_sigma ~ comb + implied_mu    comb +0.0126 (t=+0.32)   mu +0.0426 (t=+8.75)
+dev^2        ~ comb + close          comb +4.6775 (t=+0.95)   close +1.2086 (t=+2.28)
+```
+
+**The ladder loads on the line and NOT on matchup variance — and neither does
+reality.** Same structure on both sides.
+
+### This one IS well powered, unlike Link 4
+
+MDE on the ladder's HH-LL gap is **0.42 pts**. A ladder that naively ADDED team
+variances — HH teams measure ~13.2 sd, LL ~10.8, so sqrt(2)*13.2 = 18.7 against
+sqrt(2)*10.8 = 15.3 — would show a gap of **~3.4 pts**. Observed +0.07 +- 0.42.
+**Naive variance-adding is excluded by ~8x.**
+
+The market maker applies the shrinkage the data demands: measured team variance
+is 78% noise (reliability 0.223), so the correct response is to nearly ignore
+it, and the ladder nearly ignores it.
+
+### A BUG CAUGHT BY CONTRADICTION — recorded, not buried
+
+The first run of this test reported HH/LL realised ratio **1.2472 (p=0.0000)**,
+contradicting `matchup_var.py`'s 1.011. Cause: **the ladder script omitted the
+regular-season filter**, pulling in 894 playoff games where the same two teams
+repeat 4-7 times and load the buckets. With the filter restored the ratio is
+1.0119 (p=0.7087) and the two runs reconcile exactly.
+
+It would have been reported as a real finding had it not contradicted an earlier
+result. **The close-range filter excludes zero rows in this master; the
+regular-season filter is the one that does the work** — the same universe-filter
+class of defect recorded in `PREREG_crewshock_forward` §2.
