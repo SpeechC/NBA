@@ -124,3 +124,90 @@ The frozen prereg is unaffected — `PaceGapPoints` enters with no threshold and
 confidence weighting, which this analysis now supports on a firmer basis than
 before: not "we could not find a filter" but **"pace can explain at most a
 quarter of totals variance, so no pace-based filter can matter much."**
+
+---
+
+# CORRECTION — the t = +5.55 result was MECHANICAL, not informational
+
+They were right that my variance-share argument was a non-sequitur: a component
+carrying 25.6% of variance **can** shift a conditional mean enough to cross a
+betting threshold, and "% of unconditional variance removed" does not settle
+economic relevance. **That correction stands.**
+
+But testing their proposed `edge magnitude x directional confidence` grid exposed
+a defect in my own construct, and the branch closes for a different and better
+reason.
+
+## p_survive is a monotone transform of the edge
+
+```
+corr(|PaceGapPoints|, p_survive) = +0.9258
+```
+
+`p_survive = P(e > -D)` is **mechanically** increasing in |D| — a larger edge is
+harder for the error to erase, whatever the matchup. Decomposing:
+
+```
+corr(|gap|, p_survive)                     +0.9258   the reported construct
+corr(|gap|, baseline survival at that |D|) +0.9832   the MECHANICAL part
+corr(|gap|, EXCESS = p_survive - baseline) +0.0560   what is actually matchup-specific
+```
+
+**The `t = +5.55` correlation with realised pace direction was arithmetic.** Big
+edges survive more often because they are big, not because the analog pool said
+the matchup was tight. **My claim that this was "the first construct in the
+uncertainty branch that works" is withdrawn.**
+
+The grid confirmed it structurally: 95.2% of large-gap games have `conf > 0.65`,
+and only **7** large-gap games have `conf <= 0.65` — too few to compare. The
+"large gap AND high confidence" cell (n=140, hit 59.3%) is indistinguishable from
+the plain large-gap cell (n=147, hit 59.9%).
+
+## The residualised matchup confidence predicts NOTHING
+
+Removing the mechanical component:
+
+```
+                          excess alone        with |gap| controlled
+pace direction correct   -0.1031 (t=-0.17)     -0.2944 (t=-0.51)
+BET win                  -0.3746 (t=-0.62)     -0.4382 (t=-0.72)
+
+terciles of EXCESS confidence:
+  low   n=148  pace ok 62.8%   bet 56.8%
+  mid   n=147  pace ok 61.2%   bet 54.4%
+  high  n=147  pace ok 59.2%   bet 53.1%      <- BACKWARDS, monotonically
+```
+
+And the decomposition of the large-gap cell:
+
+```
+win ~ |gap|              +0.01562 (t=+1.84)
+win ~ |gap| + excess     |gap| +0.01597 (t=+1.87)   excess -0.4382 (t=-0.72)
+```
+
+**|gap| carries everything. Matchup confidence adds nothing, and its terciles run
+the wrong way.**
+
+## What this settles, and what it leaves standing
+
+**Their conceptual framework was right** — directional confidence is the useful
+object, not a variance forecast; current profiles beat franchise identity; and
+`edge x confidence` is the correct decision structure. **My implementation of
+`p_survive` was degenerate**, and I reported its mechanical correlation as a
+discovery. That is the error, not the concept.
+
+**What survives is exactly the frozen prereg.** `win ~ |gap|` at t = +1.84 on this
+subsample, with the canonical t = +3.42 on the full sample, and **no confidence
+term adds to it.** `PaceGapPoints` entering with no threshold and no weighting is
+now supported by a direct test of the alternative rather than by the variance
+argument I wrongly relied on.
+
+**What is NOT established:** that a properly-constructed matchup confidence
+measure must fail. `excess` has sd 0.039 and n = 442 — a genuinely informative
+version could exist and be undetectable here. The honest statement is that **this
+construction was degenerate and its residual carries no signal at this sample
+size.**
+
+No prereg change. The secondary hypothesis they proposed — that high-confidence
+games show stronger pace-gap performance — **should not be registered**, because
+the confidence measure that motivated it is 93% collinear with the edge itself.
