@@ -136,3 +136,44 @@ not — it carries a measurable quote-width component that Stage C must handle.
 **Next:** Stage B on `mu`, which is the well-identified parameter, and which
 must be **cross-fitted** — Stage 1's R2 0.8689 is in-sample and is not an honest
 estimate of how well PIT basketball state reproduces the market's centre.
+
+---
+
+## CORRECTION to the A5 headline — the 99.03% figure is misleading
+
+A5 was reported as "the z-transform removes 99.03% of rung-price variance," and
+that was used as the evidence for a **two**-parameter machine. Decomposing what
+each parameter actually buys shows it is not:
+
+| model | MAE | % var removed | rungs in quoted band |
+|---|---|---|---|
+| C: global mu, global sigma (0 params) | 12.429c | 39.28% | 9.4% |
+| **B: game mu, CONSTANT sigma (1 param)** | 1.108c | **98.82%** | 70.1% |
+| A: game mu, game sigma (2 params) | 0.909c | **99.03%** | 78.2% |
+
+**mu alone reaches 98.82%. The game-specific sigma adds 0.21 percentage
+points.** The variance-removed metric is saturated by the centre, exactly the
+failure mode flagged in the Stage A specification: rung prices are mechanically
+monotone in the strike, so any decent monotone curve scores enormously.
+
+**The second parameter is real but must be judged on probability error, not
+variance explained:**
+
+```
+per-rung MAE            1.108c -> 0.909c   (18.0% better)
+rungs inside [bid,ask]   70.1% -> 78.2%    (+8.1 points)
+```
+
+**Corrected statement of the A5 result:** the ladder is one normal curve
+evaluated at ~11 strikes; a single `(mu, sigma)` reproduces it to a per-rung MAE
+of **0.909c** with **78.2%** of rungs priced inside the quoted bid-ask band. The
+99.03% figure should not be quoted, and the two-parameter claim rests on the MAE
+and in-band figures, not on it.
+
+```
+P(Total > K) = 1 - Phi( (K - mu) / sigma )
+```
+
+Worked example, KXNBATOTAL-26APR07UTANOP, fitted mu 243.21 and sigma 19.23:
+`z = (251.5 - 243.21)/19.23 = 0.431`, `1 - Phi(0.431) = 0.333` -> 33.3c against a
+quoted 33/34.
