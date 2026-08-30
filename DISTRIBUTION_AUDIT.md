@@ -79,3 +79,67 @@ get the points.
   report both the conversion and the realised rate, and prefer the realised.
 - Check whether the effect sits **at the line** before converting at all.
 - 1H work may use the Gaussian; full-game work should not.
+
+---
+
+# Moneylines — audit 2026-08-29
+
+n = 9,486 two-sided closing moneylines, mean overround 4.18%. Vig-free
+`p_home = imp(ML_H) / (imp(ML_H) + imp(ML_R))`.
+
+## The book prices margins as Gaussian, and the SCALE is right
+
+Recovering the σ each (spread, ML) pair implies under `p = Φ(−spread/σ)`:
+
+```
+book's implied sigma   median 13.20   IQR 12.20 - 14.84
+REALISED margin sd                    13.24
+```
+
+That is a near-exact match. Whatever the book is doing, its scale is correct.
+
+## But margins are mildly leptokurtic, and σ is near-constant
+
+| \|spread\| | n | sd | skew | exc. kurtosis | JB p |
+|---|---|---|---|---|---|
+| 0–2 | 914 | 13.84 | −0.063 | +0.376 | 0.050 |
+| 2–5 | 3,040 | 13.34 | −0.011 | +0.337 | 7.2e-04 |
+| 5–8 | 2,515 | 13.12 | −0.033 | +0.607 | 3.3e-09 |
+| 8–12 | 2,039 | 12.93 | +0.048 | +0.543 | 2.5e-06 |
+| 12+ | 978 | 13.24 | +0.140 | +0.742 | 2.8e-06 |
+
+Normality is rejected in four of five buckets — mild fat tails throughout.
+**σ is essentially flat (12.93–13.84)** and if anything *decreases* slightly
+with favourite size, which is the opposite of the naive expectation that
+mismatches are more variable.
+
+## The trap: a naive Gaussian map misprices the extremes by more than the vig
+
+| spread bucket | n | ACTUAL win% | Gaussian σ=13.24 | book ML | Gaussian err | ML err |
+|---|---|---|---|---|---|---|
+| home fav 10+ | 1,219 | 86.05% | 83.24% | 85.86% | **−2.81pp** | −0.19pp |
+| fav 6–10 | 1,735 | 73.43% | 72.68% | 74.14% | −0.75pp | +0.71pp |
+| fav 3–6 | 1,651 | 64.26% | 63.78% | 63.36% | −0.48pp | −0.90pp |
+| fav 0–3 | 1,238 | 54.36% | 56.16% | 54.44% | +1.79pp | +0.07pp |
+| dog 0–3 | 970 | 47.32% | 44.56% | 46.41% | **−2.76pp** | −0.91pp |
+| dog 3–6 | 1,223 | 37.78% | 37.51% | 38.18% | −0.26pp | +0.40pp |
+| dog 6+ | 1,450 | 22.76% | 25.19% | 23.74% | **+2.43pp** | +0.98pp |
+
+Brier: Gaussian 0.20532, book ML 0.20501.
+
+**The Gaussian understates real favourites and overstates real longshots** —
+fat tails produce more decisive games than a normal predicts. Max Gaussian
+error **2.81pp** against a −110 vig of 2.381pp: **a naive Gaussian
+spread→probability map manufactures a phantom edge on big favourites and big
+dogs, larger than the hurdle it would have to clear.**
+
+The book's own ML is within **~1pp everywhere**, consistent with `CLOSING.md`'s
+"calibrated within 1.2pp". The book is *not* using a naive Gaussian — which is
+why `CLOSING.md` also found the book's ML deviation from the spread carries
+information (+0.78).
+
+## Rule
+
+**Never convert our own spread estimate to a win probability with a Gaussian.**
+Use the empirical spread→win-rate mapping. The error is largest exactly where a
+model would most want to bet — the extremes — and it exceeds the vig.
