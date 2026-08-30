@@ -913,3 +913,85 @@ assume independence rather than fitting a hot-hand term.
 correlation) that I had not measured and that turned out to run the other way.
 The hedge was stated as a caution, which made it feel safe, but it was an
 unmeasured empirical claim doing load-bearing work.
+
+## Link 6c — NO, WE DO NOT HAVE THEIR FORMULA. And this corrects Links 5 and 6.
+
+Direct question: do we have the exact Poisson/pace/3PA formula the makers use?
+**No, and the gap is much larger than Links 5 and 6 implied.**
+(`recover_formula.py`, `sigma_noise.py`)
+
+### We explain 8.9% of what the ladder does
+
+```
+sigma ~ mu                      R2 0.0607
+sigma ~ pace                    R2 0.0572
+sigma ~ mu + pace               R2 0.0689
+sigma ~ mu + pace + 3PArate     R2 0.0771   <- OUR MODEL
+```
+
+The obvious objection is that implied sigma is measured with error, so R2
+understates. **Tested by split-half** — fit sigma from the ODD rungs and the
+EVEN rungs of the same ladder, 1,307 ladders:
+
+```
+sd(odd-half sigma - even-half sigma)  0.9479
+=> FULL-ladder measurement noise sd   0.4740
+observed var(implied sigma)  1.6533   noise 0.2246   TRUE 1.4286
+RELIABILITY of one implied sigma = 0.864
+```
+
+**Implied sigma is measured well.** The unexplained part is real, not my error:
+
+```
+our model explains 8.9% of the ladder's TRUE sigma variation
+=> 91% of what the ladder actually does is UNIDENTIFIED
+```
+
+### We cannot even identify the functional form
+
+```
+sigma ~ sqrt(2*pace)  [Poisson]   R2 0.0571      sigma ~ pace  [linear]  R2 0.0572
+sigma ~ sqrt(mu)      [Poisson]   R2 0.0606      sigma ~ mu    [linear]  R2 0.0607
+corr(sqrt(mu), mu) = 0.999936
+```
+
+**Over the observed range sqrt and linear are indistinguishable.** Every "Poisson
+rate" statement in Links 5 and 6 is a claim about a *magnitude*, never about a
+*shape*. The shape is not identified by this data and cannot be.
+
+No per-team adjustment is detectable either: between-team residual sd 0.2144
+(home) and 0.1787 (away) against a noise-only 0.1952 — ratios 1.10 and 0.92.
+
+### CORRECTIONS TO LINKS 5 AND 6, stated plainly
+
+Those sections said the market "is conditioning its dispersion on the physically
+correct variable" and "that is not a market pricing off the total." **Both
+overstate what was measured.** What is actually established:
+
+- the ladder's sigma moves with pace and with shot mix, in the right direction,
+  at a magnitude whose CI contains the physical benchmark — **true, and it
+  survives**;
+- those two variables together account for **under a tenth** of the ladder's real
+  sigma variation — **omitted, and it changes the reading**;
+- whether the relationship is Poisson-shaped is **not identified at all**.
+
+The coefficients are real. The claim to understand the pricing rule was not
+earned.
+
+### What this reopens
+
+If 91% of the ladder's sigma variation is real and unexplained, some of it could
+be *wrong* — and a mispricing is far likelier to live there than in the
+pace/3PA loadings, which are already roughly right. That is the opposite of
+where Links 5 and 6 pointed.
+
+**It is not evidence of mispricing.** Link 4 measured the ladder as calibrated on
+average (18.218 implied vs 18.265 realised, 0.3%) with every quintile gap inside
+its noise band, so the unexplained variation is not obviously biased. It is
+simply unexplained.
+
+The constructive route is a **residual search**: regress the ladder-sigma
+residual on candidates the makers plausibly see and we have not used — injuries
+and rest, back-to-backs, lineup availability, time-of-season, book flow. That is
+a well-posed search with a real target, and it is the direct route to their rule.
+It needs its own pre-registration.
