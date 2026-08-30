@@ -196,3 +196,125 @@ No re-tuning of k, lambda, mix, half-lives, carry, or share. No alternative
 pace-uncertainty formula. No threshold on `|PaceGapPoints|` introduced post hoc.
 No substitution of `Actual - Close` for `Actual - Open` in H1. No promotion of
 the secondary cell to primary. No new subgroup added to any family.
+
+---
+---
+
+# AMENDMENT — 2026-08-30, BEFORE any 2026-27 data exists
+
+Three analyses run after the original registration (`PACE_VARIANCE_V2`,
+`PACE_INTERACTION`, `canonical_spec.py`) require amendments. **All are made now,
+with no 2026-27 data in existence.**
+
+## A1. THE SECONDARY HYPOTHESIS IS WITHDRAWN
+
+`<220 x high sigma` is **dropped entirely**, not re-specified. Both candidate
+definitions of the uncertainty gate failed on their own terms:
+
+```
+5-feature linear sigma_P    predicted terciles give actual sd(u) 4.060/4.047/4.184, F p=0.4313
+volx (Vol_H x Vol_R)        NOT structurally necessary: main effects +0.877/+0.883 (t~2.1),
+                            interaction +0.1585 (t=+0.41)
+```
+
+The original 59% rested on one of eight post-hoc cells. Carrying it forward would
+add multiple-testing burden without a functioning mechanism.
+
+## A2. ALL UNCERTAINTY CONSTRUCTS ARE REMOVED FROM THE DECISION RULE
+
+Removed from the betting specification: predicted `sigma_P` weighting, `volx`
+gating, volatility-based sizing, and any high/low pace-volatility split.
+**They may be reported as diagnostics. They may not affect a bet.**
+
+Basis: the interaction test gave `beta(Gap x Vol) = -0.0429 (t = -0.47)`,
+CI [−0.220, +0.134], with non-monotone tercile betas (0.448 / 0.192 / 0.307) and
+a bucket grid that reverses sign across gap size. **No empirical basis exists for
+modulating a bet on pace volatility.**
+
+## A3. THE CANONICAL IMPLEMENTATION — the ten items, frozen
+
+Two pace-gap estimates were reported during discovery (β 0.2500 t=3.72; β 0.3263
+t=3.23). **Cause identified:** the second required 10-game rolling volatility
+features to exist, which silently dropped early-season games. **Since volatility
+is no longer in the specification, those exclusions are wrong.** The canonical
+estimate uses the maximal eligible sample.
+
+```
+1  MODEL VERSION     structural latent states: pace HL 5.7, offence HL 8.6,
+                     defence HL 7.4, league HL 496 games, offseason carry 0.42,
+                     offence innovation share 0.54; SAME-DAY BATCHING (every game
+                     on date D predicted before any date-D update).
+                     Code of record: oracle_attribution.py / canonical_spec.py
+
+2  BOOK-IMPLIED PACE Pace_book = 100 * (Open - a) / (b * EffSum)
+                     EffSum = OE_H_hat + OE_R_hat
+                     a, b refit each season by OLS of Open on sP*EffSum/100 using
+                     ALL PRIOR SEASONS ONLY. No in-season refitting.
+
+3  SIGNAL           PaceGapPoints = (sP - Pace_book) * EffSum / 100
+
+4  ELIGIBLE GAMES   NBA regular season only. Both teams must have a defined
+                    structural state. At least one full prior season must exist
+                    for the a,b fit (so 2026-27 is fully eligible). No minimum
+                    gap magnitude. No exclusions for injury, rest, or total level.
+
+5  PUSHES           Actual == Open is a PUSH: excluded from the hit-rate
+                    denominator, retained in the regression. Historical rate 0.23%.
+
+6  OPENING LINE     `OPENING TOTAL_H` from dfMaster_OT_2017-2026.csv, the single
+                    vendor used throughout this programme. `OPENING SPREAD_H` for
+                    the implied-points identity.
+
+7  REGRESSION       Actual - Open = alpha + beta * PaceGapPoints + eps, OLS.
+                    Report BOTH classical and HC1 robust standard errors.
+                    (Discovery: they agree to two decimals.)
+
+8  THRESHOLD        NONE. Every game with a nonzero PaceGapPoints is a
+                    theoretical bet, in the sign of the gap. Descriptive
+                    magnitude bins are FROZEN at
+                    [-inf,-4), [-4,-2), [-2,0), [0,2), [2,4), [4,inf)
+                    and are reported for description only.
+
+9  ECONOMIC GATE    Break-even at -110 = 52.381%. ROI = 1.90909*hit - 1.
+
+10 NO TUNING        No specification change may use 2026-27 outcomes before the
+                    season-level evaluation is complete.
+```
+
+## A4. CANONICAL DISCOVERY BENCHMARKS — reference only
+
+```
+n = 3,488 (2023-2025 eligible)      pushes 8 (0.23%)
+beta +0.2223   se 0.0650   t +3.42   95% CI [+0.0948, +0.3497]
+HC1 robust se 0.0659   t +3.38
+bets 3,480   hit 52.59%   ROI +0.39%   se(hit) 0.85pp   CI [50.93%, 54.25%]
+```
+
+**The economic result clears break-even by 0.21pp with a confidence interval
+that straddles it.** Frozen magnitude bins, hit rate by bin: 52.9 / 54.0 / 49.8 /
+52.6 / 53.1 / 52.9 — **essentially flat, with no monotone strengthening in gap
+size.** This is expected: a larger gap gives more edge in points, but the
+points-to-hit-rate conversion compresses it.
+
+## A5. POWER, RESTATED ON THE CANONICAL SPECIFICATION
+
+```
+se at n = 1,230 (one season) = 0.1095      MDE(80%, one-sided) = 0.2723
+canonical discovery beta      = 0.2223      ->  UNDERPOWERED
+```
+
+**One season cannot confirm H1 at 80% power.** The reading fixed in the original
+prereg stands and is now attached to the canonical number: **a non-significant
+positive beta with a hit rate above 52.381% is an economic PASS and a statistical
+UNDERPOWER, and must be reported as both.**
+
+H2 remains as registered, with the pre-committed pooled 2022-2027 read alongside.
+
+## A6. WHAT IS PROTECTED FROM FURTHER TUNING
+
+The result worth protecting is not the coefficient. It is the **provenance**: the
+pace component was isolated by an error decomposition — pace carried 45.4% of
+worst-decile squared error — and isolating it **roughly doubled** the outcome
+relationship relative to the aggregate model gap (t 1.88 -> 3.42). **That is a
+mechanism-first finding, not a feature search.** No further variable may be added
+to this hypothesis before 2026-27 is scored.
