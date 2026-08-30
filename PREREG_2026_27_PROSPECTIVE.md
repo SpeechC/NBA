@@ -413,3 +413,90 @@ NOT REGISTERED: p_survive; the <220 x high-sigma cell; any |E| threshold
 
 **H1 remains threshold-free.** S2 tests a threshold *against* H1 rather than
 replacing it, so a failure of S2 leaves H1 intact.
+
+---
+
+# AMENDMENT 3 — final. S2 rephrased, opportunity-set metrics added, instability recorded
+
+## C1. S2 IS A FROZEN CANDIDATE RULE, NOT A CALIBRATED THRESHOLD
+
+**Corrected phrasing, adopted verbatim:**
+
+> S2 prospectively tests a **frozen historical candidate rule** — bet only when
+> `|E_pace| >= 4.77` — against taking the sign of the pace signal on all eligible
+> games.
+
+**NOT** "4.77 is the estimated break-even threshold." The logistic slope is
+`t = +1.39`, so the crossing point is poorly identified; under plausible values of
+the true slope it could sit much further out or not exist. The earlier wording
+gave the fit more precision than it has.
+
+## C2. OPPORTUNITY-SET ECONOMICS — S2 must report profit per ELIGIBLE GAME
+
+$100 flat stake at −110, N = 3,488 eligible:
+
+| policy | bets | hit | ROI/bet | total P/L | **P/L per ELIGIBLE** |
+|---|---|---|---|---|---|
+| BET ALL (no threshold) | 3,488 | 52.47% | +0.16% | +563.47 | +0.162 |
+| **\|E\| >= 4.77 (frozen S2)** | 1,056 | 53.31% | +1.78% | **+1881.77** | **+0.539** |
+
+The discarded games are **net negative** — `|E| < 4.77`: n = 2,432, hit 52.10%,
+ROI −0.54% — so on discovery data the filter is not throwing away positive-EV
+opportunities. It raises ROI per bet **and** total profit (3.34x) on 30.3% of the
+slate.
+
+**S2 must report all six:** `N_bets`, `HitRate`, `ROI`, `Profit/Bet`,
+`Profit/AllEligibleGames`, and total P/L — because a filter can raise ROI while
+destroying total profit, and only the last two distinguish those cases.
+
+## C3. THE THRESHOLD LANDSCAPE IS UNSTABLE — and this is the strongest caveat
+
+Total P/L across candidate thresholds, same data:
+
+```
+bet all      +563.47
+|E| >= 2    +3436.25
+|E| >= 3     -309.18      <- LOSES money
+|E| >= 4.77 +1881.77
+|E| >= 6    +1590.88
+|E| >= 8.53 +3645.44
+```
+
+**Non-monotone, and one threshold between two profitable ones loses money.** A
+real effect would produce a smooth profit-versus-threshold relationship. This
+landscape is the signature of noise, and it is why:
+
+1. `4.77` is registered as a **candidate**, not a calibrated cutoff;
+2. no other threshold — including the +3,645 at `|E| >= 8.53` — is registered;
+3. **S2 failing prospectively is an unsurprising outcome, not a shock.**
+
+## C4. THE CENTRAL FACT ABOUT THIS STRATEGY, recorded for whoever reads the 2027 result
+
+```
+E_pace -> Actual - Open   (continuous)   beta 0.222   t = +3.42
+|E_pace| -> Win/Loss      (binary)                    t = +1.39
+```
+
+**The signal predicts how far the total moves far better than which side of one
+fixed line it lands on.** A correct call of +12 and a correct call of +0.2 are
+identical to a bettor; a miss of −0.5 and a miss of −20 are also identical. The
+binary conversion discards most of the information the regression uses.
+
+**That gap is the whole reason prospective validation is required**, and it means
+a strong H1 with a weak S2 is a coherent and likely result — not a contradiction.
+
+## C5. FINAL FROZEN HIERARCHY
+
+```
+PRIMARY   H1  D -> Actual-Open, continuous, NO THRESHOLD          beta > 0
+PRIMARY   H2  AggregateGap -> Actual-Close                        gamma < 0
+SECONDARY S1  does D*_profile or D*_drift beat D?   (incremental, not significance)
+              report in order: pace RMSE/MAE -> Actual-Open fit -> hit/ROI
+SECONDARY S2  frozen candidate rule |E| >= 4.77 vs bet-all
+              report all six economic metrics incl. Profit/AllEligibleGames
+
+NOT REGISTERED: p_survive; <220 x high-sigma; every threshold except 4.77;
+                any rule discovered after 2026-10-20
+```
+
+**PROJECT FROZEN 2026-08-30.** No further specification work before the season.
