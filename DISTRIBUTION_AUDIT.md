@@ -995,3 +995,90 @@ residual on candidates the makers plausibly see and we have not used — injurie
 and rest, back-to-backs, lineup availability, time-of-season, book flow. That is
 a well-posed search with a real target, and it is the direct route to their rule.
 It needs its own pre-registration.
+
+## Link 6d — BACKING OUT THE FORMULA, and a RETRACTION of Link 5
+
+Goal: recover the makers' sigma rule. Nested fit of implied sigma on every
+candidate we hold (`backout.py`, `sigma_info.py`).
+
+```
+mu                                        R2 0.0607
++ pace                                    R2 0.0689
++ 3PA rate                                R2 0.0771
++ |spread|                                R2 0.0790
++ rest / B2B                              R2 0.0711
++ day of season                           R2 0.1038
++ prior eff sd + QUOTED SPREAD            R2 0.6105
+```
+
+### The R2 jump is MY measurement artifact, not their model
+
+```
+sigma ~ quoted bid-ask spread    coef +34.92 (t=+32.0)   R2 0.5549
+sd(implied sigma) 1.252  ->  sd(spread-cleaned) 0.836
+```
+
+**55 of the 61 R2 points are quote width.** The floor-effect mechanism I first
+guessed is absent — deep-wing mids sit at ~13.4c at every quote width and 0%
+have bid <= 1c. The likelier mechanism is flatness: wide/illiquid ladders price
+adjacent rungs less distinctly, flattening the probit slope and inflating
+`sigma = 1/b`. Either way it is a defect in **my estimator**, not a maker input.
+
+On the cleaned sigma, real inputs explain **R2 0.1204**.
+
+### RETRACTION — Link 5's headline does not survive
+
+Controlling for quote width:
+
+| | Link 5/6 reported | with quote width controlled |
+|---|---|---|
+| pace | +0.098 (t=+3.29) | **+0.0133 (t=+0.56)**, CI [−0.0335, +0.0601] |
+| 3PA rate | +3.259 (t=+2.98) | +2.4773 (t=+2.92), CI [+0.8121, +4.1425] |
+
+**The pace CI now EXCLUDES the Poisson benchmark +0.0911.** Link 5's headline —
+"the ladder scales sigma with pace at the Poisson rate, point estimate within
+2.5% of theory" — **is retracted.** It was carried by quote width. The
+coefficient is also unstable across specifications (+0.013 to +0.098), and that
+instability is itself the finding: it was never robust.
+
+**Link 6's shot-mix loading survives** at t=+2.92. It now sits *below* the
+corrected benchmark 4.87, which is OUTSIDE the CI upper bound of 4.14 — a
+different and weaker claim than Link 6 made, and one reached after many
+specifications.
+
+### The information-vs-error question is NOT resolved
+
+```
+predictor                 coef      t          95% CI     informative=36.1   verdict
+raw implied sigma        -6.95  -0.52   [-33.0, +19.1]                       NULL
+spread-CLEANED sigma     -3.34  -0.17   [-43.0, +36.3]                       NULL
+maker-MODEL component   +18.74  +0.21   [-154.8,+192.2]                      NULL
+```
+
+The raw test was **powered** and excluded informativeness — but it used a
+contaminated measure. The **cleaned** measure gives an **underpowered** test
+whose CI contains both 0 and 36. **So we cannot say whether the ladder's real
+sigma variation is information or error.** That question stands open, and the
+earlier framing that made it sound answerable was wrong.
+
+### Status of the original goal
+
+We do **not** have their formula. What we have, on cleaned sigma:
+
+```
+R2 0.1204 from mu, pace, 3PA rate, |spread|, rest, B2B, day-of-season
+surviving with |t| > 2: 3PA rate, day-of-season, rest/B2B, mu
+NOT surviving: pace
+```
+
+**Everything from Link 6d back through Link 6 is now EXPLORATORY.** Many
+specifications were run, controls were added post hoc, and the sample moved
+(1,002 -> 825) as covariates were required. No coefficient here may be quoted as
+established, and any use requires a pre-registration on data this search has not
+consumed — i.e. 2026-27.
+
+**The single most valuable thing to fix is the estimator**, not the model:
+implied sigma must be computed in a way that does not absorb quote width —
+fitting to bid and ask separately, weighting rungs by depth, or restricting to
+ladders inside a spread cap. Every conclusion in Links 4-6 rests on that
+measurement, and it is now known to be contaminated.
