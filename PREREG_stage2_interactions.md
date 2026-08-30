@@ -209,3 +209,114 @@ rebounds only, no offensive/defensive split). Assisted-creation x steals,
 eFG x FTA, road-trip x fouls, and rotation x OREB are excluded because closely
 related outcomes have already been examined in this program and mixing them in
 would contaminate an otherwise clean fresh test.
+
+---
+
+# RESULT — run once, 2026-08-30. **All three: IRRELEVANT TO MEAN PRICING.**
+
+`s2_pbp.py`, `s2_build.py`, `s2_run.py`. n(H1,H3) = 9,485; n(H2) = 8,327.
+
+## Stage 0 — construction, run before any outcome was examined
+
+All six component states are PIT-persistent, so each is genuinely forecastable:
+
+```
+off_3par +0.5941   def_3par +0.4554   off_ftar +0.4455
+def_pf   +0.5008   off_trans +0.4425  def_live +0.4513
+```
+
+Interactions are centred, orthogonal to the frozen emulator, era-stable, and
+mutually independent — so the Holm family is effectively independent:
+
+```
+Z_H1  mean -0.0094  corr(That_open) -0.0046      Z_H1/Z_H2  r +0.0003
+Z_H2  mean +0.0010  corr(That_open) +0.0126      Z_H1/Z_H3  r +0.0112
+Z_H3  mean +0.0059  corr(That_open) +0.0003      Z_H2/Z_H3  r +0.0089
+season means of Z all within +-0.045
+```
+
+**Two pre-outcome construction repairs, recorded.** (1) Components are z-scored
+**within season**: pooled standardisation made `Z_H1` partly an era indicator
+(mean +0.449, corr with the emulator −0.303) because of the league-wide 3PA
+rise. (2) `Z_H2` is **restricted to seasons with genuine PBP coverage** — the PIT
+shrinkage had silently filled 2025-26 from the league mean, inflating n from
+8,327 to 9,489 with non-information. Both were made before any outcome was
+touched; §12 binds only afterwards.
+
+`off_trans` is built from the PBP's own possession delimiters
+(`PCTIMESTRING - STARTTIME`), giving an early-clock (<=7s) share of **0.188**
+(p10 0.126, p90 0.253) — the expected 15-25% band. `def_live` is bad-pass plus
+lost-ball, 7.76/game, 58.0% of all turnovers.
+
+## Power, priced before reading the outcomes
+
+```
+sd(Y) 18.065   se(beta per SD) 0.1855   MDE 0.3636 pts/SD
+materiality gate 0.75 pts over a ~1.6-SD quintile gap = 0.460 pts/SD
+=> POWERED for an economically material effect
+```
+
+**This is a powered null, not an absent test.**
+
+## §5 Market-incorporation — all three EQUIVALENT TO ZERO
+
+```
+H    beta_line       se            90% CI          classification
+H1     -0.0308   0.0731   [-0.1511, +0.0894]   Equivalent to zero
+H2     -0.0870   0.0757   [-0.2115, +0.0376]   Equivalent to zero
+H3     -0.0160   0.0731   [-0.1363, +0.1043]   Equivalent to zero
+```
+
+**The equivalence requirement earns its place here.** All three 90% CIs sit
+entirely inside +-0.25, so this is affirmative evidence that the opener does not
+price these interactions — not mere failure to reject.
+
+## §6/§7 Primary outcome — no effect, Holm or otherwise
+
+```
+H       n     beta_out      se       t   p(1-sided)   Holm p   sig
+H1  9,485      +0.0306  0.1856   +0.16       0.4345   0.8691    no
+H2  8,327      +0.1320  0.1976   +0.67       0.2521   0.7564    no
+H3  9,485      -0.1460  0.1856   -0.79       0.7843   0.8691    no
+```
+
+**H3 carries the wrong sign** and is reported as a failed registered prediction,
+not reframed.
+
+## §9 Materiality and §10 movement — both null
+
+```
+top-quintile diff (matched)   H1 +0.4896   H2 +0.6159   H3 +0.4403   all < 0.75
+close-open ~ Z                H1 -0.0312 (t=-0.96)  H2 -0.0499 (t=-1.44)  H3 +0.0159 (t=+0.49)
+```
+
+**The positive quintile differences are an artifact and must not be read as
+support.** The top quintile of a *signed* interaction is also a high-magnitude
+set — mean |Z| 1.36 versus 0.55 — so it selects on |Z| rather than direction.
+Testing |Z| directly gives +0.18 (t=+0.68), +0.53 (t=+1.86), +0.23 (t=+0.85):
+nothing significant, and a post-hoc quantity that would need its own
+registration regardless. §3 already fixed the continuous test as primary.
+
+## §8 Classification
+
+| | opening line | outcome | classification |
+|---|---|---|---|
+| H1 3PA x 3P allowance | Equivalent to zero | none | **IRRELEVANT TO MEAN PRICING** |
+| H2 transition x live-ball TOV | Equivalent to zero | none | **IRRELEVANT TO MEAN PRICING** |
+| H3 FTA x foul propensity | Equivalent to zero | none | **IRRELEVANT TO MEAN PRICING** |
+
+## What this establishes — and it is not nothing
+
+Per §13, Stage 2 succeeds scientifically with all three failing. The content is
+stronger than a bare null because equivalence was required in both directions:
+
+**These three matchup interactions are absent from the opening total AND absent
+from realised scoring error.** The market is not omitting them — **there is
+nothing to omit.** The compression hypothesis was tested through three
+independent scoring channels (three-point volume, transition possessions,
+clock-stopped points) and the additive-in-efficiency architecture recovered in
+Stage 1 is **not leaving matchup money on the table in any of them**.
+
+The 0.75-point materiality gate was reachable at this power and nothing came
+close. Per §7 and §12, no further interaction may join this family; anything
+else is Stage 3 and needs a new registration.
