@@ -63,7 +63,13 @@ def log_game(game_id, date, team_h, team_r, open_total, open_spread,
     return row
 
 def settle(game_id, close_total, actual_total, actual_pace):
-    """Append post-game outcomes. Pre-game fields are never touched."""
+    """Append post-game outcomes. Pre-game fields are never touched.
+
+    Records outcomes; grades nothing. Per AMENDMENT 6 a wager settles against
+    `open_total` (never `close_total`), implemented in evaluate_season.grade().
+    That module is deliberately not imported here: D3 forbids interim looks at
+    wagering performance.
+    """
     with open(LOG) as f: rows=list(csv.DictReader(f))
     hit=False
     for r in rows:

@@ -610,3 +610,46 @@ failed test — the threshold (4.77), shrinkage constants, team-state definition
 and trading rule are untouched. It brings code into line with a spec written
 before the fix. `MODEL_VERSION` → `2026-08-30-frozen+a5`; any row logged under
 the old version is void (none exist).
+
+---
+
+## AMENDMENT 6 — settlement line frozen (2026-08-30, pre-first-game)
+
+**Gap.** The sign convention was specified ("positive `PaceGapPoints` indicates an
+Over direction; negative indicates Under") and `side` is written to every logged
+row, but **no rule stated which total a wager settles against, and no code graded
+one.** `settle()` records `open_total`, `close_total` and `actual_total` and
+evaluates nothing. The choice would have fallen to whoever wrote the evaluation
+script in April 2027 — after outcomes were visible. That is precisely the class of
+decision item 10 forbids.
+
+**Frozen rule.** Every wager settles against **`open_total`** — the line it was
+struck at. Never `close_total`.
+
+```
+side = +1 (Over)   win  if actual_total > open_total
+side = -1 (Under)  win  if actual_total < open_total
+actual_total == open_total  ->  PUSH (frozen item 5)
+```
+
+**This is a codification, not a new choice.** Frozen item 5 already defines a push
+as `Actual == Open`, and item 7 already regresses `Actual - Open`. Settling
+against the close would have contradicted both.
+
+**Why it matters enough to freeze.** Settling against the close silently converts
+a wager result into a **CLV measurement**, and the two can point in opposite
+directions. This programme has a worked example: injury Hypothesis B scored
+**CLV +0.775 points (t = +7.93)** while its **P&L was −8.04%** with a CI excluding
+zero. A closing-line settlement would have scored that as a strong win.
+
+**Implementation.** `evaluate_season.py::grade()`. It is deliberately NOT imported
+by `capture_openers.py`, `settle_day.py`, `nba_daily.py` or `prospective_log.py` —
+D3 forbids interim looks at wagering performance, and `health()` continues to
+report field population only. `evaluate()` refuses to run before **2027-04-15**
+unless passed `allow_early=True`, which is reserved for plumbing tests on
+non-2026-27 data and must be recorded when used.
+
+**Reporting.** `evaluate()` returns all six C2 metrics — `N_bets`, `HitRate`,
+`ROI`, `ProfitPerBet`, `ProfitPerAllEligibleGames`, `TotalPL` — because a filter
+can raise ROI while destroying total profit, and only the last two separate those
+cases. The $100 flat stake is the prereg's reporting unit, not a funded position.
