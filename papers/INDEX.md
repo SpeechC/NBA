@@ -18,6 +18,25 @@ be re-litigated.
 | `winning_team_covers_arxiv1902.10067` | Mateos (MIT) | "Does the winning team always cover the spread" — 1990-present. |
 | `beating_the_house_arxiv1910.08858` | Ramesh (Federal Reserve Board), Mostofa (Rice) | Single pricing model across NFL/NBA/NCAAF/NCAAB/WNBA. |
 
+| `ssrn_4705918` | **Walsh & Joshi (Univ. of Bath), SSRN 4705918 — "Machine learning for sports betting: should model selection be based on accuracy or calibration?"** *(user-supplied, preprint, not peer reviewed)* | **NBA moneyline, single-season betting experiment on published odds.** Claims selecting models on **calibration** rather than accuracy turns **−35.17% ROI into +34.69%**, and that Kelly only works with a calibrated model. See the standing note below before citing the magnitude. |
+
+### On the Walsh & Joshi ROI claim — read the caveat first
+
+The **direction** is one this program already agrees with and has paid for
+twice: `PREREG_cohesion` passed on points and lost 3.56% because the effect was
+not at the line, and `DISTRIBUTION_AUDIT` shows a naive Gaussian
+spread→probability map misprices the extremes by 2.81pp, **more than the
+2.381pp vig**. Both are calibration failures, not accuracy failures. Walsh &
+Joshi is the cleanest published statement of the principle.
+
+The **magnitude** should not be carried over. A +34.69% single-season ROI is
+roughly seven times the best figure anywhere in this program (CrewShock,
++4.66% pooled, CI still including zero), it is one season on one book, the
+paper is a **preprint that has not been peer reviewed**, and
+`Winkelmann 2024` — already in memory — shows efficient markets throw
+"significant" season-level findings more than 75% of the time. Treat the
+principle as adopted and the number as unverified.
+
 ## TIER 2 — methodology, staking, and meta
 
 | file | note |
