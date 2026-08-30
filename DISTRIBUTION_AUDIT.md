@@ -821,3 +821,95 @@ slope question. The collector already runs. This is the first item in the audit
 where continuing to collect has a defined payoff and a near-term date, which is
 a reason to keep the 2026-27 ladder collection running — **not** a reason to
 trade, and any trade would require its own pre-registration.
+
+## Link 6b — THE BENCHMARK, MEASURED. My caveat was wrong in direction.
+
+Link 6 rested on a benchmark I *assumed*: `9p(1-p)` per 3PA, which presumes
+independent shots. I flagged that real shooting is correlated within a night,
+so 5.31 was "a floor with its own error bars." **Measured, that is false.**
+(`shot_corr.py`, 18,977 team-games, identity `2*2PM+3*3PM+FTM == PTS` exact on
+100.0%.)
+
+### Within-team-season overdispersion — cross-team quality removed
+
+Measured *within* team-season, or cross-team shooting-quality differences
+masquerade as within-game correlation.
+
+| shot | p_hat | mean n | phi (dispersion) | **rho (ICC)** | var/attempt | binomial |
+|---|---|---|---|---|---|---|
+| 3PT | 0.3602 | 34.3 | **0.9883** | **−0.00035** | 2.0499 | 2.0742 |
+| 2PT | 0.5346 | 54.1 | 1.0583 | +0.00110 | 1.0532 | 0.9952 |
+| FT | 0.7767 | 22.3 | 1.1219 | +0.00571 | 0.1946 | 0.1734 |
+
+**Three-point shooting is essentially exactly binomial — very slightly UNDER-
+dispersed.** The "hot night" does not exist at the team-game level for threes.
+FT carries the most dispersion (+12%), which is player-mix, not a hot hand.
+
+### A hot night is not hot everywhere
+
+Correlation of standardised within-game residuals:
+
+```
+        3PT     2PT      FT
+3PT  1.0000 -0.0189  0.0108
+2PT -0.0189  1.0000  0.0010
+FT   0.0108  0.0010  1.0000
+```
+
+**All three cross-channel correlations are ~zero, and 3PT-2PT is NEGATIVE.**
+The intuition behind my caveat is not in the data.
+
+### Validation of the rebuilt variance
+
+```
+per-team shooting variance, attempts FIXED  -> sd 11.39
+DIRECT within-team-season sd of team points -> 11.95   (larger, as it must be: includes attempts)
+two independent teams, shooting only        -> 16.10   vs OBSERVED sd(dev) 18.06
+```
+
+Both inequalities point the right way; the 18.06 vs 16.10 residual
+(sqrt(18.06^2-16.10^2) = 8.19 pts) is pace/attempt variation, line error and OT.
+The variance model reproduces the observed scale.
+
+### The corrected benchmark, and what it does
+
+```
+excess var per shot converted 2->3   BINOMIAL 1.0790  ->  CORRECTED 0.9967  (0.92x)
+d(sigma)/d(3PArate)                  BINOMIAL 5.27    ->  CORRECTED 4.87
+LADDER MEASURED +3.259  95% CI [+1.11, +5.41]  -> BOTH benchmarks INSIDE
+```
+
+**The correction moves the benchmark DOWN, not up.** The ladder is at **67%** of
+the corrected figure rather than 62% of the binomial one, and the residual gap
+is `4.87 - 3.259 = 1.61` against `se 1.10` — **t = 1.46, not significant.**
+
+### And the corrected gap is HARDER to resolve, not easier
+
+| benchmark | shortfall | sigma error | n to resolve |
+|---|---|---|---|
+| binomial (wrong) | 2.01 | 0.368 pts (1.02%) | 1,152 |
+| **CORRECTED** | **1.61** | **0.295 pts (0.81%)** | **1,795** |
+
+Link 6's "99 ladders short" was an artifact of the wrong benchmark. The honest
+figure is **~1,795 games against the 1,002 held — about 0.6 more seasons**, which
+2026-27 does supply. Economics at the corrected gap are marginally worse: taking
+negative at every rung (−0.74c to −0.07c), making −0.04c at 1.0σ and +0.05c at
+1.5σ and 2.0σ.
+
+### Disposition
+
+**The benchmark is now measured rather than assumed, and the finding is that the
+ladder's shot-mix loading is NOT significantly below the physical rate
+(t = 1.46).** Link 6's candidate weakens: the gap shrank, its significance is
+absent, and the data required grew by 56%.
+
+What was actually gained is a **correct** benchmark and a validated variance
+decomposition, plus a substantive negative result worth its own line: **NBA team
+three-point shooting is binomial within a season, and shooting channels are
+uncorrelated within a game.** Any future variance model in this program should
+assume independence rather than fitting a hot-hand term.
+
+**Recorded as a reasoning error:** I hedged Link 6 with a mechanism (within-night
+correlation) that I had not measured and that turned out to run the other way.
+The hedge was stated as a caution, which made it feel safe, but it was an
+unmeasured empirical claim doing load-bearing work.
