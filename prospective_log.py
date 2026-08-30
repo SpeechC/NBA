@@ -41,6 +41,11 @@ def log_game(game_id, date, team_h, team_r, open_total, open_spread,
             raise ValueError(f"{game_id} already logged -- rows are immutable")
     D = P_hat - P_book
     E = D * EffSum / 100.0
+    # An unavailable correction must be EMPTY, never 0.0. A silent zero would make
+    # D*_profile identical to D and make S1's profile leg look evaluable when it
+    # is inert -- the same silent-zero failure mode as the CrewShock name mismatch.
+    _mu = "" if (mu5 is None or mu5 != mu5) else round(mu5, 4)
+    _mx = "" if (m_X is None or m_X != m_X) else round(m_X, 4)
     row = dict.fromkeys(COLS,"")
     row.update(game_id=game_id, date=date, TEAM_H=team_h, TEAM_R=team_r,
         logged_at_utc=dt.datetime.utcnow().isoformat(timespec="seconds")+"Z",
@@ -48,8 +53,9 @@ def log_game(game_id, date, team_h, team_r, open_total, open_spread,
         open_line_source=open_line_source, open_obtained_at_utc=open_obtained_at_utc,
         P_hat=round(P_hat,4), P_book=round(P_book,4), D=round(D,4),
         EffSum=round(EffSum,4), E_pace=round(E,4),
-        mu5=round(mu5,4), m_X=round(m_X,4),
-        D_star_drift=round(D+mu5,4), D_star_profile=round(D+m_X,4),
+        mu5=_mu, m_X=_mx,
+        D_star_drift=("" if _mu == "" else round(D+mu5,4)),
+        D_star_profile=("" if _mx == "" else round(D+m_X,4)),
         bet_flag=int(abs(E)>=THRESHOLD), side=(1 if E>0 else (-1 if E<0 else 0)),
         code_git_sha=_sha(), model_version=MODEL_VERSION)
     with open(LOG,"a",newline="") as f:
@@ -77,6 +83,8 @@ def health():
     with open(LOG) as f: rows=list(csv.DictReader(f))
     miss=[c for c in PRE if any(not r[c] for r in rows)]
     return {"rows":len(rows), "settled":sum(1 for r in rows if r["actual_total"]),
+            "mu5_populated":sum(1 for r in rows if r["mu5"] != ""),
+            "m_X_populated":sum(1 for r in rows if r["m_X"] != ""),
             "bet_flagged":sum(1 for r in rows if r["bet_flag"]=="1"),
             "incomplete_pregame_fields":miss,
             "distinct_code_shas":sorted({r["code_git_sha"] for r in rows})}

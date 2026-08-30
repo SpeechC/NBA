@@ -34,13 +34,49 @@ day behind and the next day's CrewShock is silently wrong.
 | `prospective_log.py` | **BUILT**, immutable rows, duplicate/double-settle refused |
 | Kalshi collector | **BUILT** (`/mnt/c/NBA2/Kalshi/download_nba_totals.py`) |
 | `nba_daily.py` | **BUILT**, orchestration + health |
-| **`capture_openers.py`** | **NOT BUILT** — must fetch openers with timestamps, call `prospective_log.log_game()`, and emit `lines_today.csv` for MOVE_COMBINED |
-| **`settle_day.py`** | **NOT BUILT** — must call `prospective_log.settle()` and grade the CrewShock ledger and monitor rows |
+| `frozen_models.py` | **BUILT** — state engine, replays all recursions deterministically |
+| `capture_openers.py` | **BUILT**, end-to-end tested on a real slate |
+| `settle_day.py` | **BUILT**, idempotent (re-runs settle 0, never overwrite) |
 
-**Both gaps are on the critical path and must be built before 2026-10-03.**
-`capture_openers.py` also has to compute `P_hat`, `P_book`, `EffSum`, `mu5` and
-`m_X` from the frozen models — that is the real work, and the specifications are
-in `PREREG_2026_27_PROSPECTIVE` A3/B1.
+### Validation on a real historical slate (2026-02-04, 7 games)
+
+```
+states as of 2026-02-04: 9,012 prior games, a,b=(19.2817, 0.9204)
+E_pace across the slate: +2.59, +1.73, -4.62, +5.21, -4.05, +0.24, +6.61
+bet_flag rate on Feb 2026: 31.3%   (discovery 30.3%)
+sd(E_pace) on that month: 4.63     (discovery 4.7)
+round-trip: logged 7 -> settled 7 -> re-settle 0, incomplete_pregame []
+```
+
+The live engine reproduces the discovery distribution, which is the check that
+matters: a re-implementation drifting from the frozen spec would show up here.
+
+**`a,b` had to be fitted on the FORECAST product, not the realised one.** Fitting
+`Open ~ realised_pace x realised_efficiency` gave `b = 0.231` and inverted to a
+book pace of **125 possessions** — errors-in-variables attenuation. Corrected to
+the forecast product it is `b = 0.920`.
+
+### THE ONE REMAINING GAP: `m_X` is not computed
+
+`m(X)` needs the 22-feature profile, four of which (`trans_H/R`, and the
+`TransComp` interaction) derive from **play-by-play**, which is not wired into the
+daily path. So:
+
+```
+m_X            logged EMPTY  (never 0.0)
+D_star_profile logged EMPTY
+health() reports  m_X_populated: 0   incomplete_pregame_fields: ['m_X','D_star_profile']
+```
+
+**Empty, not zero, is deliberate.** A silent 0.0 would make `D*_profile` identical
+to `D` and make **S1's profile leg look evaluable when it is inert** — the same
+silent-zero failure that mis-scored a CrewShock slate via an unmatched official
+name.
+
+**Consequence for the prereg:** `S1` can currently compare `D` vs `D*_drift`
+only. To evaluate `D*_profile`, the PBP transition pipeline (`s2_pbp.py` logic)
+must be added to the daily settle path before 2026-10-20. **If it is not,
+S1's profile leg is reported as not evaluated — not as a null.**
 
 ## SEASON CALENDAR
 
