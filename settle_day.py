@@ -15,13 +15,23 @@ sys.path.insert(0, "/home/dpope/projects/nba_entropy_replication")
 import frozen_models as FM
 import prospective_log as PL
 import pbp_transition as PT
+import pbp_feed as PF
 
 def main(day):
     # PBP transition/live-TO must land BEFORE the next capture, or m(X) is stale.
     # A live 2026-27 feed must pass its raw PBP frame: PT.update(day, frame).
     try:
-        n_tr = PT.update(day)
-        print(f"pbp transition: appended {n_tr} team-games")
+        # Live CDN feed is primary; PT.update falls back to the historical parquet
+        # when the feed yields nothing (backtests, pre-2026-27 dates).
+        frame = None
+        try:
+            f = PF.fetch_day(day)
+            frame = f if len(f) else None
+        except Exception as fe:
+            print(f"  pbp_feed unavailable ({fe}); falling back to parquet")
+        n_tr = PT.update(day, pbp_frame=frame)
+        src = "cdn" if frame is not None else "parquet"
+        print(f"pbp transition: appended {n_tr} team-games ({src})")
     except Exception as e:
         print(f"pbp transition FAILED ({e}) -- m(X) will go stale; fix before next capture")
     g = FM.load_history()
