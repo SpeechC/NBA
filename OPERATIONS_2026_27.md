@@ -93,6 +93,23 @@ and is documented, not corrected: it is 0.564 cross-team sd as a feature but onl
 but the CDN does not serve 2017-18, so it would cost the store two of its eight
 seasons.
 
+**Scope of the PBP dependency — verified, not assumed.** Deleting the transition
+store entirely and re-running capture leaves `E_pace`, `bet_flag` and `side`
+**bit-identical**; only `m_X` and `D_star_profile` go EMPTY. PBP feeds exactly one
+path: `trans`/`live_to` -> profile -> `m(X)` -> `D*_profile` -> the SECONDARY
+comparison endpoint S1. It never reaches `P_hat`, `P_book`, `D` or the threshold.
+
+Therefore: the +0.63pp CDN level shift cannot affect a wager, and the staleness
+hard-stop is a diagnostic guard, not a trading guard. B1's registered default is
+already the non-PBP option ("if drift matches profile prospectively, use drift").
+
+**Cache invalidation.** `frozen_models._TRC` loads the store once per process and
+never re-reads it. `nba_daily.py` runs all four phases in ONE process, so a settle
+that appends to the store would leave a later state rebuild reading the pre-update
+snapshot -- silently. `PT.update()` and `PT.backfill()` now call
+`_invalidate_caches()`, which clears `_TRC` via `sys.modules` (never importing
+frozen_models itself). Verified in-process: 18,330 -> append 2 -> 18,332.
+
 **Staleness is a hard stop, not a warning.** `_mean()` skips NaN, so a stale
 store does not error — the transition state silently freezes at its last observed
 value and `m(X)` drifts with nothing visible in the output. `PT.staleness(day)`

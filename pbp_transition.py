@@ -71,6 +71,7 @@ def backfill():
     out["date"] = pd.to_datetime(out.date).dt.strftime("%Y-%m-%d")
     os.makedirs(os.path.dirname(STORE), exist_ok=True)
     out.drop_duplicates(["date","team"]).to_csv(STORE, index=False)
+    _invalidate_caches()
     return len(out)
 
 def update(day, pbp_frame=None):
@@ -98,7 +99,21 @@ def update(day, pbp_frame=None):
     prev = pd.read_csv(STORE) if os.path.exists(STORE) else pd.DataFrame(columns=COLS)
     both = pd.concat([prev, out], ignore_index=True).drop_duplicates(["date","team"], keep="last")
     both.to_csv(STORE, index=False)
+    _invalidate_caches()
     return len(out)
+
+def _invalidate_caches():
+    """frozen_models caches this store per process and never re-reads it.
+
+    nba_daily.py runs all four phases in ONE process, so a settle that appends to
+    the store would otherwise leave any later state rebuild reading the pre-update
+    snapshot -- silently, with no error. Uses sys.modules so it clears the cache
+    only if frozen_models is already loaded; it must never pull it in.
+    """
+    m = sys.modules.get("frozen_models")
+    if m is not None and hasattr(m, "_TRC"):
+        m._TRC.clear()
+
 
 def load():
     if not os.path.exists(STORE): return pd.DataFrame(columns=COLS)
