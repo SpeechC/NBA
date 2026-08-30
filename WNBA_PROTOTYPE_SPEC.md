@@ -671,3 +671,55 @@ self-comparison that could only ever pass; (6) a missing POR->PDX team-code
 mapping silently dropped 38 games from the M2 sample until caught. Five of
 six were found by adversarial re-testing rather than by the result looking
 wrong, which is the argument for doing it.
+
+## 21. M2 run on NBA — the open question from s20, closed (2026-08-30)
+
+s20 carried one question forward: *"NBA halftime repricing is likely faster
+than WNBA's 32s, so any in-game NBA taker strategy inherits a WORSE latency
+problem -- check with `m2_latency.py` before building."* Done.
+`m2_latency.py` now takes a league argument; WNBA output is byte-identical to
+s19's, so the refactor is inert.
+
+**1,210 NBA games** (2025-26, KXNBATOTAL vs ESPN play-by-play buzzers) against
+288 WNBA:
+
+| | WNBA | NBA |
+|---|---|---|
+| games | 288 | 1,210 |
+| median first move after buzzer | 32s | **30s** |
+| p25 | 17s | 15s |
+| p10 | 8s | 6s |
+
+The prediction was right in direction and small in size: NBA reprices ~2s
+faster at the median, ~2s at every quantile. **Attention and money buy
+surprisingly little speed** -- an order of magnitude more volume moves the
+halftime reprice by under 7%.
+
+**It does not matter, because the feed lag dominates in both leagues.**
+Applying the WNBA-measured 17.6s (see caveat below):
+
+| POLL_S | detection | WNBA ahead | NBA ahead | F2 |
+|---|---|---|---|---|
+| 20 | 28s | 58% | 55% | FAIL |
+| 10 | 23s | 67% | 62% | FAIL |
+| **0** | **18s** | **74%** | **70%** | **FAIL** |
+
+F2 needs detection within 14s (WNBA) or **12s (NBA)**. A 17.6s feed lag
+exceeds both. **No poll cadence clears F2 in either league**, and NBA is the
+harder of the two.
+
+**CAVEAT, stated plainly: the NBA feed lag is NOT measured.** 17.6s is the
+cdn.wnba.com figure and is carried across as a planning assumption on the
+grounds that the two feeds share a vendor and architecture. It has never been
+checked. Measuring it requires an NBA score feed running against live games
+with ESPN buzzers for the same nights -- roughly a night's work in October,
+and `feed_lag.py` already does the arithmetic. **That measurement is the
+gate: if cdn.nba.com turns out to deliver halftime inside ~12s, the
+conclusion here reverses.** Until it is taken, the NBA in-game taker case is
+assumed dead by inheritance, not proven dead.
+
+**Consequence for October.** No in-game NBA halftime component should be
+built. This costs nothing that was planned: the NBA halftime under-reaction
+is already closed (1,114 games, r2>=0.95 gap -0.022), and CrewShock -- the
+one validated signal -- is pregame, where a 17.6s feed lag is irrelevant
+because the assignment publication, not a buzzer, starts the clock.
