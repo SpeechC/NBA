@@ -453,3 +453,143 @@ why a constant-σ template is not lazy — it is correct *conditional on the lin
 the conditioning variable, on total dispersion, at this power. A different
 conditioner — one that moves residual dispersion rather than the mean — is not
 excluded by anything here. Nothing in this program has found one.
+
+---
+
+# THE VARIANCE CHAIN — team -> matchup -> line -> ladder
+
+Run 2026-08-30 in response to a correct objection: *"are you saying a fast break
+team has the same confidence level in total points scored as a solid defense
+team?"* No — and the earlier team-persistence framing was the wrong test. This
+follows the quantity all the way to the traded instrument.
+
+## Link 1 — teams DO differ, and it partly persists
+
+Team points-scored sd by season, 30 teams x 8 seasons (`matchup_var.py`).
+Ordering is roughly a pace ordering: Golden State, LA Clippers, Houston,
+Milwaukee at the top (mean ~12.7); Cleveland, Phoenix, Detroit at the bottom
+(~11.4).
+
+```
+cross-team sd of the sd estimates  1.072
+noise floor  se(sd) = sd/sqrt(2n)  0.945    (80 games, sd 11.98)
+=> TRUE dispersion 0.507 pts (4% of base)   reliability 0.223
+mean adjacent-season r  +0.128   against a CEILING of 0.205 at this noise
+```
+
+**Correction to the previous section:** "does not persist" read the raw
+correlation without pricing the reliability ceiling. +0.128 against a ceiling of
+0.205 is ~62% of what is detectable. **Team scoring variance is real and partly
+stationary.** The magnitude is ~4%.
+
+## Link 2 — it does NOT survive the matchup
+
+Leave-one-out team sd (no circularity), terciles, 9,489 games:
+
+| bucket | n | sd(total) | sd(dev) |
+|---|---|---|---|
+| HH both high-variance | 1,055 | **20.07** | 17.64 |
+| LL both low-variance | 939 | **20.02** | 17.44 |
+| league | 9,489 | 20.73 | 18.06 |
+
+```
+HH/LL sd(total) ratio 1.0021  (SHRUNK prediction 1.0448)  F p=0.9471
+HH/LL sd(dev)   ratio 1.0111                              F p=0.7295
+POWER: MDE ratio 1.0642 -> UNDERPOWERED for its own prediction; not a knockout
+```
+
+Continuous version, all 9,489 games, which has the power the buckets lack:
+
+```
+dev^2 ~ combined team dispersion          beta +7.388 (t=+1.55)
+dev^2 ~ combined dispersion + LINE  comb  beta +4.677 (t=+0.95)
+                                    line  beta +1.209 (t=+2.28)
+corr(combined team dispersion, LINE) = +0.2415
+```
+
+**The line beats team identity when both compete.** Volatile matchups already
+get higher lines; the team estimate adds nothing on top.
+
+*(HH and LL both sit BELOW mixed on sd(total) because mixed matchups pair
+unequal teams, spreading their expected totals. An artifact of the unconditional
+measure, not a finding — sd(dev) is the honest column.)*
+
+## Link 3 — the line IS heteroskedastic, and I called it flat
+
+```
+dev^2 ~ close   beta +1.3301 (t=+2.59)   HETEROSKEDASTIC
+top-2 vs bottom-2 decile variance ratio 1.0997 (F p=0.0392)
+sd ratio 1.0487   Poisson predicts 1.0656
+```
+
+Deciles run 17.58 @ line 206.0 to 19.01 @ 241.5. **The earlier "flat" reading
+used the game-level correlation on |dev| (0.02), where per-game noise swamps a
+conditional-variance effect.** Real dispersion scales with the line at close to
+the Poisson rate.
+
+## Link 4 — SO DOES THE LADDER. The trade does not exist.
+
+1,310 Kalshi ladders (2025-26 only), probit fit `z = Phi^-1(1-mid) = (K-mu)/sig`,
+median 11 rungs (`ladder_sigma.py`, `ladder_match.py`):
+
+```
+implied_sigma ~ implied_mu   slope +0.06061 (t=+14.09)  CI [+0.05218,+0.06904]
+POISSON benchmark                  +0.03962
+TRUE, full 9,489-game sample       +0.04030
+```
+
+**The hypothesis under test was that the ladder prices a CONSTANT sigma. It does
+not.** It scales, decisively, and ~50% more steeply than either benchmark.
+
+Matched to finals, 1,305 games:
+
+```
+implied mu vs sportsbook close   corr +0.9968   mean diff +0.125
+mean implied sigma 18.218   vs   REALISED sd(total - mu) 18.265
+=> ladder too narrow by 0.047 pts (0.3%)
+```
+
+| implied-mu quintile | n | mean mu | ladder sig | REALISED sd | ±noise | gap |
+|---|---|---|---|---|---|---|
+| 1 | 261 | 217.7 | 17.266 | 16.908 | 0.740 | +0.358 |
+| 2 | 261 | 225.7 | 18.091 | 18.253 | 0.799 | −0.162 |
+| 3 | 261 | 230.3 | 18.509 | 18.329 | 0.802 | +0.180 |
+| 4 | 261 | 234.6 | 18.475 | 18.091 | 0.792 | +0.384 |
+| 5 | 261 | 241.1 | 18.749 | 19.605 | 0.858 | −0.857 |
+
+**Every gap is inside its own noise band and there is no monotone pattern.**
+
+### Why the over-scaling cannot be traded, stated as power
+
+```
+ladder slope implies d(sig^2)/dmu = 2.208;  true/Poisson implies 1.468
+observed dev^2 ~ mu   beta +3.044 (t=+1.94)   se 1.567
+gap to distinguish 0.740 -> need se < 0.378 -> NOT RESOLVABLE
+GAMES NEEDED ~ 22,491   (18 seasons of Kalshi ladders; we have ONE)
+```
+
+The point estimate (+3.044) is if anything *steeper* than the ladder prices, but
+the standard error admits everything from 0 to 6.
+
+Artifact checks: corr(quoted spread, mu) +0.162, corr(n rungs, mu) +0.032,
+corr(probit residual, mu) +0.038. Mild spread/line correlation, nothing that
+manufactures the slope.
+
+## Disposition
+
+The premise was right at every link that could be checked and the market absorbs
+it at every link that matters. Teams differ in scoring variance (4%, partly
+stationary); it does not survive matchup aggregation; residual dispersion scales
+with the LINE instead, at the Poisson rate; **and the Kalshi ladder already
+scales its sigma with the line and lands within 0.3% of realised dispersion.**
+
+**Nothing here is tradeable, and the binding constraint is data, not logic.**
+The one open question — whether the ladder's steeper-than-Poisson slope is an
+error — needs ~22,500 ladders. That is a reason to keep collecting Kalshi
+ladders through 2026-27, not a reason to trade.
+
+**Method note.** Two power errors of the same kind were made and corrected in
+this section: reading a persistence correlation without its reliability ceiling,
+and reading a conditional-variance effect off a game-level correlation on
+|dev|. Both understated a real effect. Conditional-variance questions must be
+tested on `dev^2` with the noise floor priced first.
