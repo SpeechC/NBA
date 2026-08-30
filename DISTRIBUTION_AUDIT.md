@@ -735,3 +735,89 @@ close` is **UNDERPOWERED** — Poisson predicts +3.284, MDE is 8.187 (2.5x short
 Reality cannot confirm or refute the pooled pace rate on 8,236 games. Only the
 LADDER side is powered, for the Link 4b reason: implied sigma is fitted off 11
 rungs, a realised total is one draw.
+
+## Link 6 — EFFICIENCY VARIANCE via SHOT MIX. The first candidate within reach.
+
+Prompted by: the ladder's pace loading is a tell that it may be doing a
+*pace-only* job. `total = pace x efficiency`, and Link 5 only tested pace.
+(`eff_var.py`, `eff_ladder.py`)
+
+### Stage 0 — 3PA RATE is the first well-measured conditioner in this audit
+
+```
+efficiency sd (a VARIANCE)   adjacent-season r +0.1520   noise floor 0.8731 vs sd 1.0154
+3PA rate      (a MEAN)       adjacent-season r +0.5941   range 0.262 .. 0.535
+```
+
+**A mean escapes the 78%-noise problem that killed every variance estimator
+here.** 3PA rate is ~4x more persistent than any dispersion measure tried, and
+it is **99% orthogonal** to pace and the line — it is not a proxy for either.
+
+It also carries a computable prediction rather than a fitted one:
+
+```
+var per 3PA  9*.36*.64 = 2.074      var per 2PA  4*.53*.47 = 0.996
+excess 1.077 per shot converted;  combined FGA 176.8; matchup range 0.183
+=> d(sigma)/d(3PArate) = FGA*(v3-v2)/(2*sigma) = 5.31   ~= 0.97 pts of sigma
+```
+
+### The ladder prices it, and the test was powered
+
+```
+implied_sigma ~ 3PArate + pace + mu   t3r +3.259 (t=+2.98)  pace +0.098 (t=+3.29)  mu +0.023 (t=+3.62)
+95% CI on 3PA [+1.11, +5.41]   prediction +5.31 INSIDE    MDE 2.15 -> POWERED
+```
+
+**The ladder loads independently on pace AND on shot mix**, both physically
+correct, neither a proxy for the other. That is not a market pricing off the
+total.
+
+Oddity, flagged not interpreted: `implied_sigma ~ prior_eff_SD + pace + mu`
+gives **esd −0.063 (t=−2.41)** — the ladder gives NARROWER sigma to matchups
+whose teams were recently more volatile. Since `prior_eff_SD` is ~86% noise it
+is probably proxying something else (quality, mean reversion). Not a finding.
+
+### The gap, and the economics of it
+
+The point estimate is 3.259 against a predicted 5.31 — **61% of it**. If that
+shortfall is real, sigma is mispriced by 0.375 pts across the 3PA range (1.04%
+of sigma):
+
+| rung | ladder P | true P | edge | taker fee | maker fee | net taker | net maker |
+|---|---|---|---|---|---|---|---|
+| 1.00σ | 15.87c | 16.12c | 0.25c | 0.93c | 0.23c | **−0.68c** | +0.02c |
+| 1.50σ | 6.68c | 6.88c | 0.20c | 0.44c | 0.11c | **−0.23c** | +0.09c |
+| 2.00σ | 2.28c | 2.39c | 0.11c | 0.16c | 0.04c | **−0.04c** | +0.07c |
+
+**Taking is negative-EV at every rung. Only MAKING is positive, at 0.02–0.09c** —
+which puts it inside the already-registered liquidity-provision family, not a
+new forecasting edge.
+
+### THE DISTINCTION THAT DECIDES THIS — two different n's
+
+```
+resolve whether the LADDER SLOPE differs from 5.31   ~1,101 games  (HAVE 1,002)
+resolve whether REALITY matches the prediction       ~18,712 games (~15 seasons)
+```
+
+**We are 99 ladders short of the first and 15 seasons short of the second, and
+only the second establishes money.** Matching the ladder against 5.31 tests the
+ladder against *a binomial model of mine*, not against outcomes. That model
+assumes independent shots; real shooting is correlated within a night, which
+pushes true variance **above** the binomial figure — so 5.31 is a floor with its
+own error bars, and "the ladder is at 61% of it" may be a defect in the
+benchmark rather than in the ladder.
+
+### Disposition
+
+**The reasoning was right and produced the best candidate in the audit**: a
+persistent, precisely-measured, 99%-orthogonal conditioner that the ladder loads
+on less than theory says it should. It is nonetheless **not an established edge**
+— the CI contains the prediction, taking is negative-EV at every rung, and the
+arbiter (realised outcomes) needs ~15 seasons.
+
+**One operational consequence, and it is cheap:** ~99 more ladders resolves the
+slope question. The collector already runs. This is the first item in the audit
+where continuing to collect has a defined payoff and a near-term date, which is
+a reason to keep the 2026-27 ladder collection running — **not** a reason to
+trade, and any trade would require its own pre-registration.
