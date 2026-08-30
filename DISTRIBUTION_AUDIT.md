@@ -1082,3 +1082,79 @@ implied sigma must be computed in a way that does not absorb quote width —
 fitting to bid and ask separately, weighting rungs by depth, or restricting to
 ladders inside a spread cap. Every conclusion in Links 4-6 rests on that
 measurement, and it is now known to be contaminated.
+
+## Link 7 — THE ESTIMATOR, FIXED. Several earlier conclusions were measurement.
+
+`sigma_fix.py` replaces the mid-based OLS probit with two independent
+estimators, and `rerun_fixed.py` re-runs every conclusion in Links 4-6.
+
+### The bug was Jensen's inequality, not bid/ask asymmetry
+
+```
+estimator      mean      sd    corr(sigma, QUOTE WIDTH)    sigma ~ spread R2
+OLS (old)    18.214   1.386                      0.6824               0.4656
+WLS          17.993   1.044                      0.2035               0.0414
+INTERVAL     17.970   1.067                      0.2152               0.0463
+bid-only sigma 18.178   ask-only 18.138   gap -0.041
+```
+
+Bid-only and ask-only sigma differ by 0.04, so asymmetry was never the problem.
+**Wing rungs have tiny `phi(z)`, so a fixed price error becomes an enormous `z`
+error, and those noisy high-leverage points drive the slope `b`. Because
+`sigma = 1/b` is CONVEX, mean-zero noise in `b` inflates `E[sigma]` — and more
+quote width means more inflation.** Equal weighting was the bug.
+
+Fixes: **WLS** weighting each rung by `phi(z)^2/(w/2)^2`, and an **INTERVAL**
+fit treating `[bid, ask]` as a constraint band and penalising only excursions
+outside it. Two independent methods agreeing to 0.02 pts is the check.
+
+### Every Link 4-6 conclusion, re-run
+
+| claim | OLS (old) | WLS | INTERVAL | verdict |
+|---|---|---|---|---|
+| mean sigma vs realised 18.371 | −1.57% | −2.46% | −2.60% | ~2.5% narrow, **t≈1.2, NS** |
+| sigma ~ mu (Poisson +0.0396) | +0.0357 | +0.0325 | +0.0329 | **Poisson now OUT — slightly UNDER-scales** |
+| pace \| mu (Poisson +0.0911) | +0.0946 | **+0.1059 (t=+5.66)** | **+0.0975 (t=+5.16)** | **Poisson IN — Link 5 RESTORED** |
+| 3PA \| pace,mu (bench +4.87) | +3.263 | +3.616 (t=+5.31) | +3.206 (t=+4.65) | borderline; bench IN for WLS, OUT for INTERVAL |
+| informative (=35.8) vs noise (0) | CI [−29.5,+22.8] | [−45.6,+36.8] | [−47.9,+34.0] | leans NOISE, **not decisive** |
+
+### Two reversals, in opposite directions
+
+**Link 4's headline is RETRACTED.** It reported `sigma ~ mu` at **+0.0606**,
+"~50% steeper than Poisson," and built the whole over-scaling story on it. The
+fixed estimators give **+0.0329**, which is if anything slightly *below* Poisson.
+The steepness was quote-width contamination.
+
+**Link 5's headline is RESTORED, and 6d's retraction of it is itself
+retracted.** Pace comes back at +0.0975 / +0.1059 with the Poisson +0.0911
+inside the CI, at **t = 5.2-5.7** — stronger than the original t=3.29. Link 6d
+"retracted" it by controlling for `sprd` inside a contaminated OLS sigma, which
+was the wrong repair: the correct move was to fix the estimator, not to condition
+on the artifact.
+
+### The open question stays open
+
+```
+quintile of INTERVAL sigma    mean sigma   realised sd(dev)    +-
+1                                 16.901             18.837   0.939
+3                                 17.846             17.690   0.884
+5                                 19.001             18.491   0.922
+```
+
+Sigma spans 2.1 points across quintiles with no monotone response in realised
+dispersion. Zero sits comfortably inside every CI; the informative value 35.8
+sits just outside two of three. **Leans noise, but the CIs are ~+-41 and that is
+not a resolution.** It needs 2026-27 data, not more specifications.
+
+### Standing consequence
+
+**`sigma_fix.py` is now the canonical implied-sigma estimator.** The mid-based
+OLS fit in `kalshi_ladder.py` and `ladder_sigma.py` is superseded and its outputs
+should not be quoted. Any future ladder work uses WLS or INTERVAL and reports
+`corr(sigma, quote width)` as a standing diagnostic.
+
+**The lesson, which cost several reversals:** the measurement was never validated
+before conclusions were built on it. `corr(sigma, quote width) = 0.68` was a
+one-line check available from the start, and it would have prevented Link 4's
+headline, Link 5's headline, the 6d retraction, and the un-retraction. **Validate
+the instrument before the hypothesis.**
