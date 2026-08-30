@@ -80,9 +80,18 @@ before the state rebuild, so the store advances daily. End-to-end on a simulated
 2026-02-04 slate: `m_X_populated 7/7`, `incomplete_pregame_fields []`, and
 `D*_profile` genuinely separates from `D`. **S1's profile leg is now evaluable.**
 
-**The remaining live dependency is the PBP feed, not the pipeline.** `nba_api`
-is not installed; `update(day, pbp_frame=...)` accepts an injected frame, and a
-2026-27 source must be wired before 2026-10-20.
+**The live feed is built.** `pbp_feed.py` (requests → cdn.nba.com) is primary in
+`settle_day.py`, with the historical parquet as fallback. `stats.nba.com` is
+blocked from this host (HTTP 200, 2-byte body), so the CDN liveData schema is
+mapped back onto v2 and `_aggregate` runs unmodified. Validated on 40 games:
+`trans_share` corr **0.9868**, sd 0.83pp — matching the frozen reconstruction's
+own 0.9854/0.84pp against `STARTTIME`. A **+0.63pp uniform level shift** remains
+and is documented, not corrected: it is 0.564 cross-team sd as a feature but only
+−0.068 pts of m(X). See `PBP_FEED_VALIDATION.md`.
+
+**Open call:** rebuilding the store from the CDN would remove that discontinuity,
+but the CDN does not serve 2017-18, so it would cost the store two of its eight
+seasons.
 
 **Staleness is a hard stop, not a warning.** `_mean()` skips NaN, so a stale
 store does not error — the transition state silently freezes at its last observed
