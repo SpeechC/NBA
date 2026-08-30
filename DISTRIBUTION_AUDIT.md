@@ -646,3 +646,92 @@ It would have been reported as a real finding had it not contradicted an earlier
 result. **The close-range filter excludes zero rows in this master; the
 regular-season filter is the one that does the work** — the same universe-filter
 class of defect recorded in `PREREG_crewshock_forward` §2.
+
+## Link 5 — PACE. The right variable, and the market is already on it.
+
+`total = pace x efficiency`, and Poisson says variance tracks **possessions**,
+not points. Two games with the same 230 total — one at 105 possessions, one at
+95 — should carry different sigma, and a ladder priced off the line alone would
+give them the same one. Prior-only pace: `shift(1).rolling(20, min_periods=10)`
+within season, both teams required (`pace_var.py`, `pace_ladder.py`,
+`pace_inter.py`). Regular season, 8,236 games.
+
+**Stage 0 — there is real orthogonal variation, so the test is well posed.**
+
+```
+exp_pace mean 98.77  sd 1.771  range 92.3..105.9
+corr(exp_pace, closing line) +0.6482 -> R2 0.420, 58% of pace is ORTHOGONAL
+residual pace sd given the line = 1.349 possessions
+```
+
+### Do high-pace games have wider distributions? YES.
+
+```
+dev^2 ~ exp_pace                        +7.703 (t=+2.42)
+LADDER high-pace minus low-pace sigma   +0.5300 (t=+7.33, p<0.0001)
+```
+
+### And the ladder prices it at the POISSON RATE
+
+```
+implied_sigma ~ exp_pace + implied_mu   pace +0.0888 (t=+2.97)  mu +0.0229 (t=+3.55)
+POISSON  d(sigma)/d(pace) = v/sigma =        +0.0911
+95% CI on pace [+0.0303, +0.1474]  -> Poisson is INSIDE
+MDE 0.0585 < 0.0911                -> POWERED to have said otherwise
+```
+
+**Point estimate within 2.5% of theory, on a test that could have rejected it.**
+
+**And PACE is the carrier, not the line.** The `mu` coefficient falls from
++0.0426 (Link 4) to +0.0229 once pace enters. The market is conditioning its
+dispersion on the physically correct variable and the line was proxying for it.
+Monotone within every line tercile: 17.706→17.852, 17.924→18.260, 18.191→18.579.
+
+### The one apparent exception, and why it is not tradeable
+
+Reality and the ladder appear to diverge by line tercile:
+
+| | T1 (low totals) | T2 | T3 (high totals) |
+|---|---|---|---|
+| LADDER high−low | +0.146 | +0.336 | +0.388 |
+| REALITY with OT | −0.554 (t=−1.19) | +0.760 | +1.233 (t=+2.46) |
+| REALITY no OT | −0.887 (t=−1.92) | +0.424 | +1.402 (t=+2.86) |
+
+Formal interaction, the single pre-specified version of that 6-look pattern:
+
+```
+REALITY  dev^2 ~ pace*close   with OT   ix +0.4168 (t=+1.50)
+                              no OT     ix +0.7938 (t=+3.46)  CI [+0.34,+1.24]
+LADDER   implied_sigma ~ pace*close     ix +0.0030 (t=+1.30)
+```
+
+**Three reasons it does not survive.**
+
+1. **KALSHI SETTLES INCLUDING OVERTIME.** The traded outcome is the with-OT
+   row, and there the interaction is **t = +1.50**. The t=+3.46 is on an
+   outcome nobody can bet.
+2. **The OT exclusion is a precision gain, not a confound removal.**
+   `corr(exp_pace, is_ot) = +0.0031` — pace does **not** predict overtime. OT is
+   5.0% of games at sd(dev) 19.77 vs 17.10, so dropping it removes variance
+   roughly at random in pace and inflates `t` without changing what settles.
+3. **It is one season.** No-OT interaction by season: −0.30, −0.16, **+3.35
+   (t=+3.26)**, +0.50, −1.05, +0.39, +0.47, +1.54. Positive in 5 of 8; the only
+   significant season is **2020**, the bubble. With OT the signs flip harder
+   still, with 2020 at +2.40 (t=+2.13) and 2022 at −4.37 (t=−2.61) —
+   significant in OPPOSITE directions. This is exactly
+   `papers/winkelmann_efficiency_simulations` — efficient markets throw
+   significant season-by-season findings most of the time.
+
+### Disposition
+
+**The question was good and the answer is the strongest market result in this
+audit.** High-pace games do have wider distributions; the ladder knows it, uses
+possessions rather than points to say so, and lands within 2.5% of the Poisson
+rate on a powered test. The pace x total interaction is not tradeable: absent on
+the traded outcome, and carried by one anomalous season on the untraded one.
+
+Recorded so it is not re-run: the pooled reality test on `dev^2 ~ exp_pace +
+close` is **UNDERPOWERED** — Poisson predicts +3.284, MDE is 8.187 (2.5x short).
+Reality cannot confirm or refute the pooled pace rate on 8,236 games. Only the
+LADDER side is powered, for the Link 4b reason: implied sigma is fitted off 11
+rungs, a realised total is one draw.
