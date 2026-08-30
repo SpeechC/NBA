@@ -157,3 +157,111 @@ MOVE_COMBINED's raw magnitude is well-behaved only inside a band, and isotonic
 regression on development may or may not fix the tails on 2,000 holdout games.
 **I expect P1 to pass on slope and to be marginal on the extreme deciles**,
 which is where the honest work is.
+
+---
+
+# RESULT — built and scored once, 2026-08-30. **P1 FAILS.**
+
+Development 3,101 (2021-22…2023-24), holdout 2,004 (2024-25, 2025-26).
+
+**Forced split, recorded:** `MOVE_COMBINED_OOS` begins 2021-22, so §5's 2017-18
+start does not exist. Holdout n ≈ 2,000 is exactly the case §3 priced at
+z = +1.09.
+
+## Stage 1 — and the coefficient that exposes a flaw in my own design
+
+```
+m          -0.04035        <- NEGATIVE
+CrewShock  +0.11433
+final7     +0.40209
+intercept  +0.00954
+```
+
+`CrewShock` and `final7` enter positive and sensible. **`m` enters negative**,
+and the reason is a specification error in §1 of this document, not a property
+of the signal: the outcome is **over versus the CLOSING total**, while
+`MOVE_COMBINED` forecasts open→close movement and realises its edge **betting
+the opener**. Referencing the close means `m`'s information is already inside
+the target. Two of the three inputs are close-referenced; the third is not, and
+I gave all three the same outcome.
+
+**This is my error and it is not an excuse.** The prereg was mine, the outcome
+definition was mine, and the result stands as registered.
+
+## P1 PRIMARY — FAILS, decisively
+
+```
+calibration slope     +0.4308     required [0.80, 1.25]   FAIL
+calibration intercept +0.0103     required [-0.05, +0.05] PASS
+```
+
+**A slope of 0.43 means the model is roughly 2.3× overconfident.** To be honest
+its logit would have to shrink by ~57%: the forecast spread of sd 0.0425 should
+really be about **0.018**.
+
+That number is the practical finding. **The combined signal's honest strength is
+about ±1.8pp of win probability, against a vig of 2.38pp.** Not enough.
+
+## P2 RELIABILITY — the overconfidence is concentrated at the top
+
+| decile | n | mean forecast | actual | gap |
+|---|---|---|---|---|
+| 1 | 807 | 46.68% | 47.58% | +0.90pp |
+| 2 | 609 | 50.97% | 50.90% | −0.06pp |
+| 3 | 412 | 55.07% | 54.61% | −0.46pp |
+| **4** | **176** | **59.13%** | **53.98%** | **−5.15pp** |
+
+Isotonic collapsed the output to four distinct levels. The first three are well
+behaved (|gap| ≤ 0.90pp); **the confident bucket is wrong by 5.15pp** — the same
+shape `CALIBRATION_AUDIT` found in MOVE_COMBINED's raw magnitude above 2.5, and
+isotonic fitted on development did **not** fix it out of sample.
+
+## P3 BRIER / LOG SCORE — reported, not decisive
+
+```
+Brier  model 0.25005   baseline 0.25000   gain -0.000052   z = -0.05
+log loss model 0.69336 baseline 0.69315   gain -0.000210
+```
+
+§3 predicted z ≈ +1.09 and fixed in advance that a non-significant gain would
+not be a failure. The gain is not merely non-significant — it is **marginally
+negative**. The forecaster is not better than a coin flip on a proper scoring
+rule.
+
+## Economics — reported only, per §6
+
+```
+every game        2,004 bets   52.54%   ROI +0.31%
+|p-0.5| >= 0.02   1,395 bets   53.26%   ROI +1.68%
+|p-0.5| >= 0.04     652 bets   53.22%   ROI +1.60%
+```
+
+**These cannot pass this prereg and are not a finding.** They are also exactly
+the trap the whole document was built to avoid: a model that is *miscalibrated*
+can still show a positive hit rate, and reading the ROI here while ignoring
+slope 0.43 is the error Walsh & Joshi describe.
+
+## Disposition — and what §7 forbids
+
+§7 fixed it: **"P1 fails with slope < 0.8 → report the slope; do NOT refit."**
+No refit is performed. The obvious repair — reference `m` to the **opening**
+total so its edge is not neutralised — is a **different specification** and
+would need its own registration on data this run has now consumed.
+
+**What is established:** the three frozen signals, combined by a fixed logistic
+and isotonic-calibrated on development, **do not produce calibrated
+probabilities out of sample.** Sizing on this object is not defensible, and
+`CALIBRATION_AUDIT`'s conclusion stands unchanged — **flat-bet inside the frozen
+thresholds.**
+
+**What is not established:** that a correctly specified forecaster would fail.
+The `m` handicap is real and quantified, and a close-referenced target was the
+wrong instrument for an opener-traded signal.
+
+## Lesson, recorded
+
+**When combining signals that trade against different lines, the outcome must
+match each signal's trading point.** Forcing one outcome on all three imported a
+negative coefficient on the strongest input. This is the same class of error as
+`PREREG_foul_q4`'s incomplete take-foul exclusion and `PREREG_roadtrip_foul`'s
+road-only panel: the specification, not the statistics, did the damage.
