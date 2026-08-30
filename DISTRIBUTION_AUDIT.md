@@ -221,3 +221,90 @@ lumps, not a full distribution.
 is n = 243. KS at that n has roughly 80% power against a departure of
 D ≈ 0.11; observed is 0.043. **Departures smaller than that are not excluded** —
 this rules out gross shape error, not subtle miscalibration.
+
+## CORRECTION 2026-08-30 — the "distributionally calibrated" claim is RETRACTED
+
+Challenged on whether a pregame ladder could really match each game's
+distribution. It cannot, and my test could not have told the difference.
+
+### The PIT test was near-vacuous
+
+Simulating a ladder whose assumed σ is wrong by a factor k, keeping only the
+central 57% and rescaling as I did:
+
+| true/assumed σ | 0.85 | 0.90 | 1.00 | 1.10 | 1.20 | **1.35** |
+|---|---|---|---|---|---|---|
+| rejection rate | 2% | 5% | 6% | 5% | 5% | **6%** |
+
+**Even a 35% error in σ is rejected 6% of the time — no better than the 5%
+false-positive rate.** Rescaling to the ladder's *own* quantiles normalises
+away the dispersion being tested. The "KS 0.0434, p = 0.7336, UNIFORM" result
+was not evidence of calibration; it was evidence of nothing.
+
+### What DOES have power, and what it actually licenses
+
+The **tail-mass** check is a real test. A σ error changes how much mass falls
+outside a fixed strike range:
+
+```
+se of the tail fraction at n=424 is 2.4pp; 2-se is 4.8pp
+-> it rejects sigma ratios outside roughly [0.90, 1.12]
+OBSERVED: implied 43.5% vs actual 42.7%, gap -0.8pp
+```
+
+**Honest claim: the ladder's average σ is right to within about ±10%.** That is
+all that survives, and it is a statement about the pooled average.
+
+### The per-game question, answered directly — and the answer is NO
+
+Fitting an implied σ per game (the ladder is almost exactly normal: median
+corr(z, strike) = **0.99895**):
+
+```
+implied sigma   mean 19.51   sd 6.16   IQR 18.08-19.65
+realised sd(actual - mu)     18.79          <- pooled average is close
+```
+
+But does a wider ladder predict a wider outcome?
+
+```
+|actual - mu| ~ implied_sigma    beta +0.1298 (t = +1.46)   corr +0.0711
+(if the width carried real per-game information, beta would be ~0.8)
+```
+
+| implied σ quartile | mean implied σ | realised sd |
+|---|---|---|
+| 1 | 17.55 | 18.64 |
+| 2 | 18.46 | 19.96 |
+| 3 | 19.22 | 17.53 |
+| 4 | **22.79** | 18.68 |
+
+**Implied width spans 17.55 to 22.79 — a 30% range — and realised dispersion is
+flat and non-monotone across it.** The ladder's per-game width variation is
+**quoting noise, not information**.
+
+### Corrected conclusion
+
+The Kalshi totals ladder is **a fixed-shape normal template centred on the
+sportsbook's line**:
+
+| component | verdict |
+|---|---|
+| location | right, inherited from the book (corr 0.9955, −0.004 pts) |
+| average width | right to ~±10% (19.51 implied vs 18.79 realised) |
+| **per-game width** | **uninformative — β = +0.13, t = +1.46** |
+| shape beyond scale (skew, kurtosis) | **untested** |
+| coherence | **12.1% of ladders are non-monotone as quoted** |
+
+**It does not reflect each game's distribution. It reflects the average game's
+distribution, shifted to each game's line.** Earlier in this document, full-game
+totals were shown to be right-skewed (+0.232, from the 5.13% overtime mixture)
+and leptokurtic (+0.395) — a normal template captures neither.
+
+### The lesson, which is the same one this session keeps producing
+
+A test can pass because the thing is true, or because **the test cannot fail**.
+`PREREG_ref_agency_dispersion` priced its MDE before running and reported a null
+honestly. Here I ran a test *after* the fact without pricing its power, got a
+clean p-value, and reported it as a finding. **The power calculation belongs
+before the test, not after the challenge.**
