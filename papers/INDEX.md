@@ -1,6 +1,6 @@
-# NBA betting literature — PDF store, built 2026-08-29
+# NBA betting literature — PDF store, built 2026-08-29 (updated 2026-08-30)
 
-22 PDFs, 20.7 MB. Searched on "NBA betting", "NBA market inefficiencies",
+26 PDFs. Searched on "NBA betting", "NBA market inefficiencies",
 "NBA profit" and adjacent terms. **Triaged by what is NEW to this program**,
 because ~11 papers were already read and summarised into memory and should not
 be re-litigated.
@@ -109,3 +109,76 @@ Kalshi mention markets (Kim 2026); the 5-paper NBA betting-market set incl.
 Martín-González 2016 / Zhang 2021 scoring process; Byrnes & Farinella momentum
 (**tested and null**: 49.75% OOS, z = −3.15); Winkelmann 2024 efficiency
 simulations.
+
+---
+
+## ADDED 2026-08-30 — Montrucchio, Barbierato & Gatti (2026), *Information* 17(1):56
+
+`information_17_00056_mdpi.pdf` — "Uncertainty-Aware Machine Learning for NBA
+Forecasting in Digital Betting Markets", Università Cattolica del Sacro Cuore.
+24pp, open access, received Oct 2025 / published 8 Jan 2026. **User-supplied.**
+
+**What it is.** An RNN with **Monte Carlo dropout** producing calibrated
+sequential win probabilities, from team metrics, rolling form and **shot-chart
+spatial embeddings**. Chronological split (train <= 2022, val 2023, test 2024),
+ablations against odds circularity, SHAP interpretability, and a fractional-Kelly
+betting simulator.
+
+**Why it matters here — three separate things.**
+
+**1. The uncertainty architecture (methodologically useful).** Their decomposition
+is the one worth borrowing: a heteroscedastic variance head trained on Gaussian
+NLL gives **aleatoric** uncertainty, and MC-dropout spread across passes gives
+**epistemic** uncertainty, combined as
+`sigma^2 = E_m[sigma^2_A] + Var_m(mu)`. They themselves flag deep ensembles /
+Laplace / SWAG as untested alternatives. **This motivated our own pace-variance
+work** (`PACE_VARIANCE_V2`, `PACE_INTERACTION`) — which found the pace-uncertainty
+branch does not pay, so the architecture remains unimplemented here by choice.
+
+**2. It CONFIRMS our totals conclusion, independently.**
+
+> *"the same pipeline applied to spreads and totals produces flat or mildly
+> negative outcomes, consistent with these markets being more efficiently priced
+> and leaving little exploitable residual structure."*
+
+Economic value in their results sits **only in moneylines**. That is an
+independent arrival at this programme's repeated finding, from a completely
+different method.
+
+**3. CAUTIONS — read before citing their economics.**
+
+Their own headline table (test 2024, fractional Kelly):
+
+```
+model                     acc    Brier  logloss  bankroll    ROI
+Market-implied (no model) 0.650  0.210  0.590      100.00   0.000
+Logistic (no leakage)     0.688  0.199  0.583       80.34  -0.197
+XGBoost (no leakage)      0.680  0.202  0.589      143.76  +0.438
+GRU sequence model        0.604  0.232  0.657        0.00  -1.000
+bootstrap mean                                       92.99  -0.070
+```
+
+- **The best-calibrated model LOST money** (logistic, Brier 0.199, ROI −19.7%)
+  while a worse-calibrated one made +43.8%, and the GRU went to **zero**. This is
+  our `CALIBRATION_AUDIT` finding in someone else's data: calibration does not
+  imply profit.
+- **The bootstrap MEAN ROI is −7.0%** with sd 0.183. The positive headline rests
+  on a single path.
+- **Frictionless by their own admission:** *"All wagers clear at posted odds with
+  no slippage, liquidity constraints, or bookmaker limits."*
+
+**4. A RESULT THAT SHOULD NOT BE TRUSTED — flagged.** Their Table 6 ablation
+reports a **non-market model** (team features only, no odds) at **AUC 0.941,
+accuracy 0.843, Brier 0.106**, and a fused model at AUC 0.951 / accuracy 0.873 —
+against a market-implied benchmark of AUC 0.759 / accuracy 0.687.
+
+**A model using no market information cannot beat the closing market by 18 AUC
+points on NBA game outcomes.** It is also irreconcilable with their *own* main
+table, where every model sits in the credible 0.60-0.69 accuracy band. The
+authors present Table 6 as evidence *against* circularity concerns; it is better
+read as a **leakage signature**. **Do not cite the fused/non-market numbers.**
+
+**Net:** valuable for the uncertainty decomposition and as independent
+confirmation that NBA totals are efficiently priced. Its economic claims are
+fragile (bootstrap-negative, frictionless) and its ablation table contains an
+implausible result.
