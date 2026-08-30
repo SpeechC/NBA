@@ -189,3 +189,101 @@ across the deficit range, which is more consistent with a mechanical
 player/tactics story than with 103 officials each choosing a slope. **I expect
 P1 to fail at this power**, and the value of running it is that a clean null
 with a stated MDE closes a question that is currently open-ended.
+
+---
+
+# RESULT — run once, 2026-08-30. **No individual referee agency detected. Placebo clean.**
+
+24,249 official-games, 103 officials, 70 retained at MING = 150.
+
+## P0 — passes, and assignment is well balanced
+
+```
+pooled dFTA ~ D | dFGA   = +0.04709          (prereg expected ~ +0.047)
+BALANCE: mean D by official, 70 officials
+         range 10.43 - 12.56   sd 0.487   pooled mean 11.39
+```
+
+Officials see materially the same deficits. There is no assignment confound to
+explain away a dispersion result — in either direction.
+
+## P1 PRIMARY — NOT above the null, and not marginally
+
+```
+officials 70    mean slope +0.04759    observed slope sd 0.02296
+V_obs        5.270e-04
+null median  5.682e-04      95th pct  7.434e-04
+p = 0.6637
+```
+
+**The observed dispersion is BELOW the noise-only expectation** — observed slope
+sd 0.02296 against an implied noise-only 0.02384, so the excess-variance point
+estimate is **exactly zero**. This is not a borderline null. Officials' deficit
+slopes are indistinguishable from all being the same number plus sampling error.
+
+## P2 PLACEBO — clean, which is what makes P1 readable
+
+```
+dNTO:  V_obs 1.036e-04   null median 1.020e-04   p = 0.4617
+```
+
+The statistic does **not** manufacture dispersion on a channel referees cannot
+touch. Per §5, a placebo firing would have voided P1 regardless; it did not.
+
+## Verdict, per §6
+
+**"Not above / clean" → no agency detectable at this power.** Reported as
+`§6` requires: **no heterogeneity above roughly ±30% of the mean response**, and
+**not** as proof that referees lack agency.
+
+The result is nonetheless stronger than the minimum that wording implies. A
+merely-insignificant result would leave the point estimate leaning; here it does
+not lean at all — observed variance sits *at or below* the pure-noise floor.
+
+## THE LIMITATION THAT MATTERS MOST, and it is not the power
+
+**A uniform league-wide officiating norm would produce exactly this null.**
+Dispersion detects officials differing *from each other*. If every official
+applies the same game-state adjustment — a league standard rather than 103
+individual choices — the between-official variance is zero and this test is
+blind to it.
+
+So the null rules out **heterogeneous individual discretion**. It does not rule
+out **refereeing** as such. That distinction was implicit in §7's
+"agency, not apportionment" and is now stated explicitly.
+
+## What this does to the Q4 decomposition
+
+| channel | share of +1.65 | status after this run |
+|---|---|---|
+| turnovers | 22.2% | clean |
+| free throws | 43–84% | real; **affirmative case for individual refereeing removed** |
+| everything else | remainder | untested |
+
+The free-throw channel stands. What has changed is that the three mechanical
+candidates `PREREG_foul_q4` listed — residual intentional fouling, bench
+foul-proneness, shot location — are now the **better-supported** explanations,
+because the one story that predicted between-official variation produced none.
+
+## It does NOT contradict CrewShock — and mildly supports it
+
+CrewShock says officials differ in foul **level**; this says they do not differ
+in **responsiveness to the scoreboard**. Both can hold, and together they
+describe an official who carries a persistent personal whistle rate and applies
+it **uniformly regardless of the score**.
+
+That is the behaviour `CLOSING_REFEREE`'s exogeneity battery already assumed —
+a fixed propensity rather than a game-state response — and this is independent
+evidence for it, from a test that could have embarrassed it and did not.
+
+## Disposition
+
+Per §8, the referee-versus-personnel question **closes as unresolved on this
+data**, with the affirmative referee case weakened. `PREREG_foul_q4`'s
+disposition stands unchanged: residual localised to free throws, attribution
+not identified. No tradeable object was built and none is authorised.
+
+**Prior check:** §9 predicted P1 would fail at this power and said the value
+would be a clean null with a stated MDE. That is what happened. Recorded
+because the prediction was made before the run and is one of the few in this
+program to come out right.
