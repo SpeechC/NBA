@@ -723,3 +723,80 @@ built. This costs nothing that was planned: the NBA halftime under-reaction
 is already closed (1,114 games, r2>=0.95 gap -0.022), and CrewShock -- the
 one validated signal -- is pregame, where a 17.6s feed lag is irrelevant
 because the assignment publication, not a buzzer, starts the clock.
+
+## 22. What passing F2 would have been worth — addendum 2026-08-30
+
+s20 failed the prototype on F2, a statement about SPEED. It left the prior
+question unasked: **if we had been fast enough, was there anything to take?**
+`halftime_reprice.py` answers it. The finding is stronger than s20's and
+should be read as superseding its framing: **F2 was not the binding
+constraint.**
+
+### The feed is ahead of the market; our polling is not
+
+Restating s20/s21 in the right order. The feed reports halftime at buzzer
++17.6s; the market first moves at +30s (NBA) / +32s (WNBA). **The feed leads
+the market by ~13s and beats it in 74% of games unaided.** F2 failed because
+a 20-30s poll interval was stacked on top. The cheap fix was never a faster
+feed but adaptive polling -- 1s cadence inside the last two minutes of Q2 --
+which recovers essentially the whole POLL_S=0 bound. That fix was never made,
+and s22 is the reason it should not be.
+
+### The prize is real, and it is not the usual artefact
+
+Ladder movement across halftime, rungs quoted 25-75c pre-buzzer:
+
+| pre-buzzer spread | n (NBA) | \|move\| | cost | net | zero-vol |
+|---|---|---|---|---|---|
+| **<=2c (tight)** | 941 | **3.97c** | 2.40c | **+1.57c** | 4% |
+| 2-5c | 1,731 | 3.91c | 3.55c | +0.36c | 8% |
+| 5-10c | 1,257 | 4.65c | 5.30c | -0.65c | 22% |
+| >10c (wide) | 2,489 | 8.12c | 21.01c | -12.89c | 55% |
+
+WNBA matches (+1.70c tight, n=565). **This is NOT the wide-spread artefact**
+that killed the ladder-residual work: the tight, liquid rungs (1-4% zero
+volume) move as much as the wide ones. Something real happens at halftime.
+
+### The bar, which is the finding
+
+The net above assumes the DIRECTION is known. Solving
+`(2q-1)*|move| = cost`:
+
+> **A halftime latency strategy must call the direction of the reprice
+> correctly 78.9% of the time (WNBA) / 80.2% (NBA) merely to break even.**
+
+Four times in five, on a 4c move, against a 1.6c fee and a 1c half-spread.
+
+The obvious signal fails outright. Fading the pre-buzzer 5-minute drift --
+the stale-mid-reverts theory -- gives beta +0.008 (WNBA) / -0.005 (NBA),
+correlation +-0.02, and trading it returns **-2.38c / -2.33c per contract,
+which is exactly the transaction cost**. Gross edge of precisely zero.
+
+**Why this should have been expected.** At the buzzer the market's quote
+already contains essentially all of H1 -- the book watched the half happen.
+The reprice is not the market learning the score; it is a book re-opening
+after a lull. There is no stale FACT to pick off, which is what a latency
+strategy requires.
+
+### Consequence, and it generalises
+
+Speed on this venue buys the right to pay the fee sooner. Combined with the
+M1 result (adverse selection ~0), the picture is coherent: **nobody is
+picking off Kalshi halftime with speed, because speed alone is not worth
+anything here.** There is no latency war to lose and no free money to win.
+
+This strengthens s20 rather than softening it. The prototype did not fail
+because it was 15 seconds too slow; it would have failed at zero latency,
+because it never had the 80% directional signal that alone converts speed
+into money. **Any future in-game taker proposal, in any league, must clear
+the directional bar BEFORE any engineering is spent on latency.**
+
+### Open question, recorded not closed
+
+The mean SIGNED move on mid-range tight rungs is **-2.14c (WNBA) / -1.47c
+(NBA)**, not zero -- a genuine martingale violation on ~1,500 observations.
+Untested hypothesis: microstructure, with bids pulled harder than asks across
+the break dragging the MID without either tradeable price moving (which is
+also why every |move| figure here is an upper bound on taker capture). It is
+recorded as an anomaly, not a signal; confirming it needs fill-level or
+full-depth data this component does not have.
