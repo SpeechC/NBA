@@ -385,3 +385,71 @@ a price.**
 **Standing rule added: never quote an edge computed from a mid without also
 quoting the spread it sits inside.** Every mid-based edge in this program's
 Kalshi work should be read with that attached.
+
+### Form A, RE-TESTED at team level — the first version was mis-specified
+
+Correct objection: regressing |dev| on the **line** and **|spread|** tests
+whether dispersion scales with *market summaries*, not whether *these two teams*
+produce a wider distribution. Team identity was never in the test. Redone, with
+power priced first and an explicit search for exceptions rather than averages.
+
+**Power, stated before the tests.** SE of a sample sd is σ/√(2n). At a median
+80 games and sd 17.84, that is **1.406 pts** of noise per team-season estimate;
+observed cross-estimate sd is 1.690, implying ~0.94 pts of non-noise dispersion.
+**If team variance were perfectly stable, season-to-season correlation would
+still only be ≈0.31** — and with 210 team-season pairs the MDE on a correlation
+is ≈0.135, so 0.31 is detectable.
+
+**Test 1 — persistence.**
+```
+adjacent seasons   corr(sd_t, sd_t-1) = +0.0709   perm p = 0.1488
+era vs era         corr(sdA, sdB)     = +0.0458   perm p = 0.4095
+team SCORING sd, era vs era           = -0.0292
+```
+Detectable stability is 0.31; observed is 0.07. **Full stability is excluded.**
+
+**Test 2 — the operational test, which does not care why.** Prior-only rolling
+60-game team dispersion, combined across the two teams:
+
+| prior-sd quintile | mean prior sd | realised sd(dev) |
+|---|---|---|
+| 1 | 16.23 | 17.90 |
+| 2 | 17.24 | 18.23 |
+| 3 | 17.91 | 17.78 |
+| 4 | 18.64 | 18.21 |
+| 5 | **19.97** | **18.39** |
+
+```
+|dev| ~ combined prior team sd    beta +0.126 (t=+1.45)   corr +0.0153
+informative prior variance would give beta ~0.8
+se(beta) 0.087 -> MDE 0.170, far below 0.8: a WELL-POWERED null
+```
+
+A **23% spread in the predictor produces a 2.7% spread in the outcome**, and
+non-monotone through the middle.
+
+**Test 3 — the exception search, which is what was actually asked for.**
+
+```
+teams in the top 6 of BOTH eras:     1   [Houston]
+teams in the bottom 6 of BOTH eras:  2   [Orlando, Phoenix]
+expected by chance:                  1.2 each
+```
+
+**No team is reliably extreme beyond chance.** There are no exceptions to model.
+
+### Why the premise is right and the conclusion still negative
+
+Teams **do** differ in raw scoring variance. But the ladder is not priced
+against raw scoring — it is priced against **the closing total, which is set per
+game**. The line absorbs the predictable part. What remains is *residual*
+dispersion, and that is homogeneous: every team's `actual − close` has sd near
+17.8–18.4 regardless of style.
+
+**The market's per-game line is doing the work a per-game σ would do.** That is
+why a constant-σ template is not lazy — it is correct *conditional on the line*.
+
+**This does not close the idea in general.** It closes it for team identity as
+the conditioning variable, on total dispersion, at this power. A different
+conditioner — one that moves residual dispersion rather than the mean — is not
+excluded by anything here. Nothing in this program has found one.
