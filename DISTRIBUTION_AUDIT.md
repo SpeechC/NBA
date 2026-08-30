@@ -308,3 +308,80 @@ A test can pass because the thing is true, or because **the test cannot fail**.
 honestly. Here I ran a test *after* the fact without pricing its power, got a
 clean p-value, and reported it as a finding. **The power calculation belongs
 before the test, not after the challenge.**
+
+## IS THE LADDER'S MISPRICING AN OPPORTUNITY? — tested 2026-08-30
+
+The reasoning was sound: if the ladder is a fixed-shape normal template and
+real distributions vary, the mismatch is tradeable. Two forms, tested in order.
+
+### Form A — "predict per-game σ better than the ladder" — DEAD ON ARRIVAL
+
+If true σ varies by game and the ladder uses a constant, forecasting σ wins.
+**But per-game total variance is essentially unpredictable.** On 9,486 games:
+
+| closing-total quintile | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| sd(dev) | 17.65 | 17.42 | 18.52 | 18.17 | 18.51 |
+
+```
+corr(line, |dev|)          +0.0207
+|dev| ~ line + |spread|    R2 = 0.00047
+fitted |dev| has sd 0.241 points on a mean of 14.29  -> 1.7% of its level
+```
+
+`|spread|` quintiles are flat too (18.52 → 17.92), mildly *decreasing*.
+
+**True σ is near-constant, so a constant-σ template is the RIGHT model.** This
+also corrects the framing above: the ladder's failure to adapt σ per game is
+**not a deficiency** — there is nothing to adapt to.
+
+### Form B — "fade the ladder's own σ noise" — real edge, unreachable
+
+The ladder still quotes σ from 17.5 to 24.9 across quartiles while truth is
+~18.8. Fading the wide ones has a genuine edge:
+
+```
+ladder sigma 17.5 -> top rung priced 21.5%, true 23.1%   edge -1.6pp
+ladder sigma 19.5 -> priced 21.5%, true 20.6%            edge +0.9pp
+ladder sigma 24.9 -> priced 21.5%, true 16.9%            edge +4.6pp
+```
+
+**But the wide-σ ladders are exactly the untradeable ones:**
+
+| σ quartile | implied σ | median spread | **wing spread** | coherent |
+|---|---|---|---|---|
+| 1 | 17.52 | 3.78c | 3.96c | 94% |
+| 2 | 18.44 | 4.32c | 5.55c | 93% |
+| 3 | 19.22 | 6.03c | 7.20c | 94% |
+| **4** | **24.87** | **13.16c** | **14.86c** | **70%** |
+
+```
+corr(implied sigma, median spread)  +0.5807
+corr(implied sigma, wing spread)    +0.5685
+```
+
+**Edge +4.6c against a wing half-spread of 7.4c.** Negative, and the top
+quartile is only 70% coherent.
+
+### The finding that generalises
+
+**A wide implied σ is not a pricing opinion — it is what a wide, incoherent,
+illiquid ladder looks like when you fit a normal to it.** The apparent σ
+dispersion is a **liquidity artefact**, not a mispricing.
+
+This is now the third independent instance of one pattern on this venue:
+
+| case | apparent edge | cost | outcome |
+|---|---|---|---|
+| derivative half-winners | 3–6c | 15–30c spread | dead |
+| bottom rung | −0.67% at mid | −5.06% at ask | spread is the entire loss |
+| **wide-σ ladders** | **+4.6pp** | **7.4c half-spread** | **dead** |
+
+**On this venue the apparent mispricing is proportional to the spread**
+(corr +0.58), which is exactly what you get when the "edge" is measured from
+the midpoint of a quote nobody will trade at. **The mid of a 15c market is not
+a price.**
+
+**Standing rule added: never quote an edge computed from a mid without also
+quoting the spread it sits inside.** Every mid-based edge in this program's
+Kalshi work should be read with that attached.
