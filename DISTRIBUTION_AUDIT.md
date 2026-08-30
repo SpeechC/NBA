@@ -143,3 +143,81 @@ information (+0.78).
 **Never convert our own spread estimate to a win probability with a Gaussian.**
 Use the empirical spread→win-rate mapping. The error is largest exactly where a
 model would most want to bet — the extremes — and it exceeds the vig.
+
+---
+
+# Does the Kalshi totals LADDER reflect each game's distribution? — 2026-08-30
+
+Everything above tested **marginal** calibration ("does 54% mean 54%?"). This
+tests **distributional** calibration: does the ladder's implied CDF fit the
+individual game? Store: `kalshi_nba_candles.sqlite`, KXNBATOTAL, last pregame
+mid on each rung, **424 events** (2025-10-21 → 2025-12-22) joined to actual
+totals.
+
+## An error of mine, first
+
+My initial PIT test scored interior games against Uniform(0,1) and returned
+"NOT uniform, p = 0.0000" with quintiles [5, 77, 86, 74, 1]. **That was wrong by
+construction** — interior games are *truncated* to the ladder's support, so
+they cannot be uniform on [0,1]; the quintiles were just the ladder bounds. The
+correct test rescales each game's PIT to its own ladder support. Recorded
+because the wrong version looked like a decisive finding.
+
+## Result — the ladder is well calibrated, on all three parts
+
+**(a)(b) It prices its own tails:**
+
+```
+implied below lowest rung 21.2%    actual 20.8%    gap -0.4pp
+implied above highest     23.2%    actual 21.9%    gap -1.2pp
+```
+
+**(c) Its interior shape is right.** PIT rescaled to each ladder's own support:
+
+```
+n = 243   KS = 0.0434   p = 0.7336   -> UNIFORM
+mean 0.4997 (0.5 = unbiased)   sd 0.2990 (0.289 = uniform)
+quintiles [50, 56, 38, 46, 53]   even = 49
+```
+
+**And it agrees with the sportsbook to within noise:**
+
+```
+mean(Kalshi implied line - book close)  -0.004 pts   sd 0.603   corr 0.9955
+```
+
+## So: yes — with two real caveats
+
+**Caveat 1 — 12.1% of ladders are INCOHERENT as quoted.** In 52 of 428 events
+`P(total > X)` does not fall monotonically in `X` at the mid. I
+isotonic-projected them to run the test; **as quoted, one ladder in eight is not
+a valid distribution.**
+
+**Caveat 2 — the ladder only spans the central ~57%.** Median strike span is
+30 points, with ~21% of mass below the lowest rung and ~23% above the highest.
+**43% of games land outside the ladder entirely**, where it says only "above" or
+"below" and nothing about how far. It is a well-calibrated middle plus two
+lumps, not a full distribution.
+
+## What this settles for the program
+
+1. **The ladder is better calibrated than anything we have built.** Our
+   forecaster returned calibration slope **0.43**; the ladder's PIT is uniform
+   at **p = 0.73**. The market's distributional forecast is honest where ours
+   is 2.3× overconfident.
+2. **Efficiency holds at the distributional level, not just the mean.** That is
+   a stronger statement than this program had previously established.
+3. **It explains the bottom-rung result.** Buying cheap rungs lost 20–25% and
+   near-certain rungs 5% *at the ask*, while the bottom rung was −0.67% *at the
+   mid*. With the ladder now shown calibrated at the mid, that loss is
+   **entirely the spread**, not mispricing — and the favourite-longshot pattern
+   is a bid-ask artefact, not a bias to trade.
+4. **No cross-venue level arbitrage.** Kalshi and the sportsbook are the same
+   number to −0.004 points at corr 0.9955.
+
+## Limits
+
+424 games, one partial season ending at the December CDN wall; the interior PIT
+is n = 243. KS at that n has roughly 80% power against a departure of
+D ≈ 0.11; observed is 0.043. **Departures smaller than that are not excluded** —
+this rules out gross shape error, not subtle miscalibration.
