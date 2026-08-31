@@ -268,3 +268,28 @@ The residual after the transform is ~1.4 cents, against American-odds quote
 granularity of roughly 0.3-0.6 cents. Whether that ~1pp residual carries
 information beyond the spread is a separate, untested question. **It has not been
 tested, and no claim is made about it.**
+
+## THE BOOK AGAINST ITSELF — the last untested residual (2026-08-30)
+
+The emulator leaves a held-out residual of 1.42-1.77c against quote granularity of
+roughly 0.3-0.6c, so ~1pp is the book's own ML/spread inconsistency. Earlier
+versions of this file recorded that as untested. It is now tested.
+
+```
+held-out n = 4,902   residual sd 1.77c   games disagreeing by >2c: 25.7%
+
+Brier    quoted ML 0.20228   spread-implied 0.20248
+log-lik  quoted ML -2888.59  spread-implied -2891.54   (diff +2.95)
+
+Phi^-1(P) = Phi^-1(p_ML) + beta*resid :  beta -0.7304  se 1.0687  t -0.68
+quintiles of the residual, actual minus p_ML:
+   -0.0013   +0.0272   -0.0244   +0.0073   -0.0046
+where the two numbers disagree by >2c (n=1,261): -0.0083 (se 0.0138)
+```
+
+**The inconsistency is real and common but uninformative.** The quoted moneyline is
+marginally the better of the book's two numbers — which reflects that the fitted
+transform is a four-parameter smoothing of it, not an exploitable disagreement.
+
+**No further historical moneyline test is justified.** The remaining gap is data
+(opening moneylines, Amendment 7), not analysis.
