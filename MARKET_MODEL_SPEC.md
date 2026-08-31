@@ -27,14 +27,38 @@ programme.
 
 ## 1. DATA — sources, items, spans
 
+### Sources behind every reported figure
+
 | source | path | span | volume |
 |---|---|---|---|
 | Odds + box scores | `/mnt/c/NBA2/dfMaster_OT_2017-2026.csv` | 2017-10-17 .. 2026-04-12 | **9,487** games with lines, 8 seasons |
 | Kalshi totals ladders | `/mnt/c/NBA2/Kalshi/data/kalshi_nba_totals.sqlite` | pregame snapshots | **1,318** ladders, **14,471** rungs |
-| Play-by-play | `/mnt/c/NBA2/out/pbp_lineups_all.parquet` | 2017-18 .. 2024-25 | 3,609,007 regular-season events |
 | Official injury reports | `~/data/injury_reports` (14,327 PDFs) | 2020-12-22 .. 2025-12-22 | `injury_status_panel.csv`, 1,224,205 rows |
-| Transition store | `~/data/pbp_transition_store.csv` | 2017-10-17 .. 2025-04-13 | 18,330 team-games |
-| Live PBP (2026-27) | `cdn.nba.com` liveData JSON | forward | `pbp_feed.py` |
+| Player-game points | `~/data/player_game_pts.parquet` | 2017-18 .. 2025-26 | 195,017 rows |
+
+### Built, NOT load-bearing — play-by-play
+
+**No reported figure in this document depends on PBP as a statistical input.**
+Verified: `canonical_spec.py`, `pace_signal.py`, `oracle_attribution.py`,
+`v5_combine.py` and `stageA.py` do not read it. The shot-independence result in
+§2.5 — the one place PBP would be the obvious source — is measured on **box
+scores** (`shot_corr.py`, 18,977 team-games, identity `2*2PM + 3*3PM + FTM = PTS`
+exact).
+
+| source | path | span | volume | actually reaches |
+|---|---|---|---|---|
+| Play-by-play | `/mnt/c/NBA2/out/pbp_lineups_all.parquet` | 2017-18 .. 2024-25 | 3,609,007 events | a pid -> name lookup in `injury_features_build.py` |
+| Transition store | `~/data/pbp_transition_store.csv` | 2017-10-17 .. 2025-04-13 | 18,330 team-games | `m_X` -> `D*_profile` -> secondary endpoint only |
+| Live PBP (2026-27) | `cdn.nba.com` liveData, `pbp_feed.py` | forward | corr 0.9868 validated | same secondary endpoint |
+
+Two thin threads keep it in the tree. It supplies the player-id -> canonical-name
+map used when building injury features, which reach the spread model and are worth
+**+0.0052 R^2** there — any roster directory would serve. And a 3.6M-event
+possession reconstruction feeds a transition state that reaches a **secondary**
+comparison endpoint which cannot run until 2026-27 games exist.
+
+**Verified by deletion:** removing the transition store entirely leaves `E_pace`,
+`bet_flag` and `side` **bit-identical**; only `m_X` and `D_star_profile` go empty.
 
 **Seasons present:** 2017-18, 2018-19, 2020-21, 2021-22, 2022-23, 2023-24,
 2024-25, 2025-26. **2019-20 is absent** (COVID). Game counts 1,230 / 1,230 /
@@ -490,9 +514,11 @@ descriptive magnitude bins.
 
 1. **Spread emulator at 0.8689 vs a 0.90 target.** RAPM player-level ratings are
    the untried lever, aimed at the late-season failure mode.
-2. **PBP dependency is optional.** Verified: deleting the transition store leaves
-   `E_pace`, `bet_flag` and `side` **bit-identical**; only `m_X` and
-   `D_star_profile` go empty. PBP reaches the secondary endpoint only.
+2. **PBP earns its keep nowhere yet.** Deleting the transition store leaves
+   `E_pace`, `bet_flag` and `side` **bit-identical**. Roughly 350 lines of feed
+   and possession reconstruction serve one secondary comparison whose registered
+   default is already the simpler non-PBP option (`use drift if it matches`).
+   Whether to keep it is an open call, not a dependency.
 3. **CDN transition-store rebuild** would remove a documented +0.63pp level shift
    but costs the store its first two seasons (the CDN does not serve 2017-18).
 4. **Ladder-widening monitor** (§2.6) — the one forward prediction in the
