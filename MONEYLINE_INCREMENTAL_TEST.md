@@ -257,3 +257,57 @@ roster continuity/availability inside the analog vector. Adding them does not
 change the structural obstacle: **two-thirds of margin error is shooting
 efficiency, and shooting is binomial** (phi 0.9883, rho -0.00035, measured). A
 richer description of style cannot make a random variable forecastable.
+
+---
+
+# THE DIRECT BETTING TEST — EV filter against posted prices (2026-08-31)
+
+Everything above tests coefficients. This tests the strategy in the form a bettor
+would actually use: our model's win probability against the **posted moneyline**,
+with an expected-value filter, both sides eligible, $100 flat.
+
+`p_model = F_smile(M_hat)` — our independent structural margin model pushed
+through the frozen S3 transform. n = 4,554 games, 2022-11-07 .. 2026-04-12.
+
+```
+our p_model   mean 0.5659  sd 0.1846
+market p      mean 0.5544  sd 0.2078      corr 0.8585
+mean |p_model - p_mkt| = 8.33pp
+```
+
+The disagreement is **large**. It is also wrong.
+
+| EV > | bets | hit | ROI | P/L | mean odds | dog share |
+|---|---|---|---|---|---|---|
+| 0.00 | 3,857 | 40.11% | −5.36% | −$20,684 | 3.13 | 70.9% |
+| 0.02 | 3,510 | 37.98% | −6.15% | −$21,577 | 3.24 | 74.7% |
+| 0.05 | 3,063 | 35.29% | −7.24% | −$22,190 | 3.39 | 79.8% |
+| 0.10 | 2,472 | 31.92% | −7.70% | −$19,034 | 3.63 | 85.8% |
+| 0.15 | 2,035 | 30.27% | −5.93% | −$12,070 | 3.85 | 90.4% |
+| 0.20 | 1,685 | 28.43% | −6.29% | −$10,594 | 4.01 | 93.2% |
+| 0.30 | 1,140 | 25.70% | −6.30% | −$7,182 | 4.48 | 97.2% |
+
+**Every threshold loses, and the loss is roughly the vig at every level.**
+Bootstrap on the least-bad (EV > 0.30): median −$7,362, 95% CI
+[−$19,011, +$4,762], **P(profit) = 0.115**.
+
+## The mechanism, and why it generalises
+
+The `dog share` column is the whole story. Our model's probabilities are **less
+dispersed than the market's** (sd 0.1846 vs 0.2078), so on any EV filter it
+systematically prefers the side the market rates as less likely. Dog share climbs
+from 70.9% to **97.2%** as the threshold rises, and mean odds from 3.13 to 4.48.
+
+That is the same failure mode as Montrucchio et al.: an EV filter applied to a
+model that is under-confident relative to a well-calibrated market concentrates
+entirely on longshots. And longshots are measurably the worst band —
+`PAPER_montrucchio_uncertainty_aware.md` records −5.26% at 5-10 odds and
+**−31.50%** beyond 10 across 19,352 team-sides.
+
+**A higher EV threshold does not filter for edge here. It filters for price.**
+
+## Verdict
+
+The moneyline channel is closed in the coefficient (t = −0.79), in the conditional
+tests (atlas, blocks, impulse response), in the variance channel (Gates A0/A1), and
+now in the direct economic form as well. No threshold, no side, no sample.
