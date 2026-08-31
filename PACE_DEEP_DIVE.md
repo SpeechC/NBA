@@ -235,3 +235,67 @@ rule, and selecting on it would be retrospective optimisation.
 
 **The frozen 2026-27 model is unchanged.** The candidate for a later prospective
 test is **M1**, not M2 or M3.
+
+---
+
+# EXTENDING THE POSSESSION DATA — pbpstats via cdn.nba.com (2026-08-30)
+
+The possession store ends **2025-04-13**, so M1 (the 2027-28 candidate) has no
+forward feed. `pbpstats` is the natural source — and the parquet's `STARTTYPE`
+vocabulary shows it was built with that library.
+
+## It works, after one patch
+
+pbpstats ships three providers; from this host **none of their default endpoints
+is reachable**:
+
+```
+stats_nba  ->  stats.nba.com                        200 with a 2-byte body (blocked)
+data_nba   ->  data.nba.com                         403 (deprecated)
+live       ->  nba-prod-...s3.amazonaws.com         403
+cdn.nba.com/static/json/liveData                    200   <- the only one that works
+```
+
+`pbps_cdn.py` repoints the `live` loader at the CDN, which serves the identical
+liveData JSON. Verified: **2025-26 games parse** (0022500001/0100/0500 →
+227/215/196 possessions) at ~0.65 s per game, ~13 minutes per season, exposing
+`possession_start_type`, `start_time`/`end_time`, `offense_team_id` and
+`start_score_margin`.
+
+**Correction to an earlier claim in this file:** corner threes ARE separable —
+`OffCorner3Make`/`OffCorner3Miss` exist in the pbpstats taxonomy. They are not
+separable from the *distance* field in the parquet descriptions (minimum recorded
+3PT distance is 24 ft), which is what the earlier note actually established.
+
+## But it is a DIFFERENT SOURCE — validated, not assumed
+
+25 shared 2025 games, same games both sides:
+
+| | per-team possessions | mean duration |
+|---|---|---|
+| parquet (stats.nba v2) | **98.40** | 14.743 s |
+| pbpstats via CDN (liveData) | **100.34** | 14.471 s |
+
+**+1.94 possessions per team, ~2%.** For scale, the BDB-vs-parquet gap that
+motivated this entire deep dive is **0.86**. Splicing the two sources would put a
+level shift at the join that is *larger than the effect being studied*.
+
+(A first comparison reported MAE 12.28 per game; that was a counting error on my
+side — parquet rows-per-game against pbpstats possessions-per-game. The matched
+per-team figures above are the correct ones.)
+
+## Recommendation
+
+Same structure as the CDN transition-feed decision, and the same answer:
+
+- **Do not splice.** Forward pbpstats-CDN data must not be appended to the
+  parquet-derived history for any state that pools across the join.
+- **Forward-only use is fine** where the state is rebuilt entirely from one
+  source, or where a documented offset is carried.
+- **A full rebuild from pbpstats-CDN is the clean fix**, but liveData does not
+  reach 2017-18 (verified for the transition feed), so it would cost the history
+  its earliest seasons.
+
+This is a **2027-28 infrastructure decision**, not a 2026-27 one: the frozen model
+uses BDB pace and needs none of this. `pbps_cdn.py` is committed so the option is
+available and the validation is on the record.
