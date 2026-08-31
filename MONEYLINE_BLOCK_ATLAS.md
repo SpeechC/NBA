@@ -77,13 +77,16 @@ Not "teams do not differ." Something sharper, and it is the explanation the whol
 moneyline investigation was missing:
 
 **Teams genuinely do surprise the model — the block-level shrinkage weight of
-0.4386 says so — but the state estimator absorbs the surprise within about twenty
-games, so yesterday's exception is NEGATIVELY informative about tomorrow's error.**
+0.4386 says so — but the state estimator adapts continuously at 4.2% per game,
+absorbing roughly `1 - 0.958^19 = 56%` of a level displacement across a block.**
 
 That is why team-specific misses are visible after the fact and cannot be turned
-into a wager. The window closes before it can be traded, and then reverses. The
-negative half-season correlations reported earlier (−0.219 offensive, −0.257
-defensive) are the same mechanism at coarser resolution.
+into a wager: the estimate is moving through the block, so block AVERAGES display
+apparent reversal even though one-game forecast errors are effectively white
+(one-step autocorrelation −0.0040, t = −0.38). The negative half-season
+correlations reported earlier (−0.219, −0.257) are the same aggregation artefact
+at coarser resolution — **not** evidence that the engine overshoots. See the
+CORRECTION in `MONEYLINE_IMPULSE_RESPONSE.md`.
 
 ## Hierarchy of evidence, as specified
 

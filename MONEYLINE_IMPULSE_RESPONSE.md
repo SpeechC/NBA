@@ -43,13 +43,12 @@ state-engine absorption of the surprise:
 Effectively a one-game step to ~61%, then flat. This is the absorption rate the
 block analysis could only infer from negative correlations.
 
-**And it identifies a real defect.** The state composite's true persistence is
-`beta_1 = +0.417`, while the engine absorbs **0.609** of it immediately. The engine
-**over-corrects by roughly 19 percentage points** on a single-game surprise. That
-over-absorption is the mechanical cause of every negative autocorrelation reported
-earlier — block-to-block rho of −0.10 to −0.12, half-season −0.219/−0.257. The
-engine does not merely adapt; it overshoots, so yesterday's exception becomes
-negatively informative about tomorrow's error.
+**[SUPERSEDED — see the CORRECTION section at the end of this file.]** These two
+numbers are both properties of the rolling-vs-state gap, not of innovation gain,
+and the over-correction reading drawn from them is withdrawn. Measured on the
+engine's own surprise the one-step forecast error is serially uncorrelated
+(beta = −0.0040, t = −0.38) and a gain sweep puts the optimum exactly at the
+frozen value.
 
 ## 3. Market underreaction — none, at any horizon
 
@@ -78,14 +77,15 @@ Previously: *"the window disappears before the next 20-game block."* What the
 impulse response actually establishes:
 
 > **A turnover surprise persists in the basketball with a 2-game half-life and is
-> still detectable 8 games later. Our state engine absorbs 61% of it within a
-> single game — over-correcting relative to its true 42% persistence, which is why
-> team errors mean-revert. And the market shows no residual error at ANY horizon
-> from 1 to 20 games, at a rate below chance.**
+> still detectable 8 games later. Our state estimator adapts continuously, at
+> 4.2% per game, which is enough that aggregating into long blocks creates
+> APPARENT negative persistence even though one-game forecast errors are
+> effectively white. And the market shows no residual error at ANY horizon from 1
+> to 20 games, at a rate below chance.**
 
 The three-way separation is now measured rather than inferred: the basketball
-signal is real, our model over-absorbs it, and the market has already priced it
-before the first subsequent game.
+signal is real, our model absorbs it steadily, and the market has already priced
+it before the first subsequent game.
 
 ## Status
 

@@ -123,6 +123,24 @@ nothing, at a power level that would have caught a tradeable effect. **The
 moneyline wagering channel is closed**, and it is now closed on the correct
 target — the binary win outcome — rather than inferred from margin RMSE.
 
+## THE CONCLUSION, SCOPED TO WHAT THE DATA CAN SUPPORT
+
+**No exploitable residual team- or matchup-specific moneyline information remains
+in CLOSING prices.** Persistent basketball states exist — turnover surprises carry
+a 2-game half-life and are still detectable 8 games out, FT generation and 2P
+conversion persist too — and the closing market incorporates them at every horizon
+from 1 to 20 games.
+
+**Whether a very early moneyline price briefly underreacts cannot be established
+from the historical dataset, because opening moneylines were never captured.** The
+only moneyline in `dfMaster` is the closing one. The injury work shows the market
+does move materially between open and close (+0.544 pts/sd on injury news,
+t = +16.16), so the gap is real rather than hypothetical.
+
+Amendment 7 captures `open_ml_h` / `open_ml_r` prospectively from 2026-27 so this
+loophole can be closed with executed quotes rather than a synthetic price. Those
+fields are **observation only** and may not enter any registered test.
+
 ## Economic backtesting is NOT available at the open
 
 The data carries opening spread, closing spread, and **only a closing moneyline**.

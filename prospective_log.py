@@ -9,14 +9,15 @@ import csv, os, subprocess, datetime as dt
 
 LOG = os.path.expanduser("~/data/nba_2026_27_prospective_log.csv")
 PRE = ["game_id","date","TEAM_H","TEAM_R","logged_at_utc",
-       "open_total","open_spread","open_line_source","open_obtained_at_utc",
+       "open_total","open_spread","open_ml_h","open_ml_r",
+       "open_line_source","open_obtained_at_utc",
        "P_hat","P_book","D","EffSum","E_pace",
        "mu5","m_X","D_star_drift","D_star_profile",
        "bet_flag","side","code_git_sha","model_version"]
 POST = ["close_total","actual_total","actual_pace","settled_at_utc"]
 COLS = PRE + POST
 THRESHOLD = 4.77          # FROZEN. See amendment C1/C3. Never re-optimise.
-MODEL_VERSION = "2026-08-30-frozen+a5"
+MODEL_VERSION = "2026-08-30-frozen+a7"
 
 def _sha():
     try:
@@ -33,7 +34,8 @@ def _ensure():
 
 def log_game(game_id, date, team_h, team_r, open_total, open_spread,
              open_line_source, open_obtained_at_utc,
-             P_hat, P_book, EffSum, mu5, m_X):
+             P_hat, P_book, EffSum, mu5, m_X,
+             open_ml_h=None, open_ml_r=None):
     """Write the immutable pre-game row. Refuses to duplicate a game_id."""
     _ensure()
     with open(LOG) as f:
@@ -50,6 +52,8 @@ def log_game(game_id, date, team_h, team_r, open_total, open_spread,
     row.update(game_id=game_id, date=date, TEAM_H=team_h, TEAM_R=team_r,
         logged_at_utc=dt.datetime.utcnow().isoformat(timespec="seconds")+"Z",
         open_total=open_total, open_spread=open_spread,
+        open_ml_h=("" if open_ml_h is None or open_ml_h != open_ml_h else open_ml_h),
+        open_ml_r=("" if open_ml_r is None or open_ml_r != open_ml_r else open_ml_r),
         open_line_source=open_line_source, open_obtained_at_utc=open_obtained_at_utc,
         P_hat=round(P_hat,4), P_book=round(P_book,4), D=round(D,4),
         EffSum=round(EffSum,4), E_pace=round(E,4),

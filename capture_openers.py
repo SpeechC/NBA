@@ -6,7 +6,7 @@ movement. Writes:
   * lines_today.csv for nba_monitor's MOVE_COMBINED leg
 
 INPUT  openers_YYYY-MM-DD.csv with columns:
-         team_h,team_r,open_total,open_spread[,game_id][,obtained_at_utc]
+         team_h,team_r,open_total,open_spread[,open_ml_h,open_ml_r][,game_id][,obtained_at_utc]
        team names must match the master (e.g. "Boston","Indiana").
        obtained_at_utc: when the opener was OBSERVED. If absent, now() is used
        and the row is marked source='capture-time' -- less trustworthy, because
@@ -70,7 +70,8 @@ def main(day, path=None):
                               float(r.open_total), float(r.open_spread),
                               f"openers_csv:{src}", obtained,
                               q["P_hat"], q["P_book"], q["EffSum"],
-                              q["mu5"], q["m_X"])
+                              q["mu5"], q["m_X"],
+                              getattr(r, "open_ml_h", None), getattr(r, "open_ml_r", None))
         except ValueError as e:
             print(f"  SKIP {gid}: {e}"); n_skip += 1; continue
         n_ok += 1

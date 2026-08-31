@@ -653,3 +653,28 @@ non-2026-27 data and must be recorded when used.
 `ROI`, `ProfitPerBet`, `ProfitPerAllEligibleGames`, `TotalPL` — because a filter
 can raise ROI while destroying total profit, and only the last two separate those
 cases. The $100 flat stake is the prereg's reporting unit, not a funded position.
+
+---
+
+## AMENDMENT 7 — capture opening moneylines (2026-08-30, OBSERVATION ONLY)
+
+**No decision rule changes.** `bet_flag`, `side`, the 4.77 threshold, the state
+engine, the settlement line and every registered test are untouched. This adds two
+recorded observations, nothing more.
+
+**Why.** The historical moneyline analysis is conducted against the **closing**
+moneyline, because that is the only moneyline in `dfMaster`. That is sufficient to
+establish that team-state surprises are incorporated **by the closing price** — the
+impulse-response study found no residual book error at any horizon from 1 to 20
+games. It is **not** sufficient to establish that a very early moneyline never
+briefly underreacts, because historical opening moneylines were never captured.
+The injury work showed the market does move materially between open and close
+(+0.544 pts/sd on injury news, t = +16.16), so the gap is a real one.
+
+**Change.** `prospective_log` gains `open_ml_h` and `open_ml_r`; `capture_openers`
+passes them through when the openers CSV supplies them, and logs them EMPTY when it
+does not — never zero. `MODEL_VERSION` → `2026-08-30-frozen+a7`.
+
+**Standing constraint.** These fields may be reported and reconciled. **They may not
+enter any 2026-27 test, threshold or decision rule.** Any use of them is a 2027-28
+hypothesis, preregistered separately.
