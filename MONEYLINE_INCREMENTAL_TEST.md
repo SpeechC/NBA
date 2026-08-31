@@ -132,3 +132,110 @@ the transform is timestamp-stable, sigma@6 = 12.47 open vs 12.85 close — but i
 a modelled price, not a quote. **No claim of realised opening-moneyline ROI may be
 made from it.** Capture actual opening and subsequent moneyline prices
 prospectively in 2026-27 before any economic claim.
+
+---
+
+# THE CONDITIONAL TEST — local analogs, not pooled coefficients (2026-08-30)
+
+The pooled result establishes `E[beta] ~ 0`. It does **not** establish
+`beta(X) = 0` for every current matchup. If 15% of the slate carried a true +5pp
+edge and 85% carried zero, the average is 0.75pp — far under the 2.00pp MDE, and
+invisible to the pooled test. This is the totals progression run literally:
+**generic average effect -> current team profiles -> conditional model bias.**
+
+## Construction
+
+```
+n = 4,554 -> 3,354 evaluated (1,200-game burn-in)
+23 current-profile features, ALL prior-only:
+   offence/defence/pace states, four drift states,
+   3PA rate, OREB%, TOV%, FT rate -- own and allowed, both teams,
+   rest state
+standardised on the BURN-IN WINDOW ONLY (no outcome use, no full-sample leak)
+K = 200 nearest prior matchups by Euclidean distance on the standardised profile
+franchise identity is NOT a feature -- analogs cross teams and seasons freely
+```
+
+Within each game's analogs, strictly from games that precede it:
+
+```
+m_M(X)            = mean(ActualMargin - M_hat)          local model bias
+delta(X), beta(X) = OLS of (Win - p_mkt) on [1, D_M]    local market value
+```
+
+Empirical-Bayes shrinkage weights: **m_M 0.154, delta 0.077, beta 0.160.** The
+estimator itself reports that ~85% of the raw local variation is noise.
+
+## A. Current-profile conditional bias
+
+| OOS regression | beta | t |
+|---|---|---|
+| `e_M ~ m_M(X)` (beta = 1 if calibrated) | +2.7762 | +1.86 |
+| `e_M ~ raw analog mean` (unshrunk) | +0.4269 | +1.86 |
+| **`e_M ~ simple drift benchmark`** | **+0.0835** | **+2.32** |
+
+**The elaborate local-analog estimator is beaten by the trivial drift benchmark.**
+Neither reaches significance after any multiplicity allowance, and beta = 2.78
+against a calibrated value of 1.0 says the shrinkage is badly mis-scaled anyway.
+
+```
+margin RMSE   M_hat 14.3098  ->  M_hat + m_M(X) 14.3039   (-0.0060)
+the BOOK on the same games                       13.7366
+gap to close 0.573 pts;  m_M(X) delivers 0.006  = 1.04% of the way
+```
+
+## B. Current-profile conditional market value
+
+```
+predicted incremental probability: sd 0.0059, range [-0.032, +0.034]
+(Win - p_mkt) ~ predicted:  beta +0.8500  se 1.2892  t +0.66
+```
+
+**The ranking does not work.** Deciles of predicted incremental probability
+against actual `Win - p_mkt`:
+
+| decile | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| predicted | −0.0104 | −0.0046 | −0.0026 | −0.0013 | −0.0002 | +0.0009 | +0.0021 | +0.0034 | +0.0054 | +0.0114 |
+| **actual** | −0.0336 | +0.0075 | +0.0236 | −0.0412 | +0.0111 | **−0.0586** | −0.0084 | −0.0175 | +0.0368 | −0.0062 |
+
+Monotone in the prediction, unrelated in the outcome. Top minus bottom decile
+**+0.0273, t = +0.81**. The largest |t| is decile 6 at −2.39 — the middle of the
+ranking, which is what noise looks like.
+
+Feeding the correction back through the offset probit changes nothing:
+
+```
+D_M   (raw)                 beta -0.00414   t -0.69
+D*_M  (profile-corrected)   beta -0.00375   t -0.62
+```
+
+## The economic question, answered directly
+
+Does the method ever **find** a tradeable game? Break-even needs **2.09pp**.
+
+| predicted edge | games | % of slate | mean predicted | ACTUAL `Win - p_mkt` | t |
+|---|---|---|---|---|---|
+| > 2.09pp (the bar) | **15** | 0.4% | +0.0243 | **−0.1692** | −1.89 |
+| > 1.50pp | 59 | 1.8% | +0.0192 | +0.0568 | +1.06 |
+| > 1.00pp | 169 | 5.0% | +0.0146 | +0.0586 | +1.82 |
+
+**The top decile's own predicted edge is 1.14pp — below the 2.09pp bar.** The
+method almost never claims a tradeable game, and the 15 times it does, those games
+went the *wrong* way. The positive figures at 1.0-1.5pp are threshold search on
+the outcome column, are non-monotone against the 2.09pp row, and are recorded here
+only so they are not rediscovered later as a finding.
+
+## Verdict
+
+The conditional step that rescued the totals work has now been run on the
+moneyline, in the same form, and returns nothing: the local-analog bias closes
+**1%** of the gap to the book, and the local disagreement coefficient cannot rank
+outcomes.
+
+**Untested and honestly outstanding:** eFG states, rim rate and shot-location
+profiles (these need the PBP store — the one job that stack could still do), and
+roster continuity/availability inside the analog vector. Adding them does not
+change the structural obstacle: **two-thirds of margin error is shooting
+efficiency, and shooting is binomial** (phi 0.9883, rho -0.00035, measured). A
+richer description of style cannot make a random variable forecastable.
