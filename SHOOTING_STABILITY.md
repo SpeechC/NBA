@@ -113,3 +113,82 @@ home-court shooting effect to condition on. The league effect (+0.91pp 2P,
 adjustment.
 
 **No change proposed to any frozen component.**
+
+---
+
+# GATE P1 — IS 2P SHOCK PERSISTENCE HETEROGENEOUS BY TEAM? (2026-08-31)
+
+The level results above say nothing about the **transition law**. Two teams both
+projecting 54% from two could differ in how much a +5pp run carries forward: a
+genuine temporary state for one, pure realization for the other. A single
+league-wide filter treats them alike. **That is the untested object — `rho_i`, not
+`mu_i`.**
+
+Gating, pre-stated: (1) does true heterogeneity survive shrinkage; (2) can it be
+estimated prospectively and does it improve 2P forecasting; (3) only then, does
+the book miss it. **If 1 or 2 fails, close without looking at moneyline ROI.**
+
+## Construction
+
+2P surprise `s = 2P%_actual − forecast`, where the forecast is a **prior-only
+two-way** state (league + own offence + opponent interior defence, 15-game
+half-life, 0.42 offseason carry). n = 19,352 team-games; forecast RMSE 0.0700.
+
+`rho_i` is the within-team-season AR(1) coefficient of `s`.
+
+## Result — heterogeneity is at the noise floor
+
+```
+pooled game-level rho        +0.0148   se 0.0072   t +2.05
+observed sd of rho_hat        0.1165
+sampling-noise sd             0.1129
+TRUE sd (EB)                  0.0287    reliability 0.0608
+|t| > 2 team-seasons          13 of 240   (chance expectation ~12)
+rho_hat range  min -0.295  median -0.006  max +0.324
+```
+
+Observed dispersion barely exceeds the noise floor, and the count of "significant"
+team-seasons matches chance exactly.
+
+## And the trace cannot be estimated prospectively
+
+Tested on the horizon specified — current state, not franchise identity:
+
+| | correlation |
+|---|---|
+| H1 -> H2 within season | +0.0688 |
+| ~20-game quarters, pooled consecutive | **+0.0053** |
+| q1->q2 / q2->q3 / q3->q4 | −0.0731 / +0.0123 / +0.0959 |
+| season to season | −0.0096 |
+
+The half-season `rho` estimate has **reliability 0.0066** — 99.3% noise at that
+sample size. At the 20-game horizon, consecutive-block persistence-of-persistence
+is **+0.005**.
+
+## Economic magnitude, had it been real
+
+```
+2sd spread in rho, applied to a large 5pp 2P surprise:
+  0.287pp of next-game 2P%  =  0.310 points of margin
+frozen bet threshold: 4.77 points
+```
+
+**6.5% of the threshold at two standard deviations.**
+
+## Why this is consistent with the earlier block result
+
+The 20-game block analysis found 2P with EB weight 0.3157 and next-block
+r = +0.1799, which looks like it contradicts a game-level `rho` of 0.015. It does
+not. A 20-game mean averages away most of the per-game sampling noise and exposes
+the **slow drift in the level**; the game-to-game **shock** barely persists at all.
+
+**The persistence lives in the level, which the state engine already tracks at an
+8.6-game half-life — not in the shock, where a team-specific correction would have
+to operate.**
+
+## Verdict
+
+**Gate P1 fails. Gates 2 and 3 were not run**, per the pre-stated rule: no 2P
+forecasting model, no `beta_2P x rho` interaction, no moneyline ROI. Heterogeneity
+is 6% reliable, unidentifiable at any usable horizon, and worth 0.31 points at
+2sd if it were real.
