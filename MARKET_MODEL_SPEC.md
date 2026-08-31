@@ -409,7 +409,45 @@ is the honest character of the edge, and it is why `|E| >= 8 -> 56.59%` **must n
 be read as a strategy**. The threshold 4.77 was taken from where the fitted
 logistic crosses break-even + 0.5pp, deliberately blind to the ROI column.
 
-### 4.4 DEAD — spread signals, both channels
+### 4.4 MONEYLINE — all three avenues closed
+
+The moneyline is a deterministic transform of the closing spread (held-out
+MAE 1.42c, R^2 0.9922 on probability), and the market's spread -> probability
+mapping is calibrated to **0.42pp** against realised outcomes. Three avenues were
+tested and closed. See `MONEYLINE_EMULATOR.md`, `MONEYLINE_INCREMENTAL_TEST.md`,
+`MONEYLINE_ERROR_ATLAS.md`, `MONEYLINE_BLOCK_ATLAS.md`,
+`MONEYLINE_SOURCE_ATTRIBUTION.md`, `MONEYLINE_IMPULSE_RESPONSE.md`,
+`MONEYLINE_VARIANCE_CHANNEL.md`.
+
+| avenue | test | result |
+|---|---|---|
+| 1. improve the market's expected margin | offset probit, `Phi^-1(p_mkt) + beta*D_M` | beta −0.00409, t −0.79; market offset coefficient +1.0416 (t +0.25 vs 1.0) |
+| 2. conditional exceptions by current team/matchup | 120 team-seasons, 480 blocks, local analogs, h=1..20 impulse response | dispersion at or below sampling noise; 280 market tests give 8 at \|t\|>1.96 vs 14 expected |
+| 3. improve the width around the market's margin | binomial variance (A0) and matchup covariance (A1) | predicted margin sd 10.98-15.90 ranks realised dispersion **inversely** (−0.31 actual vs +1.95 predicted) |
+
+**What was established positively:**
+- Expected margin is highly forecastable; the book is better than our independent
+  model (RMSE 13.74 vs 14.02), and gain tuning does not close it.
+- Margin error is strongly leptokurtic and the moneyline smile prices that shape
+  accurately (3x better than a constant sigma).
+- Game-specific distribution WIDTH is far less forecastable than intuition
+  suggests; team scoring volatility is largely transitory.
+- Scoring covariance is economically large ex post (removes 28% of summed team
+  variance) but is not predictable from current matchup profiles.
+- Persistent structural states DO exist — turnovers (block r +0.364) and FT
+  generation (+0.336) — and the market already reflects them.
+
+**Contrast with totals.** Totals yielded a state variable — PACE — that is both
+structurally interpretable and persistent enough to leave prospective information
+in the model-book disagreement. Margin's dominant uncertainty sources are 3P/2P
+realization and unpredictable game-level covariance: enormous realised variation,
+little forecastable conditional variation. That difference is why the same
+research process found something in totals and essentially nothing in moneylines.
+
+**Scope.** These results are established against CLOSING moneylines, the only ones
+in the dataset. Amendment 7 captures opening moneylines prospectively.
+
+### 4.5 DEAD — spread signals, both channels
 
 **Pace channel: structurally excluded.** A pace error multiplies `EffSum`
 (mean 230.03) for totals but `EffDiff` (mean −0.07, sd 6.86) for spreads — a

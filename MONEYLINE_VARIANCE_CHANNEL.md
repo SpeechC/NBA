@@ -198,7 +198,7 @@ non-monotone. `eH*eR ~ predicted cov`: **t = +0.67**.
 The configuration the mechanism predicts should be tightest — low individual
 volatility, high scoring correlation — is empirically the **widest**.
 
-## Root cause: there is no stable team dispersion property to find
+## Why it fails: no dispersion property persists at a useful horizon
 
 ```
 |e_next| ~ prior 20-game own-scoring volatility:   beta +0.0684  t +1.47
@@ -209,8 +209,10 @@ team-season margin dispersion, first half -> second half:   corr +0.0399
 ```
 
 **Team scoring volatility barely persists game to game, and team-season margin
-dispersion barely persists half to half.** No conditional model can forecast a
-property that is not there.
+dispersion barely persists half to half.** A useful variance strategy needs
+`high variance today -> high variance tomorrow`, and at these horizons and with
+this state representation, that relationship is not present. The claim is about
+what is DETECTABLE here, not a proof that no such component exists.
 
 ### The one number that looked encouraging, checked
 
@@ -232,8 +234,9 @@ persistence corr(act_h1,  act_h2)  +0.0399      the target itself
 The corrected conclusion is not "dispersion lives in the covariance, therefore the
 channel fails." It is:
 
-> **NBA margin dispersion has no stable team- or matchup-level component to
-> forecast.** Team scoring volatility persists at t = +1.47 with a 0.54-point
+> **No prospectively useful team- or matchup-specific component of margin
+> dispersion is detectable with the current data, state representation, and
+> horizons tested.** Team scoring volatility persists at t = +1.47 with a 0.54-point
 > quintile spread; team-season dispersion persists at corr +0.04. A matchup model
 > given 33 prior-only features and local analogs produces confidently
 > differentiated predictions (10.98 to 15.90) that rank realised dispersion
