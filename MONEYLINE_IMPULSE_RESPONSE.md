@@ -100,3 +100,63 @@ Rim-rate / shot-location split of the 2P channel. 2P has the longest realization
 half-life (7 games), which is what shot-quality drift would look like, but its
 market curve is non-monotone noise — a refinement there would have to overturn a
 null rather than sharpen a signal.
+
+---
+
+# CORRECTION — the "over-correction" finding was wrong (2026-08-30)
+
+An earlier version of this file reported that the state engine "absorbs 60.9% of a
+surprise by game 1" against a true persistence of 0.417, and concluded it
+**over-corrects by ~19 percentage points**. **That is withdrawn.**
+
+**What the measurement actually was.** `state_lvl` is *defined* as (rolling
+15-game component forecast − state-engine forecast). So the gamma regression put
+the change in the state forecast on the gap between the rolling and state
+forecasts — that is **convergence between two estimators**, not the engine's
+response to a game surprise. And `beta_1 = 0.417` was the persistence of the same
+gap. Neither quantity says anything about innovation gain.
+
+**Measured properly, on the engine's own surprise (n = 8,988 team-games):**
+
+```
+frozen per-game gain   SHARE*aO                    = 0.04182   (4.2%, not 61%)
+engine forecast move per unit of surprise  gamma   = +0.0551  (t +14.35)
+TRUE one-step persistence of the surprise  beta    = -0.0040  (t  -0.38)
+```
+
+**The engine's one-step forecast error is serially uncorrelated.** That is the
+signature of a well-calibrated filter; an over-correcting filter produces negative
+error autocorrelation, and there is none.
+
+**The negative block correlations have a mundane cause.** At 4.2% per game the
+engine absorbs `1 - 0.958^19 ≈ 56%` of a level error across a ~19-game block,
+which mechanically induces negative correlation between successive block MEANS
+even when game-level errors are white noise. That is any adaptive filter working,
+not overshooting. The −0.219 / −0.257 half-season figures are the same artefact at
+coarser resolution.
+
+## Gain sweep — settled by chronological one-step prediction, not by argument
+
+7,027 evaluation games (2020-2025), selection on forecast accuracy only, no
+wagering criterion consulted:
+
+| multiplier | effective gain | RMSE | MAE | corr(e_t, e_t+1) |
+|---|---|---|---|---|
+| 0.40 | 0.01673 | 14.2183 | 11.1847 | +0.0084 |
+| 0.60 | 0.02509 | 14.0895 | 11.0632 | +0.0094 |
+| 0.80 | 0.03345 | 14.0368 | 11.0117 | +0.0096 |
+| 0.90 | 0.03763 | 14.0261 | 10.9998 | +0.0095 |
+| **1.00 (FROZEN)** | **0.04182** | **14.0225** | **10.9945** | **+0.0094** |
+| 1.10 | 0.04600 | 14.0242 | 10.9951 | +0.0092 |
+| 1.25 | 0.05227 | 14.0345 | 11.0036 | +0.0088 |
+| 1.50 | 0.06272 | 14.0661 | 11.0310 | +0.0080 |
+| 2.00 | 0.08363 | 14.1627 | 11.1131 | +0.0062 |
+
+**A smooth interior optimum exactly at the frozen value.** Error autocorrelation
+is +0.0094 at that gain — near zero and *positive*, so the gain is marginally low
+if anything. The proposed 0.35-0.50 range makes forecasts strictly worse
+(RMSE 14.22 vs 14.02).
+
+**The engineering hypothesis is refuted on its own criterion. No change to the
+frozen engine is warranted, and none was made.** The 0.345-point gap to the book
+(14.0225 vs 13.6772) is not a tuning problem.
