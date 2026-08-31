@@ -151,6 +151,93 @@ and the book has one.
 **Same distribution, same violation, opposite conclusions — because the two
 markets quote different regions of it.**
 
+## WHICH SPREAD ANCHORS IT — and why the close, against the programme's habit
+
+Everything else in this programme is anchored on the **opener**: the totals
+emulator predicts the opening total, the spread emulator predicts the opening
+spread, and Amendment 6 settles wagers against `open_total`. The moneyline is the
+exception, and not by choice.
+
+**There is no opening moneyline in the data.** `MONEYLINE_H/R` is a single column
+and it is a CLOSING number:
+
+```
+z ~ opening spread    R2 0.9180   sigma 12.229
+z ~ closing spread    R2 0.9887   sigma 12.361
+HORSE RACE  z ~ open + close:  open t +14.4   close t +248.6
+```
+
+So the transform is estimated on the timestamp-consistent pair (closing spread ->
+closing moneyline), which isolates **pricing structure**. It is then applied to an
+opening-spread forecast. That composition is defensible because the mapping is
+timestamp-stable — fitted sigma at a 6-point spread is 12.47 anchored on the
+opener versus 12.85 on the close.
+
+Anchoring the fit on the opener instead costs accuracy that is **line movement,
+not structure**:
+
+| anchor / spec | R^2 on p, OOS | OOS MAE | sigma @ 6 |
+|---|---|---|---|
+| opening spread / one sigma | 0.9181 | 4.22c | 11.82 |
+| opening spread / smile | 0.9204 | 4.19c | 12.38 |
+| opening spread / cubic | 0.9220 | 4.11c | 12.47 |
+| closing spread / one sigma | 0.9876 | 2.01c | 11.81 |
+| closing spread / smile | 0.9911 | 1.54c | 12.70 |
+| **closing spread / cubic** | **0.9922** | **1.42c** | 12.85 |
+
+## SPECIFICATION AND FIT
+
+```
+M      = -(SPREAD)                       implied home margin
+p_home = Phi(z)                          de-vigged multiplicatively
+z      = a + b*M + c*M|M| + d*M|M|^2
+```
+
+Fitted on 2017-2021, applied unchanged to 2022-2025:
+
+| spec | a | b | c | d | R^2 z dev | R^2 z OOS | R^2 p dev | **R^2 p OOS** | OOS MAE |
+|---|---|---|---|---|---|---|---|---|---|
+| S1 one sigma | +0.00399581 | +0.08464988 | — | — | 0.9875 | 0.9852 | 0.9889 | 0.9876 | 2.01c |
+| S2 smile | +0.00237542 | +0.06932297 | +0.00157288 | — | 0.9923 | 0.9746 | 0.9946 | 0.9911 | 1.54c |
+| **S3 cubic** | +0.00201020 | +0.04377192 | +0.00743204 | −0.00029310 | 0.9955 | 0.9856 | 0.9967 | **0.9922** | **1.42c** |
+
+**S2's held-out R^2 on the probit scale (0.9746) falls BELOW S1's** while its R^2
+on probability rises. The quadratic overshoots on a handful of extreme-spread
+games where |z| is large; that punishes the z-scale metric and barely moves the
+traded price. S3 fixes both.
+
+### R^2 near 0.99 does almost no work here — the ladder trap again
+
+```
+naive LINEAR    p = a + b*M      R2 0.9886   MAE 1.53c
+naive QUADRATIC in M             R2 0.9910   MAE 1.53c
+probit ONE sigma                 R2 0.9910   MAE 1.60c
+probit SMILE                     R2 0.9929   MAE 1.37c
+```
+
+R^2 spans **0.9886 -> 0.9929** across everything from a straight line to the full
+smile, and a straight line in M beats the probit one-sigma model on MAE. The
+moneyline is a monotone function of the spread, so any sensible monotone curve
+scores in the high nineties — exactly as any downward curve scored 98.82% on the
+ladder before sigma was involved. **MAE in cents and calibration against outcomes
+are the metrics that discriminate.**
+
+## ERROR BUDGET — the transform is not the bottleneck
+
+Held out, MAE against the market's de-vigged probability:
+
+| driven by | MAE | increment |
+|---|---|---|
+| the book's CLOSING spread | 1.42c | pricing structure alone |
+| the book's OPENING spread | 4.12c | +2.70c line movement |
+| **our opening-spread model** | **6.18c** | +2.06c our spread error |
+
+Our spread emulator sits at RMSE 2.596 points against the book's opener; with
+`dp/dM = phi(0)/sigma = 0.0322` per point at the centre, that is the dominant
+term. **The transform contributes 1.42c of a 6.18c total.** Improving the
+spread -> probability mapping cannot help; the expected margin is the constraint —
+the same conclusion `MARGIN_ERROR_ANATOMY.md` reaches from the other direction.
+
 ## Frozen emulator
 
 ```
