@@ -226,11 +226,17 @@ are the metrics that discriminate.**
 
 Held out, MAE against the market's de-vigged probability:
 
-| driven by | MAE | increment |
-|---|---|---|
-| the book's CLOSING spread | 1.42c | pricing structure alone |
-| the book's OPENING spread | 4.12c | +2.70c line movement |
-| **our opening-spread model** | **6.18c** | +2.06c our spread error |
+| driven by | MAE |
+|---|---|
+| the book's CLOSING spread | 1.42c |
+| the book's OPENING spread | 4.12c |
+| **our opening-spread model** | **6.18c** |
+
+**These are path-dependent MAE changes, NOT orthogonal variance components.** An
+earlier draft of this file split them as "transform 1.42c, movement 2.70c, model
+2.06c" and called them additive causal shares. That is wrong — MAE increments
+along a path do not decompose that way. The defensible reading is only the
+ordering:
 
 Our spread emulator sits at RMSE 2.596 points against the book's opener; with
 `dp/dM = phi(0)/sigma = 0.0322` per point at the centre, that is the dominant
