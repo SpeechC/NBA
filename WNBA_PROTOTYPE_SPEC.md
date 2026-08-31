@@ -837,3 +837,70 @@ starts 3.5c in the hole.** That is a durable design constraint, not a
 finding about halftimes: it rules out the entire class of open-and-close
 strategies near p=0.5 unless the move exceeds ~4c reliably. The anomaly is
 closed -- artefact in NBA, real but fee-defeated in WNBA.
+
+## 23. `pre_L` cannot be reconstructed from candles — recorded 2026-08-31
+
+A night of losses (1W/3L, canonical -1.79) showed a striking pattern: sorted
+by H1, the model's error ran monotonically from +1.7 (H1=72) to -21.7
+(H1=107), slope -0.62 pts per H1 point, corr -0.69. That would be a
+correctable defect in the frozen rule's `c`. It is not, and the two tests
+that killed it are worth recording because the second one nearly passed.
+
+**Test 1 — the live sample.** Dropping the single H1=107 game collapses the
+slope from -0.595 to -0.080 (corr -0.078). Leave-one-out slope range -0.751
+to -0.080. **The whole pattern was one game.**
+
+**Test 2 — the season.** Rebuilding `pre_L` from the last pre-tip candle on
+250 games and refitting the rule's own specification gave `c = 1.169`, 95% CI
+[1.034, 1.305] -- **excluding the frozen 0.9404** -- with a controlled
+gamma of +0.169 [+0.034, +0.305], i.e. momentum rather than reversion. This
+looked like a real, well-powered contradiction of a frozen parameter.
+
+**Why it is not.** The rule's own note reads: *"deep-pregame-L variant
+rejected: errors-in-variables skew (b .23, c 1.27, sd 14.3)"*. The rebuild
+gave b .35, c 1.17 -- the rejected variant's signature. The `pre_L` TIMING was
+not the problem (median 36s before tip, matching the rule's stated semantics),
+so the natural conclusion was that the rebuild was sound. The decisive check
+was refitting on **the same first 79 games the rule used**:
+
+| | b (pre_L) | c (H1) | residual sd |
+|---|---|---|---|
+| frozen rule, n=79 | 0.5573 | 0.9404 | **8.38** |
+| this rebuild, same 79 games | 0.2009 | 1.1022 | **11.57** |
+| rejected deep-pregame variant | 0.23 | 1.27 | 14.3 |
+
+The rebuild cannot reproduce the fit it is supposed to reproduce. A residual
+sd of 11.57 against 8.38 says the candle-derived `pre_L` is a **noisier
+quantity** than the one the rule was fit on -- and a noisy regressor
+attenuates its own coefficient (b: 0.557 -> 0.201) while its correlated
+partner absorbs the slack (c: 0.940 -> 1.169). Textbook errors-in-variables,
+producing exactly the "finding" that was about to be reported.
+
+**The rule stands unchanged. The finding is withdrawn.**
+
+**For anyone who later tries to re-fit from stored candles:** the 1-minute
+candle mid is not the monitor's live orderbook mid, and the difference is
+large enough to move `c` by 0.23. **Validate any reconstruction by refitting
+the ORIGINAL 79 games and comparing residual sd to 8.38 before trusting a
+coefficient from it.** That check costs minutes and is the only thing that
+separated an artefact from a headline here.
+
+## 24. Component retired — 2026-08-31
+
+Per the s20 verdict, the monitor is retired. `wnba_monitor.py` now carries
+`RETIRED = True` and exits with a pointer to s20/s24 unless
+`WNBA_MONITOR_RUN=1` is set. **This is a soft gate, not a deletion**: logging,
+grading, the frozen rule and the shadow book are all untouched, and one
+command still produces another night of tape if wanted.
+
+Confirmed stopped: no matching process on either host, and **no scheduled
+task** -- the component was always launched by hand. The Windows tasks
+`KalshiMentionCollector`, `KalshiNBACollector` and `KalshiNearCloseSweep`
+belong to other programmes and were deliberately not touched.
+
+Final state: F1 PASS, F2 FAIL, F3 FAIL, F4 not reached. Ten graded games,
+canonical @3% -1.28 on 7.28 staked. M1 and M2 delivered and transferable; M3
+answered in the negative and unreachable in the affirmative. Six apparent
+findings over the component's life -- staleness, NBA under-reaction, ladder
+residual, attrition, signed drift, H1 momentum -- and six artefacts. The
+durable output is the venue physics and the method, not a model.

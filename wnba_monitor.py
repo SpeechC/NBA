@@ -768,5 +768,24 @@ def main():
     print("[monitor] done.")
 
 
+# ---- RETIRED 2026-08-31 (spec s24) ------------------------------------------
+# The component reached its terminal verdict in s20: "measured, not tradable".
+# M1 and M2 are delivered, M3 is unreachable within a WNBA season, and s22
+# showed the strategy would have failed at ZERO latency for want of a
+# directional signal. Continuing to run it produces P&L that cannot become
+# evidence.
+#
+# This is a soft gate, not a deletion: nothing about the logging, grading or
+# frozen rule has changed, and the component still runs for anyone who wants
+# another night of tape. Set WNBA_MONITOR_RUN=1 to proceed.
+RETIRED = True
+
+
 if __name__ == "__main__":
+    if RETIRED and os.environ.get("WNBA_MONITOR_RUN") != "1":
+        print("[monitor] RETIRED 2026-08-31 - see WNBA_PROTOTYPE_SPEC.md s20/s24.\n"
+              "          Verdict: measured, not tradable (F2 and F3 failed).\n"
+              "          Nightly P&L is not evidence and should not be read as such.\n"
+              "          To run anyway:  WNBA_MONITOR_RUN=1 python wnba_monitor.py")
+        sys.exit(0)
     main()
