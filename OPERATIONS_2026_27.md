@@ -2,7 +2,15 @@
 
 **Supersedes the scheduling sections of `CREWSHOCK_LIVE_OPS.md` and
 `NBA_MONITOR_OPS.md`** (their diagnostics and failure modes remain authoritative).
-Single entry point: `nba_daily.py`. **No component places bets.**
+Signal entry point: `nba_daily.py`. **No component of `nba_daily.py` places
+bets** — that remains true and is why the four phases below are unchanged.
+
+**Execution is a separate stack, added 2026-09-12:** `nba_live_trader.py` reads
+the logs these phases write and places Kalshi orders; `nba_dashboard.py`
+publishes results to S3. The "no capital" constraint is reversed by
+`AMENDMENT_live_trading.md`, which also records what that costs the prospective
+test. See `LIVE_TRADING_OPS.md` for the schedule — **the three strategies do not
+share a clock**, and that is structural, not convenience.
 
 ## THE FOUR PHASES, and why the order is not cosmetic
 

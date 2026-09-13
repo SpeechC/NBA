@@ -1,9 +1,20 @@
 # CrewShock live pipeline — operating runbook
 
-**This pipeline places no bets.** `crewshock_live.py` contains no
-order-placement code and none is to be added. It writes an append-only CSV log.
-That is structural, not a setting. Governing document:
-`PREREG_crewshock_forward.md`.
+**`crewshock_live.py` still places no bets.** It contains no order-placement
+code and none is to be added here; it writes an append-only CSV log. That part
+is unchanged.
+
+**What changed (2026-09-12):** a separate module, `nba_live_trader.py`, reads
+this log and places Kalshi orders from it. The "no capital in 2026-27"
+constraint in `PREREG_crewshock_forward.md` §1 and §6 is **reversed by
+`AMENDMENT_live_trading.md`** — read it before running anything armed. The
+estimator, threshold (0.8682), shrinkage and team-state definitions are
+untouched, and the separation is deliberate: the signal module cannot trade and
+the trading module cannot compute a signal.
+
+CrewShock is **OVER-only**, so it needs only the proven YES order path and can
+arm before the other two. Governing documents: `PREREG_crewshock_forward.md`,
+`AMENDMENT_live_trading.md`.
 
 ## Status
 
@@ -74,8 +85,12 @@ relitigated in April:
 - **SECONDARY is `c_market`.** If the market starts pricing CrewShock, the
   branch closes regardless of the mechanism.
 - **The P&L is tertiary and cannot settle anything.** At ~200 bets its ROI
-  interval is roughly ±6.6pp and will not exclude zero whatever happens.
-- **No capital in 2026-27 under any outcome.**
+  interval is roughly ±6.6pp and will not exclude zero whatever happens. This is
+  *more* true now that capital is deployed, not less: a profitable season is not
+  evidence the mechanism survived, and M1/M2 remain the endpoints that decide it.
+- ~~No capital in 2026-27 under any outcome.~~ **Reversed 2026-09-12** — see
+  `AMENDMENT_live_trading.md` §1. The reversal changes nothing about §4–§6
+  above; the mechanism test is still primary and the P&L still settles nothing.
 
 ## Scheduling
 

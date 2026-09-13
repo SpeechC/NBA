@@ -1,4 +1,10 @@
-"""Unified daily runner for the 2026-27 season. PLACES NO BETS.
+"""Unified daily runner for the 2026-27 season. THIS MODULE PLACES NO BETS.
+
+Execution lives in `nba_live_trader.py`, which reads the logs written here. The
+split is deliberate and load-bearing: a module that computes a signal cannot
+place an order, and a module that places orders cannot compute a signal. See
+AMENDMENT_live_trading.md and LIVE_TRADING_OPS.md.
+
 
 Consolidates four independently-built loggers into one dependency-ordered run:
 
