@@ -42,6 +42,14 @@ def log_game(game_id, date, team_h, team_r, open_total, open_spread,
         if any(r["game_id"]==str(game_id) for r in csv.DictReader(f)):
             raise ValueError(f"{game_id} already logged -- rows are immutable")
     D = P_hat - P_book
+    # E_pace IS a possession discrepancy, despite the EffSum multiplier. Measured
+    # exactly on 8,257 games via E = D*Ebar/100 + D*(E-Ebar)/100:
+    #     possession channel 99.38% of var | efficiency channel 0.10% | cov 0.52%
+    # EffSum enters as a unit converter, NOT as an efficiency view: E_pace is
+    # identically [our total forecast] - [affinely rescaled opener], and the
+    # book's efficiency view and ours largely agree, so efficiency differences
+    # out. Dropping the multiplier changes 2.3% of selections and nothing else
+    # (+6 net wins on 74 swapped games, z=+1.39). See PURIFIED_PACE.md.
     E = D * EffSum / 100.0
     # An unavailable correction must be EMPTY, never 0.0. A silent zero would make
     # D*_profile identical to D and make S1's profile leg look evaluable when it

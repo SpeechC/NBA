@@ -97,6 +97,23 @@ def build_states(g, as_of):
         fc.append((r.date, sP, sOH + sOR, r.open))
         ep = r.gpace - sP
         resid[r.TEAM_H].append(ep); resid[r.TEAM_R].append(ep)
+        # THE EQUAL SPLIT IS NOT A NAIVE AVERAGE. DO NOT "OPPONENT-ADJUST" IT.
+        #
+        # It is the exact online gradient of the additive opponent-purified pace
+        # model. With yhat_g = (p_i + p_j)/2 and L = (yhat_g - y_g)^2,
+        #     dL/dp_i = -(y_g - yhat_g) = -ep      (the 1/2 from the average
+        #                                           cancels the 2 from the square)
+        # so SGD is p_i += a*ep and p_j += a*ep -- this line. The frozen engine is
+        # therefore ALREADY the purified estimator, differing from batch purified
+        # least squares only in weighting (exponential forgetting vs equal).
+        #
+        # MEASURED prior-only, n=7,042, MAE of game-pace forecast:
+        #   constant 3.759 | naive team average 3.330 | purified LS 3.209
+        #   | purified LS w/ exponential weights 3.140 | THIS ENGINE 3.115
+        # and corr(weighted purified LS, this forecast) = +0.968.
+        #
+        # Rewriting this as an opponent-adjusted split would break the gradient
+        # and CHANGE the estimator rather than purify it. See PURIFIED_PACE.md.
         Pst[hh] += aP * ep; Pst[aa] += aP * ep; LP += aL * ep
         eH, eR = r.oH - sOH, r.oR - sOR
         Ost[hh] += SHARE * aO * eH; Dst[aa] += (1 - SHARE) * aD * eH

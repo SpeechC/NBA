@@ -352,6 +352,21 @@ side  = sign(E_pace)     positive -> OVER, negative -> UNDER
 bet   if |E_pace| >= 4.77 points
 ```
 
+**`E_pace` is a possession discrepancy, and `EffSum` is a unit converter.** The
+multiplier looks like an efficiency view and is not one. Exactly, on 8,257 games:
+
+```
+E_pace = D*Ebar/100 + D*(E-Ebar)/100 = E_poss + E_eff       (identity, 5.3e-15)
+  possession channel 99.38% of var | efficiency 0.10% | cov 0.52%
+```
+
+The reason is that `E_pace = sP*EffSum/100 - (open - a)/b` identically — a
+difference between our total forecast and the rescaled opener — and the book's
+efficiency view and ours largely agree, so efficiency differences out. The
+*total forecast* alone is 43% pace / 57% efficiency; the *signal* is not.
+Dropping the multiplier moves 2.3% of selections and is a null (z = +1.39).
+Full workings and the withdrawn "57% efficiency" claim: `PURIFIED_PACE.md`.
+
 **Time period: 2023-10-24 .. 2026-04-12** — three regular seasons (2023-24,
 2024-25, 2025-26), n = 3,488 eligible, 8 pushes (0.23%).
 
