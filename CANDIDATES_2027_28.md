@@ -81,3 +81,27 @@ Read it once, alongside `OPERATIONS_2026_27.md`'s season-end table. Do not
 promote an entry because the season went well — C1 is the only one selected on a
 criterion stated before the data were seen, and it is the only one whose
 promotion path does not run through this season's outcomes.
+
+---
+
+## C4. Pace closing-residual drift  *(observation only — do NOT act)*
+
+`SHOT_VOLUME_PBP.md` addendum, 2026-09-13. Running the open/move/close information
+split on `f_P` as a placebo produced an unlooked-for result:
+
+```
+                       opener    move (t)        close (t)     move/opener
+f_P  2017-2021          1.013   0.855 (+14.71)   0.157 (+0.44)     84%
+f_P  2022-2026          1.701   1.108 (+17.07)   0.594 (+1.65)     65%
+```
+
+The pace forecast's **closing** residual rose from 0.157 to 0.594 pts while the
+share the market prices intraday fell from 84% to 65%.
+
+**Not significant** (t +1.65), found while running a placebo for a different
+variable, and measured on the **same data the 2026-27 prereg was frozen on**
+(2026-08-30). D3 binds: recorded here, touches nothing.
+
+**To promote:** it must reproduce prospectively on 2026-27 with the frozen rule
+untouched. If H1 passes this season, this is a candidate explanation to test —
+not evidence for it, and not a reason to alter the frozen evaluation.
