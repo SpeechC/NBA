@@ -32,3 +32,8 @@ rotation_game_team.csv
 outputs/
 *.log
 papers/*.pdf
+
+# credentials — never commit
+odds_config.json
+openers_*.csv
+lines_today.csv

@@ -43,6 +43,24 @@ programme has used throughout -- 1.089 points of line error are needed to beat
 -110 -- via 1.089 = (0.52381-0.5)*SIGMA_REF/phi(0). Using the same constant
 keeps the live hurdle on the same scale as every null already recorded.
 
+*** THE SPORTSBOOK BAR IS 1.12, NOT 1.089 (revised 2026-09-14). ***
+PROJECT_CLOSED.md result 1: measured from the juice actually in the file, only
+44% of totals are at -110 and the distribution skews AGAINST the bettor, so the
+real hurdle is 1.12 pts. SIGMA_REF is left at 18.244 -- it is the sd of
+(actual - line) and does not move with the vig -- but every margin below is
+against 1.12:
+
+    crewshock 1.925 pts   clears by 0.805
+    move      1.573 pts   clears by 0.453
+    pacegap   1.184 pts   clears by 0.064      <-- was 0.095 at the old bar
+
+PaceGap is the marginal strategy and its entire margin is 0.064 pts at a
+sportsbook. Resting rather than crossing is what makes it viable at all.
+Also carry PROJECT_CLOSED result 2: the closing total is a MEDIAN forecast of a
+right-skewed distribution, so a mean bias need not become a win-rate edge. The
+deltas above are safe from that because they are derived FROM published hit
+rates, not from mean errors -- do not reverse that derivation.
+
 Then, per game:   mu_hat = L_reference + side * delta
 where L_reference is that strategy's own settlement line (open or close). The
 ladder is priced off mu_hat and the market's own sigma, and we take rungs the
@@ -113,13 +131,35 @@ STRATS = {
     # line     = which line the backtest settles against -> when we must fill.
     # sides    = directions the backtest actually took. CrewShock is OVER-only,
     #            so it never needs the unverified NO path and can arm first.
-    "crewshock": dict(hit=0.5421, line="close", sides=("OVER",),
+    # prereg   = part of the frozen 2026-27 prospective test. These claim a
+    #            contested game ahead of anything discretionary; see run().
+    "crewshock": dict(hit=0.5421, line="close", sides=("OVER",), prereg=True,
                       window=("15:00", "23:59"), source="crewshock_live_log.csv"),
-    "pacegap":   dict(hit=0.5259, line="open",  sides=("OVER", "UNDER"),
+    "pacegap":   dict(hit=0.5259, line="open",  sides=("OVER", "UNDER"), prereg=True,
                       window=("06:00", "12:00"), source="~/data/nba_2026_27_prospective_log.csv"),
-    "move":      dict(hit=0.5344, line="open",  sides=("OVER", "UNDER"),
+    "move":      dict(hit=0.5344, line="open",  sides=("OVER", "UNDER"), prereg=True,
                       window=("06:00", "12:00"), source="recommendations/move_combined_{date}.csv"),
+    # ---- DISCRETIONARY, NOT PREREGISTERED --------------------------------
+    # final7: bet OVER on EVERY game in the last 7 days of the regular season.
+    # No per-game signal at all -- the trigger is the calendar.
+    #
+    # 55.29%, NOT the 56.93% headline. The window was chosen by LOSO on the
+    # same data that produced the 56.93%, so that figure is selection-biased;
+    # 55.29% is the honest out-of-sample number under that selection. This is
+    # the same discipline CrewShock gets (holdout 54.21%, not pooled 54.82%).
+    #
+    # PROJECT_CLOSED.md keeps it "alive, small, not worth capital today":
+    # 407 bets, 56.51%, +$3,157, 5/6 seasons, z = +1.65 -- NOT significant,
+    # ~$395/season, and the base rate is against it (the six best-looking
+    # rules traded forward lost -$28,820). 2020-21 lost 10.16% when April was
+    # not the end of the season. The test that would promote or kill it --
+    # is the bias carried by games with an ELIMINATED team? -- HAS NOT RUN.
+    "final7":    dict(hit=0.5529, line="close", sides=("OVER",), prereg=False,
+                      window=("15:00", "23:59"), source="crewshock_live_log.csv"),
 }
+# Last 7 days of the regular season, inclusive. Override for a schedule change.
+FINAL7_LAST_REGULAR = os.environ.get("NBA_LAST_REGULAR", "2027-04-11")
+FINAL7_DAYS         = int(os.environ.get("NBA_FINAL7_DAYS", "7"))
 for _k, _v in STRATS.items():
     _v["delta"] = delta_points(_v["hit"])
 
@@ -132,9 +172,25 @@ NO_SIDE_VERIFIED     = os.environ.get("NBA_NO_SIDE_VERIFIED") == "1"
 # just be a filter tuned until something traded. It is here to reject rungs with
 # NO edge, not to certify the ones that pass.
 MIN_EDGE             = 0.01
-MAX_CONTRACTS_GAME   = 25
-MAX_CONTRACTS_DAY    = 300
-MAX_NOTIONAL_DAY     = 200.0    # dollars of premium paid per day
+# LIVE TRADING TEST SIZE = 1 CONTRACT.
+# The point of the first live season is to prove the plumbing -- auth, signal
+# intake, rung selection, resting fills, cancels, settlement attribution --
+# not to make money. At 1 contract a full slate risks about $8 and every
+# failure mode still surfaces exactly once.
+#
+# SIZE CHANGES THE FEE. Kalshi charges ceil(0.07*p*(1-p)*n) rounded UP to
+# $0.001 on the WHOLE order, so a 1-lot at 50c pays 1.8c/contract where a
+# 25-lot pays 1.752c. `candidates()` passes the real order size to fee(), so
+# the edge shown is the edge at the size actually being sent -- a 1-contract
+# test is charged ~0.05c/contract more than the calibration assumed, which
+# matters most for pacegap (margin 0.064 pts).
+#
+# Raise with the environment, no code edit: NBA_MAX_CONTRACTS=25
+MAX_CONTRACTS_GAME   = int(os.environ.get("NBA_MAX_CONTRACTS", "1"))
+MAX_CONTRACTS_DAY    = int(os.environ.get("NBA_MAX_CONTRACTS_DAY",
+                                          str(max(30, MAX_CONTRACTS_GAME * 12))))
+MAX_NOTIONAL_DAY     = float(os.environ.get("NBA_MAX_NOTIONAL_DAY",
+                                            str(max(30.0, MAX_CONTRACTS_DAY * 1.0))))
 MIN_PRICE, MAX_PRICE = 0.12, 0.88   # sigma is unidentified in the tails
 MAX_SIGMA_DIST       = 1.1      # |K - mu| <= 1.1 sigma; LADDER_ASSUMPTION's
                                 # validated span (normal ratio 0.996 inside it)
@@ -325,7 +381,36 @@ def signals(day):
         out.append(dict(strategy="move", away=r["away"], home=r["home"],
                         dir=str(r["side"]).upper(), ref=float(r["ot_open"]),
                         signal=float(r["m"])))
+    # --- final7: EVERY game in the window, OVER. The trigger is the calendar,
+    #     so there is no signal file -- the slate comes from the CrewShock log,
+    #     which lists one row per game regardless of whether CrewShock fired.
+    #     That also means final7 is only available once assignments have posted,
+    #     which is correct: it settles at the CLOSE and belongs to the late run.
+    if in_final7_window(day):
+        seen = set()
+        for r in _read_csv(STRATS["final7"]["source"]):
+            if str(r.get("date",""))[:10] != day:           continue
+            k = (r["away"], r["home"])
+            if k in seen:                                   continue
+            seen.add(k)
+            out.append(dict(strategy="final7", away=r["away"], home=r["home"],
+                            dir="OVER", ref=None, signal=1.0))
     return out
+
+
+def in_final7_window(day):
+    """Is `day` inside the last FINAL7_DAYS of the regular season?
+
+    Inclusive of the last day. 2020-21 is the reason this is a hard window and
+    not 'April': that season ran into May and the rule lost 10.16% when the
+    calendar assumption broke.
+    """
+    try:
+        last = dt.date.fromisoformat(FINAL7_LAST_REGULAR)
+        d = dt.date.fromisoformat(str(day)[:10])
+    except ValueError:
+        return False
+    return 0 <= (last - d).days < FINAL7_DAYS
 
 
 def _abbr():
@@ -348,7 +433,7 @@ def _decline(s, game, ev, note, **extra):
     cron entry shows up. A late PaceGap run declines its whole slate on the
     stale-opener guard -- correctly, and otherwise silently.
     """
-    r = dict(ts_utc=dt.datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    r = dict(ts_utc=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00","Z"),
              strategy=s["strategy"], game=game, event=ev, note=note)
     r.update(extra)
     return r
@@ -382,10 +467,20 @@ def run(day, arm=False, demo=False, only=None, take=False, verbose=True):
     if not sigs:
         print(f"no signals for {day}")
         return 0
-    # Highest measured edge claims a contested game first. Deterministic, and
-    # principled: if the strategies must be ranked, rank them by the thing that
-    # was actually measured.
-    sigs.sort(key=lambda s: -STRATS[s["strategy"]]["delta"])
+    # PREREGISTERED FIRST, then highest measured edge. Both keys matter.
+    #
+    # Ranking on delta alone would be wrong here. final7's honest 55.29%
+    # inverts to 2.419 pts, ABOVE CrewShock's 1.925, so a pure edge sort would
+    # let it claim all 73 games where the two overlap -- handing contested
+    # games to the least-validated rule in the book. final7's window was chosen
+    # by searching this same data and its promoting test has not been run;
+    # CrewShock's number is a holdout. A larger point estimate from a weaker
+    # design is not a better claim.
+    #
+    # So: the frozen prospective test is served first and is never displaced by
+    # a discretionary addition. Within a tier, rank by what was measured.
+    sigs.sort(key=lambda s: (not STRATS[s["strategy"]].get("prereg", False),
+                             -STRATS[s["strategy"]]["delta"]))
 
     # Kalshi is the authority on which events exist; we match into its listing
     # rather than trusting a ticker we built ourselves.
@@ -480,7 +575,7 @@ def run(day, arm=False, demo=False, only=None, take=False, verbose=True):
                   f"{c['price']:.2f}  K={c['strike']:.1f}  sp {c['spread_c']}c"
                   f"  p_model {c['p_model']:.3f}  edge {c['edge']:+.3f}"
                   + ("" if ok else f"  http={http} {resp.get('_hint','')}"))
-            rows.append(dict(ts_utc=dt.datetime.utcnow().isoformat(timespec="seconds")+"Z",
+            rows.append(dict(ts_utc=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00","Z"),
                 mode=mode, strategy=s["strategy"], game=game, event=ev,
                 ticker=c["ticker"], strike=c["strike"], side=c["side"], count=n,
                 limit_price=c["price"], p_model=round(c["p_model"],4),

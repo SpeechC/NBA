@@ -40,8 +40,8 @@ import nba_live_trader as LT     # also puts LT.PROJECT_DIR on sys.path, which i
                                  # this module is installed outside the project
 
 OUT_HTML = os.path.expanduser("~/data/nba_dashboard.html")
-S3_BUCKET = os.environ.get("NBA_S3_BUCKET", "")
-S3_KEY    = os.environ.get("NBA_S3_KEY", "nba/index.html")
+S3_BUCKET = os.environ.get("NBA_S3_BUCKET", "kalshi-strat")
+S3_KEY    = os.environ.get("NBA_S3_KEY", "nba.html")
 STATE     = os.path.expanduser("~/data/nba_daily_state.jsonl")
 
 
@@ -108,6 +108,13 @@ def _strategy_of(ticker, orders, fills=()):
     return "unattributed"
 
 
+# DISPLAY ONLY. The keys ("crewshock", "pacegap", "move") are load-bearing:
+# they are embedded in every client_order_id tag and are how a settlement is
+# attributed back to the strategy that ordered it. Rename the label here, never
+# the key.
+DISPLAY = {"crewshock": "cs"}
+
+
 def _f(v):
     """Kalshi returns money as STRINGS IN DOLLARS ('0.150000') in some fields and
     INTEGER CENTS in others. Verified on live settlements: yes/no_total_cost and
@@ -120,6 +127,23 @@ def _f(v):
         return 0.0
 
 
+def _side_of(ticker, orders, fills=()):
+    """Which side the TRADER bought, from its own append-only order log.
+
+    Falls back to the exchange's fill record. Returns None if neither knows,
+    which makes the caller count the settlement as inferred rather than guess.
+    """
+    for o in reversed(orders):
+        if o.get("ticker") == ticker and o.get("side"):
+            return str(o["side"]).upper()
+    for f in fills:
+        if f.get("ticker") == ticker:
+            s = str(f.get("side") or f.get("outcome_side") or "").upper()
+            if s in ("YES", "NO"):
+                return s
+    return None
+
+
 def summarise(d):
     """Per-strategy realised P&L from SETTLEMENTS. No hit-rate-by-threshold, no
     alternative thresholds, no splits -- see the module docstring.
@@ -128,7 +152,7 @@ def summarise(d):
     systems, and their settlements are in the same feed; without this filter
     their P&L would appear here under strategy '?'.
     """
-    agg = defaultdict(lambda: dict(n=0, won=0, cost=0.0, ret=0.0, fee=0.0))
+    agg = defaultdict(lambda: dict(n=0, won=0, cost=0.0, ret=0.0, fee=0.0, infer=0))
     for s in d["settlements"]:
         tk = s.get("ticker", "")
         if not tk.startswith(NK.SERIES):
@@ -137,33 +161,70 @@ def summarise(d):
         cost = _f(s.get("yes_total_cost_dollars")) + _f(s.get("no_total_cost_dollars"))
         fee  = _f(s.get("fee_cost"))
         ret  = _f(s.get("revenue")) / 100.0          # cents -> dollars
+
+        # WIN IS DEFINED THE WAY THE TRADER DEFINES IT: the side we bought
+        # against how the market resolved. Taken from our OWN order log, which
+        # is what recorded the decision.
+        #
+        # The previous rule here was `ret > cost + fee` -- inferring the result
+        # from cash flow. It agrees at 1 contract, but it is a DIFFERENT RULE:
+        # it scores a contract that resolved our way but earned less than its
+        # fee as a LOSS, which is a P&L statement, not a hit rate. Hit rate has
+        # to count outcomes or it stops being comparable to the 52-55% the
+        # strategies were measured at.
+        side = _side_of(tk, d["orders"], d.get("fills", ()))
+        res = str(s.get("market_result", "")).lower()
+        if side and res in ("yes", "no"):
+            won = (side == "YES" and res == "yes") or (side == "NO" and res == "no")
+        else:
+            won = ret > cost + fee                   # last resort; counted below
+            a["infer"] += 1
         a["n"] += 1
-        a["won"] += int(ret > cost + fee)
+        a["won"] += int(won)
         a["cost"] += cost
         a["fee"] += fee
         a["ret"] += ret
         a["ct"] = a.get("ct", 0.0) + _f(s.get("yes_count_fp")) + _f(s.get("no_count_fp"))
     for a in agg.values():
-        a["pl"] = a["ret"] - a["cost"] - a["fee"]    # fee is real money; it was
-        a["roi"] = (a["pl"] / a["cost"] * 100.0) if a["cost"] else 0.0   # omitted here once
+        a["pl"] = a["ret"] - a["cost"] - a["fee"]
+        # ROI DENOMINATOR IS TOTAL OUTLAY, cost + fee. The fee is money put at
+        # risk, not a deduction from winnings -- Kalshi charges it on entry, and
+        # the trader's own EV is p_model - price - fee against the same unit.
+        # Excluding it (the previous behaviour) overstates ROI by ~6pp on a
+        # 41c contract.
+        out = a["cost"] + a["fee"]
+        a["roi"] = (a["pl"] / out * 100.0) if out else 0.0
         a["per_ct"] = (a["pl"] / a["ct"]) if a.get("ct") else 0.0
     return dict(agg)
 
 
 CSS = """
-:root{--bg:#fbfaf8;--fg:#1a1a18;--mut:#6b6862;--line:#e2ddd4;--card:#fff;
+:root{--bg:#fbfaf8;--fg:#1a1a18;--mut:#5a5750;--line:#e2ddd4;--card:#fff;
 --pos:#1c7a4a;--neg:#a8322c;--warn:#8a5a00}
 :root[data-theme=dark],:root:not([data-theme=light]){}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16150f;
---fg:#ece8df;--mut:#96918a;--line:#2e2c25;--card:#1e1d16;--pos:#5fbf8a;
+--fg:#ece8df;--mut:#a8a29a;--line:#2e2c25;--card:#1e1d16;--pos:#5fbf8a;
 --neg:#e0736c;--warn:#d2a34a}}
-:root[data-theme=dark]{--bg:#16150f;--fg:#ece8df;--mut:#96918a;--line:#2e2c25;
+:root[data-theme=dark]{--bg:#16150f;--fg:#ece8df;--mut:#a8a29a;--line:#2e2c25;
 --card:#1e1d16;--pos:#5fbf8a;--neg:#e0736c;--warn:#d2a34a}
-body{background:var(--bg);color:var(--fg);font:14px/1.55 ui-sans-serif,system-ui,
+body{background:var(--bg);color:var(--fg);font:15.5px/1.6 ui-sans-serif,system-ui,
 -apple-system,"Segoe UI",sans-serif;margin:0;padding:26px 20px 60px}
+/* Explanatory prose was 462 words of 12.5px muted grey in one block -- a wall.
+   Default view now shows one line; the rest is behind a disclosure. */
+details.why{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
+details.why summary{cursor:pointer;font-size:13.5px;color:var(--mut);
+list-style:none;user-select:none}
+details.why summary::-webkit-details-marker{display:none}
+details.why summary:before{content:"▸ ";font-size:11px}
+details.why[open] summary:before{content:"▾ "}
+details.why summary:hover{color:var(--fg)}
+details.why .body{font-size:14px;line-height:1.65;color:var(--fg);margin-top:10px;
+max-width:70ch}
+details.why .body p{margin:0 0 10px}
+.keyline{font-size:14px;color:var(--fg);margin-top:10px;max-width:74ch}
 .wrap{max-width:960px;margin:0 auto}
 h1{font-size:20px;margin:0 0 2px;letter-spacing:-.01em}
-.sub{color:var(--mut);font-size:12.5px;margin-bottom:22px}
+.sub{color:var(--mut);font-size:13.5px;margin-bottom:22px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;
 padding:14px 16px;margin-bottom:14px}
 h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);
@@ -182,7 +243,7 @@ tr:last-child td{border-bottom:none}
 border:1px solid var(--line);color:var(--mut)}
 .bad{color:var(--neg);border-color:var(--neg)}.good{color:var(--pos);border-color:var(--pos)}
 .note{border-left:3px solid var(--warn);padding:9px 13px;color:var(--mut);
-font-size:12.5px;background:var(--card);border-radius:0 8px 8px 0;margin-bottom:14px}
+font-size:13.5px;background:var(--card);border-radius:0 8px 8px 0;margin-bottom:14px}
 code{font:12px ui-monospace,Menlo,monospace;background:var(--bg);padding:1px 4px;
 border-radius:3px;border:1px solid var(--line)}
 """
@@ -211,8 +272,11 @@ def render(d):
         p.append(f'<div class="note"><b>Feed error.</b> {d["err"]}</div>')
 
     p.append('<div class="card"><div class="kpi">')
-    for label, val in (("Balance", f'${d["balance"]:,.2f}' if d["balance"] is not None else "&mdash;"),
-                       ("Settled P&amp;L", _sign(tot_pl)),
+    tot_won = sum(a["won"] for a in S.values())
+    for label, val in (("Settled P&amp;L", _sign(tot_pl)),
+                       ("Hit%", f"{100.0*tot_won/tot_n:.1f}%" if tot_n else "&mdash;"),
+                       ("ROI", _sign(100.0 * tot_pl / tot_cost, "") + "%" if tot_cost
+                               else "&mdash;"),
                        ("Settled bets", f"{tot_n}"),
                        ("Premium paid", f"${tot_cost:,.2f}"),
                        ("Open contracts", f"{exposure}"),
@@ -223,34 +287,67 @@ def render(d):
     # ---- per strategy
     p.append('<div class="card"><h2>By strategy &mdash; settled on Kalshi</h2>'
              '<div class="scroll"><table><tr><th>Strategy</th><th>Settles vs</th>'
-             '<th class="num">Edge</th><th class="num">Bets</th><th class="num">Won</th>'
-             '<th class="num">Premium</th><th class="num">Fees</th>'
-             '<th class="num">P&amp;L</th><th class="num">&cent;/contract</th></tr>')
+             '<th class="num">Calib. edge</th><th class="num">Bets</th><th class="num">Won</th>'
+             '<th class="num">Hit%</th><th class="num">Premium</th><th class="num">Fees</th>'
+             '<th class="num">P&amp;L</th><th class="num">ROI</th>'
+             '<th class="num">&cent;/contract</th></tr>')
     for name in list(LT.STRATS) + [k for k in S if k not in LT.STRATS]:
         a = S.get(name)
         cfg = LT.STRATS.get(name, {})
         dl = f'{cfg["delta"]:.2f} pts' if "delta" in cfg else "&mdash;"
-        lbl = (f'<span class="neg">{name}</span>' if name == "unattributed" else name)
+        lbl = (f'<span class="neg">{name}</span>' if name == "unattributed"
+               else DISPLAY.get(name, name))
+        # Mark anything outside the frozen prospective test. A reader comparing
+        # rows must be able to see that final7's larger calibrated edge comes
+        # from a weaker design, not a better one.
+        if not cfg.get("prereg", True) and name != "unattributed":
+            lbl += ' <span class="pill" title="not preregistered">disc.</span>'
         if not a:
             p.append(f'<tr><td>{lbl}</td><td>{cfg.get("line","&mdash;")}</td>'
                      f'<td class="num">{dl}</td>'
-                     f'<td class="num" colspan="6" style="color:var(--mut)">no settled bets</td></tr>')
+                     f'<td class="num" colspan="8" style="color:var(--mut)">no settled bets</td></tr>')
             continue
         p.append(f'<tr><td>{lbl}</td><td>{cfg.get("line","?")}</td>'
                  f'<td class="num">{dl}</td>'
                  f'<td class="num">{a["n"]}</td><td class="num">{a["won"]}</td>'
+                 f'<td class="num">{100.0*a["won"]/a["n"]:.1f}%</td>'
                  f'<td class="num">${a["cost"]:,.2f}</td>'
                  f'<td class="num">${a["fee"]:,.2f}</td>'
                  f'<td class="num">{_sign(a["pl"])}</td>'
+                 f'<td class="num">{_sign(a["roi"], "")}%</td>'
                  f'<td class="num">{_sign(a["per_ct"]*100, "")}&cent;</td></tr>')
-    p.append('</table></div><div style="margin-top:9px;color:var(--mut);font-size:12.5px">'
-             '<b>&cent;/contract, not ROI.</b> Return on premium is not comparable to the '
-             'research documents\' ROI &mdash; a cheap contract risks less per unit of edge, '
-             'so it shows a larger percentage for the same forecast. Cents per contract is '
-             'the number the calibration predicts directly (+1.4&cent; to +4.5&cent; resting, '
-             'less when crossing). "Edge" is each strategy\'s published hit rate inverted '
-             'through the normal at sd 18.244 &mdash; a fixed constant, not a live estimate, '
-             'and all three have an ROI interval that includes zero.</div>')
+    p.append("</table></div>")
+    p.append('<div class="keyline"><b>Hit% is measured against the strike bought, '
+             'not the line &mdash; it should read lower than the backtest.</b> '
+             'Judge these rows on P&amp;L and &cent;/contract.</div>')
+    p.append('<details class="why"><summary>How these numbers are defined</summary>'
+             '<div class="body">'
+             '<p><b>Same rules as the trader.</b> A win is the side the trader recorded '
+             'buying against how the market resolved &mdash; read from the order log, not '
+             'inferred from cash flow. P&amp;L is revenue &minus; premium &minus; fees. '
+             'ROI divides by total outlay (premium + fees), because Kalshi charges the fee '
+             'on entry.</p>'
+             '<p><b>Why Hit% runs low.</b> The backtest rate (cs 54.2%, move 53.4%, '
+             'pacegap 52.6%, final7 55.3%) is how often the total beats the <i>line</i>. '
+             'Here it is how often it beats the <i>strike we bought</i> &mdash; and the '
+             'trader takes whichever rung has the best EV, usually not at the money, '
+             "because Kalshi's fee is cheaper in the tails. A cheap out-of-the-money rung "
+             'can win 20&ndash;46% of the time and still profit.</p>'
+             '<p><b>Calib. edge</b> is a fixed constant per strategy, not a per-game '
+             'output: the published hit rate inverted through the normal at sd 18.244. '
+             'All four rules are threshold-and-sign and discard signal magnitude, so the '
+             'strategy-level number is the only edge size ever measured. It is the '
+             'assumption orders were priced on. The per-trade figure is <b>EV/ct</b> below. '
+             'The sportsbook bar is 1.12 pts (cs +0.805, move +0.453, pacegap +0.064, '
+             'final7 +1.299), and all four have an ROI interval including zero.</p>'
+             '<p><b>disc.</b> marks a strategy outside the frozen 2026-27 prospective test. '
+             '<b>final7</b> bets OVER on every game in the last 7 days of the regular '
+             'season. Its window was chosen by searching the same data that produced its '
+             'record, so its edge uses the LOSO-honest 55.29%, not the 56.93% headline '
+             '&mdash; and it is still z = +1.65 on 407 bets, ~$395/season. Its larger edge '
+             'comes from a weaker design, so a preregistered strategy always claims a game '
+             'they both want.</p>'
+             '</div></details>')
     if "unattributed" in S:
         p.append('<div style="margin-top:8px"><span class="pill bad">'
                  'unattributed settlements &mdash; a ticker settled that is in neither the '
@@ -272,7 +369,7 @@ def render(d):
                            ("Fills", f"{nf}"), ("Contracts", f"{ct:,.0f}"),
                            ("Fee / contract", f"{100*fee/ct:.2f}&cent;")):
             p.append(f'<div><div class="v">{val}</div><div class="l">{label}</div></div>')
-        p.append('</div><div style="margin-top:9px;color:var(--mut);font-size:12.5px">'
+        p.append('</div><div style="margin-top:9px;color:var(--mut);font-size:13.5px">'
                  'Resting bids earn the half-spread; crossing pays it. At the median '
                  '2&cent; book that is a 2&cent;/contract swing &mdash; larger than '
                  "PaceGap's entire edge. A falling maker share is the first sign the "
@@ -308,7 +405,7 @@ def render(d):
     if recent:
         p.append('<div class="scroll"><table><tr><th>Strategy</th><th>Game</th>'
                  '<th>Side</th><th class="num">Strike</th><th class="num">Qty</th>'
-                 '<th class="num">Limit</th><th class="num">Edge</th>'
+                 '<th class="num">Limit</th><th class="num">EV/ct</th>'
                  '<th class="num">&mu;&#770;</th><th class="num">&mu;<sub>mkt</sub></th>'
                  '<th>Mode</th></tr>')
         for o in recent[-40:]:
@@ -316,7 +413,8 @@ def render(d):
                 e = float(o.get("edge") or 0)
             except ValueError:
                 e = 0.0
-            p.append(f'<tr><td>{o.get("strategy","")}</td><td>{o.get("game","")}</td>'
+            _s = o.get("strategy", "")
+            p.append(f'<tr><td>{DISPLAY.get(_s, _s)}</td><td>{o.get("game","")}</td>'
                      f'<td>{o.get("side","")}</td><td class="num">{o.get("strike","")}</td>'
                      f'<td class="num">{o.get("count","")}</td>'
                      f'<td class="num">{o.get("limit_price","")}</td>'
@@ -324,7 +422,15 @@ def render(d):
                      f'<td class="num">{o.get("mu_hat","")}</td>'
                      f'<td class="num">{o.get("mu_mkt","")}</td>'
                      f'<td><span class="pill">{o.get("mode","")}</span></td></tr>')
-        p.append("</table></div>")
+        p.append('</table></div><div style="margin-top:9px;color:var(--mut);'
+                 'font-size:13.5px"><b>EV/ct</b> is this order\'s own expected value: '
+                 'p<sub>model</sub> &minus; price &minus; fee, at the size actually sent. '
+                 'Unlike <b>Calib. edge</b> above it varies by game &mdash; it moves with '
+                 '&mu;&#770;, the ladder\'s own &sigma;, which rung was taken and the price '
+                 'paid. &mu;&#770; is the strategy\'s reference line plus its calibrated '
+                 'edge; &mu;<sub>mkt</sub> is what the ladder implies. A large gap between '
+                 'them late in the day usually means a stale opener, not an opportunity.'
+                 '</div></div>')
     else:
         p.append('<div style="color:var(--mut)">No orders logged today.</div>')
     p.append("</div>")
@@ -346,7 +452,7 @@ def render(d):
             p.append(f'<tr><td>{"<b>" if bad else ""}{why}{"</b>" if bad else ""}</td>'
                      f'<td class="num">{n}</td></tr>')
         p.append('</table></div><div style="margin-top:9px;color:var(--mut);'
-                 'font-size:12.5px">A high <b>stale opener</b> count means the market '
+                 'font-size:13.5px">A high <b>stale opener</b> count means the market '
                  'had already moved when we ran &mdash; check the cron clock before '
                  'checking the model. <b>already held</b> is by design: one position '
                  'per game across all three strategies.</div></div>')
