@@ -67,9 +67,16 @@ for _var, _default in (("AWS_SHARED_CREDENTIALS_FILE", "/mnt/c/Users/rando/.aws/
                        ("AWS_DEFAULT_REGION", "us-east-1")):
     if not os.environ.get(_var) and (_default.startswith("us-") or os.path.exists(_default)):
         os.environ[_var] = _default
-for p in (HERE, ROOT):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# ORDER MATTERS AND IS EASY TO GET BACKWARDS. insert(0, ...) in a loop REVERSES
+# the argument order, so iterating (HERE, ROOT) leaves ROOT first and the repo
+# copy of every module shadows the installed one. That is not academic: a copy
+# of this stack is committed to the project for version control AND installed
+# here, so the wrong one silently wins and then looks for its config next to
+# itself. Iterate (ROOT, HERE) so HERE ends up at position 0.
+for p in (ROOT, HERE):
+    if p in sys.path:
+        sys.path.remove(p)
+    sys.path.insert(0, p)
 
 
 def _log(step, ok, detail=""):

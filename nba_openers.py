@@ -36,7 +36,14 @@ import statistics as stats
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("NBA_PROJECT_DIR", "/home/dpope/projects/nba_entropy_replication")
-CONFIG = os.path.join(HERE, "odds_config.json")
+# Searched in order. The first is next to whichever copy of this file loaded,
+# which is usually right; the rest make the key findable even if the REPO copy
+# is imported instead of the installed one (the config is gitignored, so it
+# only ever exists beside the install).
+CONFIG_PATHS = [os.path.join(HERE, "odds_config.json"),
+                "/mnt/d/Kalshi/nba/odds_config.json",
+                os.path.expanduser("~/.odds_config.json")]
+CONFIG = CONFIG_PATHS[0]
 API = "https://api.the-odds-api.com/v4/sports/basketball_nba/odds/"
 
 # The Odds API full name -> dfMaster / team_mapping.csv bigdataball_name
@@ -63,14 +70,17 @@ def api_key():
     k = os.environ.get("ODDS_API_KEY")
     if k:
         return k, "env"
-    if os.path.exists(CONFIG):
+    for p in CONFIG_PATHS:
+        if not os.path.exists(p):
+            continue
         try:
-            k = json.load(open(CONFIG)).get("odds_api_key")
-            if k:
-                return k, os.path.basename(CONFIG)
+            k = json.load(open(p)).get("odds_api_key")
         except Exception as e:
-            raise RuntimeError(f"{CONFIG} unreadable: {e}")
-    raise RuntimeError(f"no ODDS_API_KEY in env and no key in {CONFIG}")
+            raise RuntimeError(f"{p} unreadable: {e}")
+        if k:
+            return k, p
+    raise RuntimeError("no ODDS_API_KEY in env and no key in any of: "
+                       + ", ".join(CONFIG_PATHS))
 
 
 def validate_mapping():
