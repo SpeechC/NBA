@@ -1,0 +1,101 @@
+# Repeated shifted ladders: the product does not reveal enough (2026-09-24)
+
+Tests whether intersecting many pregame ladder snapshots tightens the event-level
+σ set enough to read Kalshi's dispersion scaling. Run on
+`kalshi_nba_candles.sqlite` — 1-minute bid/ask for `KXNBATOTAL`, 429 events,
+4,719 markets, 2025-10-21 → 2025-12-23. **No midpoint anywhere.**
+
+Closed form, so no μ grid: for rung K with executable bounds [L, U],
+`μ ∈ [K − σ·Φ⁻¹(1−L), K − σ·Φ⁻¹(1−U)]`. A snapshot is feasible at σ iff the
+per-rung μ intervals intersect; the event's set is the intersection over
+snapshots, with μ_t free per snapshot and σ common.
+
+Bounds are **tick-aware**: ±0.5¢, the 1¢ grid's own rounding unit.
+
+## Restriction 2 first — σ IS stable across the pregame window
+
+| | no thinning (n=224) | ≥1 rung of μ movement (n=331) |
+|---|---|---|
+| early/late bands **overlap** | **95.1%** | **97.3%** |
+| late − early band centre, mean | −0.045 | −0.249 |
+| median | +0.025 | −0.075 |
+| sd | 1.356 | 1.646 |
+
+Early = T−6h..T−3h, late = T−1h..T−30m. No systematic drift in either
+direction. **Common-σ across the pregame window is supported** — the assumption
+was worth testing and it passes.
+
+## Restriction 1 — and this is what kills it
+
+| window | raw minutes | distinct book states | states after requiring ≥1 rung of μ movement |
+|---|---|---|---|
+| T−6h..T−3h | 160 | 30 | **1** |
+| T−1h..T−30m | 31 | 7 | **1** |
+
+**μ does not move.** Requiring a genuine rung of location movement leaves a
+median of **one** admitted state per event. The 30 "distinct states" in the
+early window are small quote flickers around an essentially stationary μ, not
+the independent re-roundings the whole design depends on.
+
+## The band, against the bar set in advance
+
+| window | one snapshot | all distinct states | ≥1 rung movement |
+|---|---|---|---|
+| T−6h..T−3h | 4.55 pts | **2.35** | 4.15 |
+| T−1h..T−30m | 2.85 pts | **2.30** | 2.80 |
+
+The bar: **0.2–0.3 pts** would settle the question; **~1.0 pt** was already
+declared insufficient. The best achievable is **2.3 pts** — and that is the
+optimistic figure, counting quote flickers that do not re-round μ. On the honest
+thinning it is 2.8–4.2.
+
+Note these bands are wider than the 1.0 pt reported in
+`KALSHI_SIGMA_ENVELOPE.md`. That figure had **no tick slack** and so treated a
+1¢ quote as an exact probability. 2.3 pts is the tick-aware number.
+
+**The realised effect being tested is 2.2 pts of σ across the entire total
+range. The per-event identified band is 2.3 pts.** The instrument cannot
+resolve it.
+
+## Verdict
+
+**The product does not reveal enough information to answer the question**, and
+the reason is now mechanical rather than statistical:
+
+1. A 1¢ tick maps to roughly ±1 pt of σ at these strikes.
+2. The ladder omits the quantiles a width needs (no rung beyond |t| = 1.456).
+3. **μ is stationary over precisely the window where σ is stable**, so repeated
+   snapshots do not supply independent re-roundings. The two requirements —
+   enough μ movement to decorrelate rounding, and a short enough window for
+   common-σ — are in direct conflict on this product.
+
+More games does not fix any of the three. Nor would in-play data, which breaks
+the common-σ assumption by construction.
+
+## Withdrawal: Kalshi's tail curvature
+
+`MAKER_PREFLIGHT_VERDICT.md` concluded the venue "already embeds the same
+right-skew curvature", on a quadratic coefficient of −7.09e−05 ± 1.16e−05,
+**t = −6.09**. That evidence is **withdrawn as overstated**. It was computed at
+**mid** ("At mid, against its own realised settlement frequency…"), so it is
+subject to both defects found here: a midpoint is not an executable price, and
+the test was not tick-aware. Once ±0.5¢ of slack moves normal feasibility from
+30.1% to 66.6%, exact-containment failure is not evidence of curvature.
+
+Curvature may still be there. It must be established **against the discrete
+quote grid**, from executable bounds, not inferred from a normal failing to
+contain mids. The downstream conclusion of that document — *do not freeze
+H-MAKER* — rests on four other independent failures and is unaffected.
+
+## Status of the whole thread
+
+- **Established:** dispersion of `actual − closing total` rises with the closing
+  total (sd 17.09 → 19.32, VarRatio 1.278), and **no** additional matchup-state
+  heteroskedasticity exists out of sample (19 point-in-time features, BP
+  p = 0.122, OOS corr −0.014).
+- **Unidentified, and not identifiable from this product:** whether Kalshi
+  prices that total-dependent dispersion correctly.
+- **Not a next step:** any new matchup-model search. Three operationalisations
+  have now agreed.
+
+Script: `screen_kalshi_repeated_ladders.py`.

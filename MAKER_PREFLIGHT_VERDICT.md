@@ -13,7 +13,17 @@ microstructure and should be carried forward, not buried in a "6/6" tally.
 
 ## THE PRIMARY CLOSURE REASON, STATED ONCE
 
-> **Kalshi already embeds the same right-skew curvature we thought we were exploiting.**
+> **[WITHDRAWN 2026-09-24 — OVERSTATED. See `KALSHI_REPEATED_LADDERS.md`.**
+> The curvature below (quadratic −7.09e−05, t = −6.09) was computed at **mid**,
+> which is not an executable price, and was not tick-aware. `KXNBATOTAL` is
+> `linear_cent`: with ±0.5¢ of slack — the grid's own rounding unit — normal
+> feasibility rises from 30.1% to 66.6%, so exact-containment failure is not
+> evidence of curvature. Curvature may still exist but must be established
+> against the discrete quote grid from executable bounds. The verdict of this
+> document — DO NOT FREEZE — rests on four other independent failures and
+> stands.]**
+>
+> ~~Kalshi already embeds the same right-skew curvature we thought we were exploiting.~~
 
 H-MAKER assumed the counterfactual *"truth is skewed, Kalshi is normal."* The correct
 counterfactual is *"truth is skewed, and Kalshi already knows it."* Fit the body and
