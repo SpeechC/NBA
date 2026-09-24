@@ -32,6 +32,12 @@ Join to the posted closing total via a 3-letter → city map, **validated 30/30
 with zero unmapped**; 1,312 of 1,318 events joined.
 
 ## Finding 1 — 70% of ladders admit NO single normal
+> **REVISED 2026-09-24 — see `KALSHI_DISTFREE_LADDER.md` §3.** This is mostly
+> the 1¢ tick, not distributional shape. With ±0.5¢ of rounding slack -- the
+> grid's own rounding unit -- normal feasibility rises from 30.1% to **66.6%**,
+> and to 90.5% at ±1¢. Do not cite the 30% as evidence of curvature. The
+> distribution-free monotone check passes on **99.9%** of ladders, so there is
+> no stale-quoting problem either.
 
 | body rungs | events | feasible |
 |---|---|---|
