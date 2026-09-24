@@ -98,14 +98,93 @@ open events while `KXNBAGAME` has been open since 2026-08-20 — the two legs ar
 not simultaneously quoted far ahead, so even a forward test would be a game-day
 scan.
 
-## Verdict
+## 6. CORRECTION (same day): the "rule" in §4 is not robust
 
-Closed. The kill condition fired on its own terms: once σ is estimated rather
-than chosen, the two markets agree to ~1.4pp, the residual predicts the outcome
-with the **wrong sign**, and the quoted spread is wider than the whole signal.
+§4 above concluded that "when the two markets disagree, the moneyline is right."
+**That sentence does not survive its own robustness check and should not be
+relied on.** Its sign depends entirely on how the spread→probability map is
+estimated:
 
-**What transfers:** the spread→win-probability link in NBA is not constant-σ
-normal; implied σ runs 14.9 at short spreads to 11.8 at long ones. Any future
-work converting a spread to a probability must use the empirical map, not a
-fitted σ. Scripts: `screen_cross_market_sigma.py`,
-`screen_cross_market_sigma_refine.py`.
+| spread→P map | pooled signal | significance |
+|---|---|---|
+| constant σ = 12.274 | moneyline right (ROI −1.6% to −2.6%) | z −0.3 to −1.8 |
+| flexible, leave-one-season-out | residual mildly right (+0.4% to +1.6%) | z < 1 |
+
+Neither reaches significance and they point opposite ways. The §4 result was
+manufactured out of a link-function choice — the same defect this document
+criticises in the Oracle-7 model. What is actually established is narrower: the
+two markets **agree to ~1.4pp**, and no directional claim beyond that is
+supported.
+
+## 7. Exceptions: tested, none surviving
+
+A pooled average is not a rule, so the residual was conditioned on 8
+pregame-observable dimensions (closing total, |spread|, overround, |residual|,
+spread move, season, rest/B2B spot, playoff) — 30 cells. Signal is defined as
+ROI(residual side) − ROI(opposite side) on the same games, so a cell of heavy
+favourites cannot look skilful.
+
+Best cell: `|spread| ∈ [7,10)`, signal +11.70%, z **+2.40**, n=2,105.
+Permutation calibration (500 draws, residual sign shuffled within season) gives
+a null best-cell z of median +1.85, 95th percentile +2.97, max +4.01 —
+so **p = 0.198**. The search returns the permutation null.
+
+Near-misses worth naming rather than burying: home-team-on-a-back-to-back
+(+10.82%, z +1.61, n=993) and the top |residual| quartile (+7.63%, z +1.62).
+Both are underpowered, not refuted.
+
+## 8. The one mechanism that is real but does not trade
+
+Margin dispersion should scale with possessions. It does — and **the book scales
+it at 41% of the true rate**:
+
+| | slope of σ per point of closing total |
+|---|---|
+| realised, sd(margin + spread) | **+0.03523** |
+| implied by the moneyline | **+0.01436** |
+| under-scaling gap | **+0.02087** |
+
+Across the observed range of totals (190→262) that is 0.83 points of σ the
+price does not carry. The implication is directional and pregame-observable: in
+high-total games the favourite's win probability is overstated, so back the dog.
+
+**It does not pay.** Backing the moneyline underdog at `total ≥ 224, |spread| ≥ 4`
+returns −1.74% (season-block CI [−5.86, +3.20], 3/8 seasons positive); every
+threshold from 224 to 235 is negative or spans zero, and the low-total **control**
+(`total ≤ 213.5`) is statistically indistinguishable at −0.28%. The σ
+under-scaling is a genuine measurement of the *link function*, not of a
+mispriced *outcome* — the empirical spread→P map already absorbs it.
+
+## Status
+
+**Not closed.** What is established: (a) the two markets agree to ~1.4pp; (b) no
+conditional exception survives multiplicity across 8 dimensions; (c) the σ
+under-scaling is real in the link function and does not convert to a trade; (d)
+live `KXNBAGAME` quotes 1–8¢ against a 1.38pp signal, so nothing here is
+executable *as a taker on the closing sportsbook line*.
+
+What is **untested**, and each is a distinct operationalization rather than a
+re-run:
+
+1. **Kalshi-native, not sportsbook.** Everything above is a sportsbook proxy.
+   Kalshi's board is thinner and machine-made; its `KXNBAGAME` and `KXNBASPREAD`
+   may be mutually inconsistent in ways a sportsbook is not. Requires forward
+   collection — there is no history (§1).
+2. **Opening lines, not closing.** Every test here uses the CLOSE. `OPENING
+   SPREAD_H` is in the file and was used only as a movement covariate; the
+   opening moneyline is not, and would have to be sourced.
+3. **Intraday.** The consistency question has never been asked at any timestamp
+   between open and close.
+4. **The two near-misses in §7** at proper power — home B2B and the top
+   residual quartile.
+5. **σ scaling conditioned on pace forecast rather than the posted total**,
+   since the posted total is itself a market estimate and attenuates the
+   regressor.
+
+**What transfers regardless:** the spread→win-probability link in NBA is not
+constant-σ normal; implied σ runs 14.9 at short spreads to 11.8 at long ones,
+and scales with the expected total at 41% of the realised rate. Any future work
+converting a spread to a probability must use the empirical map, never a fitted
+σ. Scripts: `screen_cross_market_sigma.py`,
+`screen_cross_market_sigma_refine.py`, `screen_cross_market_exceptions.py`,
+`screen_sigma_scaling_trade.py`.
