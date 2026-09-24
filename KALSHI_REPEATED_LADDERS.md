@@ -32,10 +32,16 @@ was worth testing and it passes.
 | T−6h..T−3h | 160 | 30 | **1** |
 | T−1h..T−30m | 31 | 7 | **1** |
 
-**μ does not move.** Requiring a genuine rung of location movement leaves a
-median of **one** admitted state per event. The 30 "distinct states" in the
-early window are small quote flickers around an essentially stationary μ, not
-the independent re-roundings the whole design depends on.
+> **CORRECTED 2026-09-24.** The rung criterion was an order of magnitude too
+> coarse. With σ ≈ 18.2, `∂p/∂μ = φ(0)/18.2 = 0.0219`/pt, so a **half-tick
+> re-round needs only 0.23 pts** near the centre (~0.35 at 20/80¢, ~0.5 at
+> 10/90¢). Requiring 3 points discarded almost every useful re-rounding, so
+> "μ does not move" is NOT supported by that test. See §"Phase-shift" below.
+> The 2.3 pt headline is unaffected — the all-distinct-states calculation
+> already used every snapshot.
+
+Requiring a full rung of location movement leaves a median of **one** admitted
+state per event — but that criterion is far too coarse to be informative.
 
 ## The band, against the bar set in advance
 
@@ -59,18 +65,39 @@ resolve it.
 
 ## Verdict
 
-**The product does not reveal enough information to answer the question**, and
-the reason is now mechanical rather than statistical:
+**Not identified from the available 429-event pregame history at the precision
+this effect requires.** The stronger product-level impossibility claim is not
+proven — it would need phase-shifted repeated books to be shown incapable of
+tightening the interval on a much larger sample. The 1¢ tick and truncated
+ladder make it plausible; they do not establish it. Mechanically:
 
 1. A 1¢ tick maps to roughly ±1 pt of σ at these strikes.
 2. The ladder omits the quantiles a width needs (no rung beyond |t| = 1.456).
-3. **μ is stationary over precisely the window where σ is stable**, so repeated
-   snapshots do not supply independent re-roundings. The two requirements —
-   enough μ movement to decorrelate rounding, and a short enough window for
-   common-σ — are in direct conflict on this product.
+3. **μ re-phases the grid only ~2 times per event.** It is not stationary — see
+   below — but two independent re-roundings cannot collapse a 4.5 pt
+   single-snapshot band below ~2.3.
 
-More games does not fix any of the three. Nor would in-play data, which breaks
-the common-σ assumption by construction.
+## Phase-shift test — the corrected criterion
+
+Retaining a snapshot only when the modelled probability moves ≥0.5¢ at ≥3 body
+strikes, with location taken continuously from the closed form (a first pass
+used the centre of the bracketing strikes, which is quantised to 1.5 pts and
+structurally cannot see a 0.23 pt move — it reported a spurious median travel
+of exactly 0.00):
+
+| window | location travel, median | p90 | phase-distinct states, median | ≥3 states |
+|---|---|---|---|---|
+| T−6h..T−3h | **0.45 pts** | 1.66 | **2** | 41.5% |
+| T−1h..T−30m | 0.10 pts | 0.55 | 1 | 7.8% |
+
+**μ does move** — 0.45 pts median early, about twice the 0.23 pts a half-tick
+re-round requires. The limit is not stationarity but *count*: roughly two
+phase-distinct books per event. Thinning to them alone gives 3.35 pts (early) /
+2.68 (late), necessarily wider than the all-states 2.35 / 2.30, since dropping
+snapshots only removes constraints.
+
+More games does not fix (1) or (2). In-play data would break the common-σ
+assumption by construction.
 
 ## Withdrawal: Kalshi's tail curvature
 
