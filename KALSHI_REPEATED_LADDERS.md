@@ -1,4 +1,4 @@
-# Repeated shifted ladders: the product does not reveal enough (2026-09-24)
+# Repeated shifted ladders: not identified from this sample (2026-09-24)
 
 Tests whether intersecting many pregame ladder snapshots tightens the event-level
 σ set enough to read Kalshi's dispersion scaling. Run on
@@ -117,11 +117,12 @@ H-MAKER* — rests on four other independent failures and is unaffected.
 ## Status of the whole thread
 
 - **Established:** dispersion of `actual − closing total` rises with the closing
-  total (sd 17.09 → 19.32, VarRatio 1.278), and **no** additional matchup-state
+  total (8-bin sd 17.53 → 19.05; quintile ratio 1.048, see `MATCHUP_DISPERSION_STUDY.md`), and **no** additional matchup-state
   heteroskedasticity exists out of sample (19 point-in-time features, BP
   p = 0.122, OOS corr −0.014).
-- **Unidentified, and not identifiable from this product:** whether Kalshi
-  prices that total-dependent dispersion correctly.
+- **Not identified from the available 429-event pregame history** at the
+  required precision: whether Kalshi prices that total-dependent dispersion.
+  Not proven impossible in principle.
 - **Not a next step:** any new matchup-model search. Three operationalisations
   have now agreed.
 

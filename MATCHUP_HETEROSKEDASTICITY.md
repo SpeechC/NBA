@@ -55,6 +55,14 @@ probably nothing economically interesting"* — this does not even order correct
 
 ## The one real effect is the market's own variable
 
+> **CORRECTED 2026-09-24 — see `MATCHUP_DISPERSION_STUDY.md`.** The table below
+> is the **test seasons only**, on the PIT-filtered subsample — the most extreme
+> slice available. On the full corrected dataset (all 8 seasons, `DATASET_H`
+> coalesced) closing-total quintiles give **17.618 → 18.460, ratio 1.0478, and
+> NOT monotone**. Do not cite 17.09 → 19.32 / VarRatio 1.278 as the effect size.
+> The finer 8-bin spread is 17.53 → 19.05, which is the basis of the +0.04187
+> σ-slope used in the Kalshi work and is unaffected.
+
 | closing total quintile | N | SD(dev) | mean \|dev\| | P(\|d\|>15) |
 |---|---|---|---|---|
 | Q1 | 1036 | 17.089 | 13.550 | .3649 |

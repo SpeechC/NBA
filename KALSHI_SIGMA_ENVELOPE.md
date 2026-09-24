@@ -78,7 +78,7 @@ Both book bounds **overlap** the realised interval. The executable book is
 therefore *consistent with* correct scaling — and that is all that can be said:
 
 1. The identified band is ~1.0 pt of σ wide, which straddles the entire
-   realised effect (17.09 → 19.32 is 2.2 pts across the whole total range).
+   realised effect (17.53 → 19.05 is 1.5 pts across the whole total range).
 2. The realised CI is itself wide, [+0.014, +0.070].
 3. **The 397 feasible events are a selected subsample** — games whose ladder
    happens to be normal-compatible, i.e. 30% chosen on a property related to
