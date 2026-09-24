@@ -1,3 +1,13 @@
+"""*** INVALID -- DO NOT CITE. Superseded by screen_kalshi_sigma_envelope.py. ***
+
+This script fit the ladder to `pregame_mid`. A midpoint is NOT an executable
+price, and quoted width on this board reaches 82c (median 28c above 90c), so
+averaging bid and ask manufactures a precision nobody can trade. Its headline
+numbers -- sigma slope +0.06222 and mean implied sigma 18.214 -- are withdrawn.
+
+STANDING RULE: no midpoint anywhere in this project. Bid/ask interval
+inference only. Retained so the error stays legible; see KALSHI_SIGMA_ENVELOPE.md.
+"""
 """Does the Kalshi totals ladder price the dispersion that actually exists?
 
 screen_matchup_heteroskedasticity.py found that matchup features predict NO

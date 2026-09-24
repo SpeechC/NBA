@@ -65,7 +65,20 @@ Q5 − Q1 = **+2.230** sd points, VarRatio **1.278** — bigger than anything th
 matchup features produce, and it is driven by the single number the market
 cannot fail to observe.
 
-## Does Kalshi price it? Yes — in slope and in level.
+## ~~Does Kalshi price it? Yes — in slope and in level.~~ **STRUCK 2026-09-24**
+
+> **The section below is INVALID and retained only so the error is legible.**
+> It fit the ladder to `pregame_mid`. A midpoint is not an executable price;
+> quoted width on this board reaches 82¢ (median 28¢ above 90¢), so averaging
+> bid and ask manufactures a precision nobody can trade. **The +0.06222 slope
+> and the 18.214 average σ must not be cited.** The corrected interval-based
+> analysis is in `KALSHI_SIGMA_ENVELOPE.md`, and it does **not** restore this
+> conclusion — it leaves the question open.
+>
+> Standing rule from this error: **no midpoint anywhere in this project.
+> Bid/ask interval inference only.**
+
+## ~~Does Kalshi price it? (struck — mid-based)~~
 
 Inverting all 1,310 pregame ladders of 2025-26 (`Φ⁻¹(1−p_mid)` on strike; median
 fit RMSE **0.0214**, so the normal describes the ladder well):
@@ -89,6 +102,14 @@ markets do not make the same mistake, and only the sides one even has a
 mis-scaling — which separately failed to trade.
 
 ## Status
+
+**Established from the team box scores:** there is real *unconditional* scaling
+of total-error dispersion with the closing total (sd 17.09 → 19.32, VarRatio
+1.278), but the 19 point-in-time matchup features produce **no OOS
+heteroskedasticity beyond it** (OOS corr −0.014).
+
+**Not established:** that Kalshi prices that scaling correctly. See
+`KALSHI_SIGMA_ENVELOPE.md`.
 
 "These games are harder" is **not established** from matchup state — three
 distinct operationalisations now agree (11 predefined archetypes in
