@@ -93,3 +93,63 @@ Three independent confirmations of the same conclusion — an information bound,
 scored on P&L, and a market-microstructure audit — arriving from different directions at the same
 place. The forecasting question is answered. The venue question is answered. What remains is a
 third of a cent under a spread three times its size.
+
+---
+
+# CLOSED 2026-09-24 — Boxscore conditional-difficulty hypothesis
+
+**David's closure, recorded verbatim:**
+
+> Boxscore conditional-difficulty hypothesis: closed.
+>
+> The market total identifies a real variance environment, but point-in-time
+> boxscore/matchup information does not identify additional games whose totals,
+> spreads, or moneylines are systematically harder to forecast. Standard closing
+> moneylines already accommodate the total-dependent margin variance despite
+> simple normal-link models failing to do so.
+
+## What the closure rests on — five operationalisations
+
+| # | operationalisation | headline |
+|---|---|---|
+| 1 | 11 predefined archetype classes (`MATCHUP_HARDNESS.md`) | class SD 17.5–18.6, max VarRatio 1.109 |
+| 2 | 4 dispersion gates (`CONDITIONAL_DISPERSION_GATE.md`) | LightGBM AUC .4910, backwards |
+| 3 | Fitted continuous totals score (`MATCHUP_HETEROSKEDASTICITY.md`) | in-sample +0.608, **OOS −0.014** |
+| 4 | Full totals protocol (`MATCHUP_DISPERSION_STUDY.md`) | OOS SD Q5/Q1 **1.0182**, perm **p = 0.325** |
+| 5 | Full side protocol (`SIDE_FORECAST_DIFFICULTY_STUDY.md`) | OOS SD Q5/Q1 **0.9077**, perm **p = 0.9433** |
+
+## The two positive findings inside the closure
+
+1. **The market total is a real variance environment.** SD of the totals error
+   rises with the posted total (8-bin 17.53 → 19.05, slope **+0.04187**), and
+   margin dispersion rises at nearly the same rate (**+0.03696**). Consistent
+   with a mechanical possession-count channel.
+
+2. **The closing moneyline already accommodates it.** Calibration slope on
+   `logit(p)` is **+1.0042**; adding the total gives LR χ² = 0.081,
+   **p = 0.7765**. Simple normal-link models do *not* accommodate it — implied
+   σ scales at +0.0144 against a realised +0.0352 — which is a property of the
+   link function, not of the price. Trading that apparent gap returned
+   **−1.74%**.
+
+   **This is the durable methodological lesson: a normal-link σ mismatch is not
+   a calibration error. Grade probability forecasts against outcomes, not
+   against a fitted link.**
+
+## Boundary of the closure
+
+Closed: **point-in-time team boxscore and matchup information** as a source of
+conditional forecast difficulty, for totals, spreads and moneylines.
+
+Not addressed by these studies, and not re-opened by this note: in-play state
+(a different regime that breaks the common-σ assumption), injury/late-scratch
+information (not boxscore-derived), and cross-book disagreement (needs a second
+source). These were outside the hypothesis, not tested and found wanting.
+
+## Separate and still open
+
+Whether Kalshi prices the total-dependent dispersion correctly is a **distinct**
+question and is *not* closed — it is **not identified** from the available
+429-event pregame history at the required precision. See
+`KALSHI_REPEATED_LADDERS.md`. The second-stage Kalshi question for matchup
+classes is moot, since no matchup classes were established.

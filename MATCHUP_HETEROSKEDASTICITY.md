@@ -145,3 +145,7 @@ Not closed, but the remaining room is narrow and specific:
    which failed on instrument availability, not on being wrong.
 
 Scripts: `screen_matchup_heteroskedasticity.py`, `screen_kalshi_sigma_vs_total.py`.
+
+---
+
+**CLOSED 2026-09-24.** The boxscore conditional-difficulty hypothesis is closed; see the closure record at the end of `PROJECT_CLOSED.md`. The market total identifies a real variance environment, but point-in-time boxscore/matchup information does not identify additional games whose totals, spreads or moneylines are systematically harder to forecast. Standard closing moneylines already accommodate the total-dependent margin variance despite simple normal-link models failing to do so.

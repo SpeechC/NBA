@@ -154,3 +154,7 @@ is that dispersion tracks the **posted total** and nothing else that box scores
 can see.
 
 Scripts: `side_forecast_difficulty_study.py`, log `side_forecast_results.txt`.
+
+---
+
+**CLOSED 2026-09-24.** The boxscore conditional-difficulty hypothesis is closed; see the closure record at the end of `PROJECT_CLOSED.md`. The market total identifies a real variance environment, but point-in-time boxscore/matchup information does not identify additional games whose totals, spreads or moneylines are systematically harder to forecast. Standard closing moneylines already accommodate the total-dependent margin variance despite simple normal-link models failing to do so.
