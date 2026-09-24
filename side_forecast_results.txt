@@ -1,0 +1,132 @@
+
+==============================================================================
+PART 0 -- AUDIT
+==============================================================================
+rows 10383   duplicate GAME-ID 0
+closing spread present 100.00%   moneyline pair present 100.00%
+ties (margin == 0): 0
+
+usable rows 10383   with moneyline 10383
+D_spread : mean -0.0489  sd 13.5950  median +0.000
+moneyline: mean p 0.5631  home win rate 0.5628  Brier 0.20597
+           EXCESS Brier mean -0.00011 (zero under perfect calibration)
+           log loss 0.59791
+
+==============================================================================
+PART 1 -- SPREAD POSITIVE CONTROL: does margin-error SD rise with the total?
+==============================================================================
+
+SD(D_spread) by closing-total quintile
+      bucket      N     mean       SD  mean|.|  P|.|>10  P|.|>15
+          Q1   2137   -0.082   13.428   10.349   0.4179   0.2344
+          Q2   2016   -0.135   13.170   10.175   0.4147   0.2376
+          Q3   2152   -0.187   13.225   10.327   0.4178   0.2333
+          Q4   2063   +0.234   13.510   10.474   0.4348   0.2409
+          Q5   2015   -0.069   14.635   10.773   0.4268   0.2591
+  SD Q5/Q1 = 1.0899   monotone: False
+
+  same, by |closing spread| (the other market control):
+
+SD(D_spread) by |closing spread| quintile
+      bucket      N     mean       SD  mean|.|  P|.|>10  P|.|>15
+          Q1   2146   +0.133   14.091   11.166   0.4450   0.2623
+          Q2   2202   -0.580   13.057   10.290   0.4287   0.2262
+          Q3   1997   +0.344   13.210   10.228   0.4241   0.2399
+          Q4   2105   -0.158   13.053   10.066   0.4228   0.2328
+          Q5   1933   +0.067   14.565   10.312   0.3875   0.2437
+  SD Q5/Q1 = 1.0337   monotone: False
+
+  8-bin slope of SD(D_spread) vs total: +0.03696 pts per pt of total
+     (for comparison, SD(D_total) vs total was +0.04187)
+
+==============================================================================
+PART 2 -- MONEYLINE POSITIVE CONTROL: does calibration depend on the total?
+==============================================================================
+EXCESS Brier = (Y-p)^2 - p(1-p); mean zero under perfect calibration at any p
+
+   total quintile      N   mean p  win rate     bias    Brier    xBrier  logloss
+               Q1   2137   0.5780    0.5793  +0.0013  0.21219  +0.00224  0.61110
+               Q2   2016   0.5652    0.5600  -0.0052  0.20157  -0.00486  0.58782
+               Q3   2152   0.5591    0.5488  -0.0103  0.20484  -0.00058  0.59661
+               Q4   2063   0.5588    0.5768  +0.0180  0.20326  +0.00005  0.59162
+               Q5   2015   0.5537    0.5489  -0.0049  0.20777  +0.00250  0.60185
+  xBrier Q5-Q1 = +0.00026
+
+  logit(Y) ~ logit(p) [+ total/10]:  coef on total -0.00587   LR chi2 0.081  p = 0.7765
+  coef on logit(p) +1.0042 (1.0 = perfectly calibrated slope)
+
+==============================================================================
+PART 3 SETUP -- POINT-IN-TIME STATE (same builder as the totals study)
+==============================================================================
+PIT features per team 64   join 10383 -> 10383  gid unique True
+matchup features 21   market controls ['total', 'absspread', 'spread']
+modelling rows 9748   train 4801   test 4947
+
+==============================================================================
+PART 3/4 -- DOES MATCHUP STATE ADD BEYOND SPREAD + TOTAL?  (OOS)
+==============================================================================
+TARGET: |D_spread|
+  market only (total,|spr|,spr)  OOS corr -0.0063   MAE 6.7388
+  matchup only                   OOS corr +0.0150   MAE 6.7698
+  market + matchup               OOS corr +0.0136   MAE 6.7556
+
+  in-sample corr +0.4091  vs  OOS +0.0150
+
+DECISIVE OOS TABLE -- spread difficulty score
+      bucket      N     mean       SD  mean|.|  P|.|>10  P|.|>15
+          Q1    990   -0.116   14.953   10.566   0.4253   0.2475
+          Q2    989   +0.419   13.468   10.550   0.4348   0.2477
+          Q3    989   +0.017   14.236   10.915   0.4429   0.2669
+          Q4    989   -0.075   14.199   10.526   0.4146   0.2437
+          Q5    990   +0.320   13.573   10.700   0.4404   0.2505
+  SD Q5/Q1 = 0.9077   monotone: False
+
+RESIDUALISED on total, |spread|, season
+      bucket      N     mean       SD  mean|.|  P|.|>10  P|.|>15
+          Q1    990   -0.361   13.261   10.354   0.4263   0.2495
+          Q2    989   +0.598   15.280   10.813   0.4287   0.2457
+          Q3    989   +0.038   13.744   10.755   0.4408   0.2669
+          Q4    989   -0.109   13.204   10.291   0.4156   0.2396
+          Q5    990   +0.398   14.851   11.044   0.4465   0.2545
+  SD Q5/Q1 = 1.1199   monotone: False
+
+==============================================================================
+PART 4b -- MONEYLINE: can matchup state predict EXCESS BRIER?
+==============================================================================
+train 4801  test 4947
+  market only          OOS corr with xBrier +0.0099
+  matchup only         OOS corr with xBrier -0.0035
+  market + matchup     OOS corr with xBrier -0.0006
+
+    bucket      N   mean p  win rate     xBrier    Brier
+        Q1    990   0.5659    0.5596   +0.00392  0.20535
+        Q2    989   0.5569    0.5420   -0.01111  0.19740
+        Q3    989   0.5576    0.5814   +0.00241  0.20852
+        Q4    989   0.5546    0.5399   +0.00307  0.20574
+        Q5    990   0.5562    0.5646   -0.00502  0.19751
+  xBrier Q5-Q1 = -0.00895  (positive = Q5 genuinely harder)
+
+==============================================================================
+INFERENCE -- season-block bootstrap and permutation null (spread branch)
+==============================================================================
+  SD Q5/Q1 0.9077  season-block 95% CI [0.8394, 1.0810]
+  permutation null median 1.0224  95th 1.1459  max 1.2581
+  observed 0.9077  ->  p = 0.9433
+
+PER-SEASON REPLICATION (spread branch)
+  2022  n= 1241  SD Q5/Q1 1.1743
+  2023  n= 1233  SD Q5/Q1 0.8089
+  2024  n= 1236  SD Q5/Q1 0.9530
+  2025  n= 1237  SD Q5/Q1 0.9008
+
+==============================================================================
+DECISION
+==============================================================================
+  1. spread positive control (SD rises with total) : 1.0899 ratio, monotone False
+  2. moneyline calibration depends on total        : see Part 2 LR test
+  3. orders dispersion OOS / monotone              : False
+  4. SD Q5/Q1 >= 1.15                              : False (0.9077)
+  5. survives conditioning on total+spread         : False (1.1199)
+  6. beats permutation null                        : False
+
+  STAGE 5 (Kalshi) IS GATED ON 3-6 AND IS NOT RUN HERE.
