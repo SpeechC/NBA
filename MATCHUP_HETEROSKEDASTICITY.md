@@ -112,9 +112,11 @@ mis-scaling — which separately failed to trade.
 ## Status
 
 **Established from the team box scores:** there is real *unconditional* scaling
-of total-error dispersion with the closing total (sd 17.09 → 19.32, VarRatio
-1.278), but the 19 point-in-time matchup features produce **no OOS
-heteroskedasticity beyond it** (OOS corr −0.014).
+of total-error dispersion with the closing total (8-bin sd 17.53 → 19.05;
+quintile ratio 1.048 and non-monotone — see the correction above), but the 19
+point-in-time matchup features produce **no OOS heteroskedasticity beyond it**
+(OOS corr −0.014). Confirmed independently at larger scale in
+`MATCHUP_DISPERSION_STUDY.md` (31 matchup features, 77 PIT inputs).
 
 **Not established:** that Kalshi prices that scaling correctly. See
 `KALSHI_SIGMA_ENVELOPE.md`.
@@ -122,9 +124,12 @@ heteroskedasticity beyond it** (OOS corr −0.014).
 "These games are harder" is **not established** from matchup state — three
 distinct operationalisations now agree (11 predefined archetypes in
 `MATCHUP_HARDNESS.md`, the four in `CONDITIONAL_DISPERSION_GATE.md`, and the
-fitted continuous score here). "Harder than the market realises" is
-**refuted for the totals instrument**, in slope and level, on the venue we
-actually trade.
+fitted continuous score here, plus the full protocol in
+`MATCHUP_DISPERSION_STUDY.md` — four). "Harder than the market realises" is
+**NOT established either way**: the slope/level claim that once sat here came
+from the struck mid-based fit, and the corrected interval analysis leaves the
+question unidentified (`KALSHI_DISTFREE_LADDER.md`,
+`KALSHI_REPEATED_LADDERS.md`).
 
 Not closed, but the remaining room is narrow and specific:
 
