@@ -137,13 +137,29 @@ class NBAKalshi:
         return d.get("events", [])
 
     def ladder(self, ev_ticker):
-        """[(strike, ticker, yes_ask, yes_ask_size, yes_bid, status)] ascending.
+        """Per-rung quotes, ascending by strike, BOTH sides.
 
         FIELD NAMES: the API returns `yes_ask_dollars` as a STRING IN DOLLARS
         ('0.2500'), not `yes_ask` in cents. Reading the obvious name yields None
         for every market and silently trades nothing. `yes_ask_size_fp` is the
         contracts available AT that ask -- the capacity constraint this whole
         programme keeps hitting, and it is free here.
+
+        NO SIDE: prices come from the exchange's own `no_bid_dollars` /
+        `no_ask_dollars`. SIZES DO NOT EXIST for the NO side -- the API ships
+        only `yes_bid_size_fp` and `yes_ask_size_fp` -- so they are MIRRORED:
+        a NO buy consumes the YES BID book, hence
+
+            no_ask_size = yes_bid_size      no_bid_size = yes_ask_size
+
+        which is the depth correction already on record from the weather work;
+        the mirrored side is routinely 10-40x thinner than the quoted one.
+
+        `no_complement_ok` is False if the exchange ever stops being an exact
+        complement (no_bid == 1-yes_ask and no_ask == 1-yes_bid). That identity
+        is verified on 470 live markets across 4 series with 0 violations, and
+        nba_live_trader._quote() DERIVES the NO side from it rather than reading
+        these fields -- so a divergence must be surfaced, not silently absorbed.
         """
         d = self.c.get("/markets", {"event_ticker": ev_ticker, "limit": 200}) or {}
         out = []
@@ -152,9 +168,16 @@ class NBAKalshi:
             if fs is None:
                 continue
             g = lambda k: (lambda v: None if v is None else float(v))(m.get(k))
+            yb, ya = g("yes_bid_dollars"), g("yes_ask_dollars")
+            nb, na = g("no_bid_dollars"), g("no_ask_dollars")
+            ok = (None not in (yb, ya, nb, na)
+                  and abs(nb - (1.0 - ya)) < 1e-9 and abs(na - (1.0 - yb)) < 1e-9)
             out.append(dict(strike=float(fs), ticker=m["ticker"],
-                            yes_ask=g("yes_ask_dollars"), yes_ask_size=g("yes_ask_size_fp"),
-                            yes_bid=g("yes_bid_dollars"), yes_bid_size=g("yes_bid_size_fp"),
+                            yes_ask=ya, yes_ask_size=g("yes_ask_size_fp"),
+                            yes_bid=yb, yes_bid_size=g("yes_bid_size_fp"),
+                            no_ask=na, no_ask_size=g("yes_bid_size_fp"),
+                            no_bid=nb, no_bid_size=g("yes_ask_size_fp"),
+                            no_complement_ok=ok,
                             ranges=price_ranges(m),
                             status=m.get("status"), title=m.get("yes_sub_title")))
         return sorted(out, key=lambda r: r["strike"])

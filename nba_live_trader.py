@@ -646,8 +646,22 @@ def cancel_stale(arm=False, demo=False, minutes_to_tip=20):
     return 0
 
 
-def verify_no_side(demo=True):
+def verify_no_side(arm=False, demo=False):
     """Prove the NO-side schema with ONE contract before any UNDER goes live.
+
+    *** THIS COULD NEVER PASS BEFORE 2026-10-07. ***  It gated on
+    `r.get("no_ask")`, but NBAKalshi.ladder() returned only the YES side, so
+    that key was ALWAYS None, the branch never fired, and the function fell
+    through to "no suitable NO quote found; retry when a slate is up" -- a
+    message that reads like a quiet market rather than a bug, which is exactly
+    why it stayed unresolved for weeks. ladder() now returns no_bid/no_ask from
+    the exchange and mirrors the sizes. Do not re-introduce a NO-side read that
+    depends on a key the ladder does not actually produce.
+
+    Order of operations also changed: SELECT and REPORT the probe target first,
+    from a read-only production call, and place an order only when --arm is
+    given. Previously a failed demo auth returned before anything was inspected,
+    so a run told you nothing at all.
 
     This is the single unproven call in the stack: buy_yes has placed real
     orders, buy_no has not. Until this prints PASS, gate() refuses every UNDER,
@@ -666,28 +680,54 @@ def verify_no_side(demo=True):
     code, who = k.whoami()
     print(f"auth {code} base={k.c.base_url} balance={who.get('balance')}")
     if code != 200:
-        if demo:
-            print("  demo auth failed -- Kalshi demo needs a SEPARATE key.\n"
-                  "  Either add one, or re-run with --arm to probe production "
-                  "with 1 contract (~$1 at risk).")
+        print("  auth failed -- nothing inspected." + ("\n  Kalshi demo needs a "
+              "SEPARATE key; drop --demo to read production." if demo else ""))
         return 1
+
+    # ---- select the probe target (READ ONLY) -----------------------------
+    target, scanned, complement_bad = None, 0, 0
     for ev in list(k.open_events())[:6]:
         for r in k.ladder(ev["event_ticker"]):
-            if r.get("no_ask") and 0.2 < r["no_ask"] < 0.8 and (r.get("no_ask_size") or 0) >= 1:
-                print(f"probing {r['ticker']} NO @ {r['no_ask']:.2f}")
-                http, resp = k.buy_no(r["ticker"], 1, r["no_ask"], tag="verify")
-                print(f"  http={http}  {json.dumps(resp)[:400]}")
-                if http == 201:
-                    print("  PASS -- side='ask' buys NO. Set NBA_NO_SIDE_VERIFIED=1.")
-                    if not demo:
-                        print(f"  NOTE: 1 REAL contract of {r['ticker']} may now be "
-                              f"held. Close it or let it settle.")
-                    return 0
-                print("  FAIL -- side='ask' is not the NO schema; do NOT arm UNDER.\n"
-                      "  PaceGap and MOVE_COMBINED will trade OVER only; CrewShock "
-                      "is unaffected.")
-                return 1
-    print("no suitable NO quote found; retry when a slate is up")
+            scanned += 1
+            if not r.get("no_complement_ok"):
+                complement_bad += 1
+            na, sz = r.get("no_ask"), r.get("no_ask_size") or 0
+            # mid-book so the probe is cheap and the fee is not the whole cost,
+            # and deep enough that a 1-lot cannot fail for want of size
+            if na and 0.2 < na < 0.8 and sz >= 1 and target is None:
+                target = r
+    print(f"scanned {scanned} rungs across {min(6, len(k.open_events()))} open events; "
+          f"complement identity failed on {complement_bad}")
+    if complement_bad:
+        print("  WARNING: no_bid == 1-yes_ask / no_ask == 1-yes_bid does NOT hold on "
+              "some rungs.\n  _quote() DERIVES the NO side from that identity -- "
+              "investigate before arming UNDER.")
+    if target is None:
+        print("no suitable mid-book NO quote (0.20-0.80 with size >= 1) in the open "
+              "slate.\n  This is now a real market condition, not the old bug.")
+        return 1
+    print(f"probe target: {target['ticker']}  NO ask {target['no_ask']:.2f}  "
+          f"size {target['no_ask_size']:.0f}  (YES {target['yes_bid']:.2f}/"
+          f"{target['yes_ask']:.2f})")
+
+    if not arm:
+        print(f"\nPREVIEW ONLY -- no order placed. Re-run with --arm to buy 1 "
+              f"contract\nat {target['no_ask']:.2f} (~${target['no_ask']:.2f} at risk) "
+              f"and prove the schema.")
+        return 1
+
+    # ---- place exactly one contract --------------------------------------
+    print(f"ARMED: buying 1 NO @ {target['no_ask']:.2f}")
+    http, resp = k.buy_no(target["ticker"], 1, target["no_ask"], tag="verify")
+    print(f"  http={http}  {json.dumps(resp)[:400]}")
+    if http == 201:
+        print("  PASS -- side='ask' buys NO. Set NBA_NO_SIDE_VERIFIED=1.")
+        if not demo:
+            print(f"  NOTE: 1 REAL contract of {target['ticker']} may now be held. "
+                  f"Close it or let it settle.")
+        return 0
+    print("  FAIL -- side='ask' is not the NO schema; do NOT arm UNDER.\n"
+          "  PaceGap and MOVE_COMBINED will trade OVER only; CrewShock is unaffected.")
     return 1
 
 
@@ -704,7 +744,7 @@ if __name__ == "__main__":
     p.add_argument("--verify-no-side", action="store_true")
     a = p.parse_args()
     if a.verify_no_side:
-        sys.exit(verify_no_side(demo=not a.arm))
+        sys.exit(verify_no_side(arm=a.arm, demo=a.demo))
     if a.cancel:
         sys.exit(cancel_stale(arm=a.arm, demo=a.demo))
     sys.exit(run(a.date, arm=a.arm, demo=a.demo, only=a.strategy, take=a.take))
