@@ -980,7 +980,30 @@ if __name__ == "__main__":
     p.add_argument("--cancel", action="store_true",
                    help="pull resting orders on games near tip (own cron entry)")
     p.add_argument("--verify-no-side", action="store_true")
+    p.add_argument("--fund-shard", type=float, metavar="DOLLARS",
+                   help="preallocate collateral on the NBA exchange shard "
+                        "(dry run unless --arm)")
     a = p.parse_args()
+    if a.fund_shard is not None:
+        _k = NK.NBAKalshi()
+        _idx = _k.series_shard()
+        if _idx is None:
+            sys.exit("no open NBA event -- cannot read the target exchange_index")
+        _bal = _k.shard_balance()
+        print("balance by shard: " + ", ".join(f"{i}=${v:.2f}" for i, v in sorted(_bal.items())))
+        print(f"{NK.SERIES} trades on exchange_index {_idx}")
+        if _bal.get(0, 0.0) < a.fund_shard:
+            sys.exit(f"shard 0 holds ${_bal.get(0,0.0):.2f}; cannot send ${a.fund_shard:.2f}")
+        code, out = _k.transfer_shard(a.fund_shard, _idx, src_shard=0, dry=not a.arm)
+        if code is None:
+            print("Re-run with --arm to send it.")
+            sys.exit(1)
+        print(f"  http={code}  {json.dumps(out)[:300]}")
+        if code == 200:
+            print("  balance after: " + ", ".join(
+                f"{i}=${v:.2f}" for i, v in sorted(_k.shard_balance().items())))
+        sys.exit(0 if code == 200 else 1)
+
     if a.verify_no_side:
         sys.exit(verify_no_side(arm=a.arm, demo=a.demo))
     if a.cancel:

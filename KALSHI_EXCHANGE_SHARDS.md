@@ -76,3 +76,76 @@ shard 3 — a money movement, which is not something to do unasked.
 
 Once shard 3 is funded, `nba_live_trader.py --verify-no-side --arm` buys 1
 contract at ~$0.45 and settles the schema question in one call.
+
+
+---
+
+# How to transfer funds between shards (2026-10-07)
+
+Found via `docs.kalshi.com/getting_started/exchange_sharding` — the page the
+error message was pointing at.
+
+## The endpoint
+
+```
+POST /portfolio/intra_exchange_instance_transfer
+{
+  "source": "event_contract",          # exchange INSTANCE, not the shard
+  "destination": "event_contract",
+  "amount": 100000,                    # *** CENTICENTS ***  $10 = 100,000
+  "source_exchange_shard": 0,
+  "destination_exchange_shard": 3,
+  "source_subaccount": 0,
+  "destination_subaccount": 0
+}
+```
+
+Returns `transfer_id` on HTTP 200. Two traps in that body:
+
+- **`amount` is in centicents**, not cents and not dollars. $1 = 10,000. Off by
+  a factor of 100 either way is the obvious failure, so `transfer_shard()` takes
+  **dollars**, converts, and prints the computed body before sending.
+- **`source`/`destination` are the exchange *instance*** (`event_contract` or
+  `margined`), which is a *different axis* from the shard index. A shard-to-shard
+  move inside event contracts keeps both as `event_contract` and varies only
+  `*_exchange_shard`.
+
+## A second bug this uncovered — our orders were not shard-routed
+
+The same doc: *"If `exchange_index` is `-1`, auto-routes using the required
+`market_ticker`"*, and omitting it **defaults to shard 0**. Our `_order()` never
+sent `exchange_index` at all, so NBA orders were being addressed to the wrong
+shard independently of the funding problem. `exchange_index: -1` is now in the
+order body.
+
+Routing alone would not have been enough: *"Programmatic traders must
+preallocate collateral on a given exchange shard before order placement"* —
+collateral checks run inside each matching engine. Both fixes are required.
+
+## The command
+
+```bash
+cd /mnt/d/Kalshi/nba
+/home/dpope/nba_env/bin/python nba_live_trader.py --fund-shard 10          # dry run
+/home/dpope/nba_env/bin/python nba_live_trader.py --fund-shard 10 --arm    # sends it
+```
+
+It reads the target `exchange_index` from a live NBA event rather than
+hardcoding 3, refuses if shard 0 cannot cover the amount, prints the exact body,
+and is **dry by default**. Dry-run output:
+
+```
+balance by shard: 0=$40.05, 1=$0.00, 2=$0.00, 3=$0.00
+KXNBATOTAL trades on exchange_index 3
+transfer $10.00 = 100,000 centicents  shard 0 -> 3
+```
+
+## How much
+
+The trade path needs enough on shard 3 to cover a day, not a season — positions
+settle and return collateral. `MAX_NOTIONAL_DAY` is **$30**, and ~306 trades a
+season at ~$0.48 is ~$147 of cumulative turnover. **$10–15 funds the
+1-contract test comfortably**; the whole account is $40.05.
+
+Transfers are reversible — the same call with source and destination swapped
+moves it back.

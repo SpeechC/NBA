@@ -15,7 +15,7 @@ MARKET STRUCTURE (verified against kalshi_nba_totals.sqlite, 1,324 events)
 EVERY RUNG IS AN "OVER". Betting UNDER therefore requires a NO-side order, which
 is the ONE thing in this file not already proven in production code. See buy_no().
 """
-import os, sys, math, uuid, datetime as dt
+import os, sys, math, uuid, json, datetime as dt
 
 KALSHI_CLIENT_DIR = os.environ.get("KALSHI_CLIENT_DIR", "/mnt/d/Kalshi")
 if KALSHI_CLIENT_DIR not in sys.path:
@@ -233,10 +233,19 @@ class NBAKalshi:
         path = "/portfolio/events/orders"
         url = f"{self.c.base_url}{path}"
         coid = self._coid(ticker, tag)
+        # exchange_index = -1 AUTO-ROUTES to the shard that lists the ticker.
+        # Omitting it defaults to shard 0, which is NOT where NBA trades (NBA is
+        # shard 3, "Tennis, Baseball, Basketball"). Documented at
+        # docs.kalshi.com/getting_started/exchange_sharding: "If exchange_index
+        # is -1, auto-routes using the required market_ticker."
+        # Routing alone is NOT sufficient -- Kalshi runs collateral checks inside
+        # each matching engine, so funds must ALSO be preallocated on that shard
+        # (see transfer_shard() and shard_balance()).
         body = {"ticker": ticker, "side": side, "count": str(int(count)),
                 "price": f"{float(limit_dollars):.4f}",
                 "time_in_force": "good_till_canceled",
                 "self_trade_prevention_type": "taker_at_cross",
+                "exchange_index": -1,
                 "client_order_id": coid}
         h = dict(self.c._auth_headers("POST", url)); h["Content-Type"] = "application/json"
         r = self.c.session.post(url, headers=h, json=body, timeout=10)
@@ -269,6 +278,47 @@ class NBAKalshi:
         NO_SIDE_VERIFIED is set, precisely so this cannot go out untested.
         """
         return self._order(ticker, "ask", count, limit_dollars, tag)
+
+    def transfer_shard(self, amount_dollars, dest_shard, src_shard=0, dry=True):
+        """Move funds between exchange shards. POST /portfolio/intra_exchange_instance_transfer.
+
+        Kalshi runs collateral checks inside each matching engine, so a
+        programmatic trader must PREALLOCATE on the shard it intends to trade.
+        A balance on shard 0 buys nothing on shard 3.
+
+        *** `amount` IS IN CENTICENTS. *** $1 = 100 cents = 10,000 centicents.
+        Getting that wrong by a factor of 100 is the obvious way to move far more
+        or far less than intended, so the dollar figure is converted here and the
+        computed body is printed before anything is sent.
+
+        `source` / `destination` are the exchange INSTANCE (`event_contract` or
+        `margined`), which is a different axis from the SHARD index. A
+        shard-to-shard move within event contracts keeps both as
+        `event_contract`.
+
+        dry=True by default: returns the exact body without sending it.
+        """
+        cc = int(round(float(amount_dollars) * 10000))
+        body = {"source": "event_contract", "destination": "event_contract",
+                "amount": cc,
+                "source_exchange_shard": int(src_shard),
+                "destination_exchange_shard": int(dest_shard),
+                "source_subaccount": 0, "destination_subaccount": 0}
+        print(f"transfer ${float(amount_dollars):.2f} = {cc:,} centicents  "
+              f"shard {src_shard} -> {dest_shard}")
+        print(f"  body: {json.dumps(body)}")
+        if dry:
+            print("  DRY RUN -- nothing sent.")
+            return None, body
+        path = "/portfolio/intra_exchange_instance_transfer"
+        url = f"{self.c.base_url}{path}"
+        h = dict(self.c._auth_headers("POST", url)); h["Content-Type"] = "application/json"
+        r = self.c.session.post(url, headers=h, json=body, timeout=15)
+        try:
+            out = r.json() if r.content else {}
+        except Exception:
+            out = {"raw": r.text[:300]}
+        return r.status_code, out
 
     def resting_orders(self, status="resting"):
         d = self.c.get("/portfolio/orders", {"limit": 200, "status": status}) or {}
