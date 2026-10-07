@@ -177,6 +177,8 @@ STRATS = {
 # Last 7 days of the regular season, inclusive. Override for a schedule change.
 FINAL7_LAST_REGULAR = os.environ.get("NBA_LAST_REGULAR", "2027-04-11")
 FINAL7_DAYS         = int(os.environ.get("NBA_FINAL7_DAYS", "7"))
+# days_left <= FINAL7_DAYS, so 7 means EIGHT calendar days. That is the
+# validated definition (monitor_season_pnl.py:64), not an off-by-one.
 for _k, _v in STRATS.items():
     _v["delta"] = delta_points(_v["hit"])
 
@@ -418,10 +420,32 @@ def signals(day):
 
 
 def in_final7_window(day):
-    """Is `day` inside the last FINAL7_DAYS of the regular season?
+    """Is `day` inside final7's window?
+
+    *** THE COMPARISON IS `<=`, NOT `<`, AND THAT IS NOT A STYLE CHOICE. ***
+    The validated rule is monitor_season_pnl.py line 64:
+
+        days_left = max(date within the Regular Season label) - date
+        final7    = days_left <= 7
+
+    which spans EIGHT calendar days, days_left 0..7. This function used
+    `(last - d).days < FINAL7_DAYS` with FINAL7_DAYS=7, i.e. days_left 0..6 --
+    SEVEN days. That off-by-one dropped the earliest day of the window and bet
+    451 games across 2017-2025 where the validated rule bets 527, **14.4%
+    fewer**, so the live rule was not the rule the 55.29% was measured on.
+
+    Reconciliation is exact: `days_left <= 7` on the Regular Season label,
+    excluding pushes, reproduces the published per-season counts
+    62/62/68/63/67/69/67/69 = 527 on all eight seasons. (Pushes are a
+    sportsbook no-action and cannot occur on Kalshi, where every strike is .5.)
+
+    FINAL7_LAST_REGULAR MUST BE THE LAST REGULAR-SEASON DATE, not the play-in
+    end. `DATASET_H` labels "Play-In" separately from "Playoffs", and treating
+    play-in games as regular season moved the 2025-26 anchor from 2026-04-12 to
+    2026-04-17 and shifted the whole window.
 
     Inclusive of the last day. 2020-21 is the reason this is a hard window and
-    not 'April': that season ran into May and the rule lost 10.16% when the
+    not "April": that season ran into May and the rule lost 10.16% when the
     calendar assumption broke.
     """
     try:
@@ -429,7 +453,7 @@ def in_final7_window(day):
         d = dt.date.fromisoformat(str(day)[:10])
     except ValueError:
         return False
-    return 0 <= (last - d).days < FINAL7_DAYS
+    return 0 <= (last - d).days <= FINAL7_DAYS      # <= : see docstring
 
 
 def _abbr():

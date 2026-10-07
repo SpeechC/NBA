@@ -82,7 +82,10 @@ sig['crewshock'] = cw.assign(dir='OVER', line='close')[['ds', 'TEAM_H', 'TEAM_R'
     .rename(columns={'TEAM_H': 'h', 'TEAM_R': 'r'})
 print(f"  crewshock signals 2025-26: {len(cw)}")
 
-f7 = S25[(~S25.playoff) & (S25.date > last_reg - pd.Timedelta(days=7))]
+# days_left <= 7 -> EIGHT calendar days, the validated definition
+# (monitor_season_pnl.py:64). `> last - 7d` would be seven days and is the
+# off-by-one that was in the trader.
+f7 = S25[(~S25.playoff) & (S25.date >= last_reg - pd.Timedelta(days=7))]
 sig['final7'] = f7.assign(dir='OVER', line='close')[['ds', 'h', 'r', 'dir', 'line']]
 print(f"  final7 signals 2025-26:    {len(f7)}  "
       f"({(last_reg - pd.Timedelta(days=6)).date()} .. {last_reg.date()})")
