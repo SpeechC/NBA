@@ -900,10 +900,13 @@ def verify_no_side(arm=False, demo=False):
             if not r.get("no_complement_ok"):
                 complement_bad += 1
             na, sz = r.get("no_ask"), r.get("no_ask_size") or 0
-            # mid-book so the probe is cheap and the fee is not the whole cost,
-            # and deep enough that a 1-lot cannot fail for want of size
-            if na and 0.2 < na < 0.8 and sz >= 1 and target is None:
-                target = r
+            # mid-book so the probe is cheap and the fee is not the whole cost.
+            # Pick the DEEPEST qualifying rung, not the first: a size-1 rung can
+            # be taken between the preview and the order, and a probe that fails
+            # for want of size would read as a schema failure when it is a race.
+            if na and 0.2 < na < 0.8 and sz >= 1:
+                if target is None or sz > (target.get("no_ask_size") or 0):
+                    target = r
     print(f"scanned {scanned} rungs across {min(6, len(k.open_events()))} open events; "
           f"complement identity failed on {complement_bad}")
     if complement_bad:
@@ -925,9 +928,34 @@ def verify_no_side(arm=False, demo=False):
         return 1
 
     # ---- place exactly one contract --------------------------------------
+    # SHARD CHECK BEFORE SPENDING. Kalshi shards its exchange and funds do not
+    # cross; NBA is on shard 3 while this account's balance sits on shard 0. An
+    # order sent anyway returns 404 insufficient_shard_balance, which the first
+    # version of this function reported as "side='ask' is not the NO schema" --
+    # a flatly wrong conclusion from an account-routing error.
+    bal = k.shard_balance()
+    idx = k.series_shard()
+    if idx is not None and bal:
+        have = bal.get(int(idx), 0.0)
+        print(f"shard check: {NK.SERIES} is on exchange_index {idx}; "
+              f"balance there ${have:.2f}  (all shards: "
+              + ", ".join(f"{i}=${v:.2f}" for i, v in sorted(bal.items())) + ")")
+        if have < float(target["no_ask"]) + 0.05:
+            print(f"  ABORT -- ${have:.2f} on shard {idx} cannot fund a "
+                  f"${target['no_ask']:.2f} contract.\n"
+                  f"  THIS IS NOT A SCHEMA PROBLEM. Transfer funds to exchange_index "
+                  f"{idx} first;\n  intra-exchange transfers are active. The NO side "
+                  f"stays UNVERIFIED either way.")
+            return 1
+
     print(f"ARMED: buying 1 NO @ {target['no_ask']:.2f}")
     http, resp = k.buy_no(target["ticker"], 1, target["no_ask"], tag="verify")
     print(f"  http={http}  {json.dumps(resp)[:400]}")
+    code = ((resp.get("error") or {}).get("code") or "") if isinstance(resp, dict) else ""
+    if http != 201 and ("shard" in str(code) or "shard" in json.dumps(resp)):
+        print("  INCONCLUSIVE -- account/routing error, NOT a verdict on the NO\n"
+              "  schema. Funds are on the wrong exchange shard. Fix that and re-run.")
+        return 1
     if http == 201:
         print("  PASS -- side='ask' buys NO. Set NBA_NO_SIDE_VERIFIED=1.")
         if not demo:

@@ -131,6 +131,37 @@ class NBAKalshi:
         except Exception as e:
             return None, {"error": str(e)}
 
+    def shard_balance(self):
+        """{exchange_index: dollars} from /portfolio/balance.
+
+        KALSHI SHARDS ITS EXCHANGE AND FUNDS DO NOT CROSS. Discovered
+        2026-10-07 when a 1-contract NBA probe returned
+
+            404 insufficient_shard_balance -- "Exchange user not found"
+
+        which looks like a bad order but is an account-routing error. The shards
+        are 0 Default, 1 Combos, 2 Crypto & Commodities, 3 Tennis/Baseball/
+        Basketball. EVERY NBA series is on shard 3; the mention markets this
+        account has traded are on shard 0. A balance on 0 buys nothing on 3.
+        """
+        d = self.c.get("/portfolio/balance") or {}
+        out = {}
+        for x in d.get("balance_breakdown", []) or []:
+            try:
+                out[int(x["exchange_index"])] = float(x["balance"])
+            except (KeyError, TypeError, ValueError):
+                continue
+        return out
+
+    def series_shard(self, series=None):
+        """exchange_index the series trades on, read from an open event. None if
+        no open event. Do not hardcode: NBA is 3 today, but it is a property of
+        the venue, not of us."""
+        d = self.c.get("/events", {"series_ticker": series or SERIES,
+                                   "status": "open", "limit": 1}) or {}
+        ev = (d.get("events") or [None])[0]
+        return None if ev is None else ev.get("exchange_index")
+
     def open_events(self, limit=200):
         d = self.c.get("/events", {"series_ticker": SERIES, "status": "open",
                                    "limit": limit}) or {}

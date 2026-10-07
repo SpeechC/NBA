@@ -334,6 +334,30 @@ def preflight(day):
     except Exception as e:
         chk("Kalshi auth", False, f"{type(e).__name__}: {e}")
 
+    # SHARD FUNDING. Kalshi shards its exchange and funds do not cross between
+    # shards. Every NBA series is on exchange_index 3 (Tennis/Baseball/
+    # Basketball); this account's balance has been on 0 (Default), where the
+    # mention markets live. An order sent with $0 on the NBA shard returns
+    # 404 insufficient_shard_balance -- so WITHOUT THIS CHECK the trader places
+    # nothing all season and every rejection looks like a bad order. Found
+    # 2026-10-07 by a 1-contract probe, not by reading the docs.
+    try:
+        import nba_kalshi as NKQ
+        _k = NKQ.NBAKalshi()
+        _bal, _idx = _k.shard_balance(), _k.series_shard()
+        if _idx is None:
+            chk("NBA shard funded", None,
+                "no open NBA event to read exchange_index from -- recheck in season")
+        else:
+            _have = _bal.get(int(_idx), 0.0)
+            chk("NBA shard funded", _have > 0.0,
+                f"${_have:.2f} on exchange_index {_idx} ("
+                + ", ".join(f"{i}=${v:.2f}" for i, v in sorted(_bal.items()))
+                + (")" if _have > 0 else ") -- TRANSFER FUNDS TO SHARD "
+                   f"{_idx}; every NBA order will 404 until then"))
+    except Exception as e:
+        chk("NBA shard funded", False, f"{type(e).__name__}: {e}")
+
     try:
         import nba_live_trader as LT
         chk("NO-side verified", LT.NO_SIDE_VERIFIED,
