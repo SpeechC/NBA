@@ -83,6 +83,17 @@ final7 measured better on Kalshi (+5.96% vs +5.14%) only because its games
 happened to carry a 0.502 average ask rather than the board's 0.507 — **half a
 cent**. That is noise, not a venue advantage.
 
+
+> **SUPERSEDED 2026-10-07 — see `EDGE_TRAVEL.md`.** The mechanism asserted below
+> ("the edge sits at the line and does not travel along the ladder") is
+> **withdrawn**. Measured on boxscores over all 8 seasons, the edge IS retained
+> at the offsets that actually occurred: ratio to the location-shift model is
+> 1.07 at the line and 1.04 at +1.5 points, and max-edge's mean offset was
+> +1.83. Decay only appears beyond ±6 points, where retention is 64-71% against
+> the model's 88%. The 2025-26 max-edge-vs-nearest-line gap was **noise**, as
+> the paired test said (t +0.79 and +1.16, both CIs including zero); I built a
+> mechanism to explain an insignificant result instead of accepting it.
+
 ## The corrected picture
 
 1. **Line values: identical.** Median difference 0.001 points, corr 0.9975.

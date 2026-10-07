@@ -53,6 +53,17 @@ ROI peaks **at the line** and degrades in **both** directions, monotonically
 outward. All buckets are negative because 2025-26 was a losing season overall;
 the shape is the point, not the level.
 
+
+> **SUPERSEDED 2026-10-07 — see `EDGE_TRAVEL.md`.** The mechanism asserted below
+> ("the edge sits at the line and does not travel along the ladder") is
+> **withdrawn**. Measured on boxscores over all 8 seasons, the edge IS retained
+> at the offsets that actually occurred: ratio to the location-shift model is
+> 1.07 at the line and 1.04 at +1.5 points, and max-edge's mean offset was
+> +1.83. Decay only appears beyond ±6 points, where retention is 64-71% against
+> the model's 88%. The 2025-26 max-edge-vs-nearest-line gap was **noise**, as
+> the paired test said (t +0.79 and +1.16, both CIs including zero); I built a
+> mechanism to explain an insignificant result instead of accepting it.
+
 ## Mechanism
 
 `edge = p_model − ask − fee`, and `p_model` comes from a **normal at
