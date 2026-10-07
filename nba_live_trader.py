@@ -219,6 +219,15 @@ IMPROVE_FROM         = 3        # spread in cents at/above which we post bid+1c
                                 # to jump the queue; below it we simply join
 KILL_SWITCH          = os.path.expanduser("~/data/NBA_TRADING_HALT")
 FILLS                = os.path.expanduser("~/data/nba_kalshi_fills.csv")
+# Rung-choice sidecar. SEPARATE FILE ON PURPOSE: _log() writes FILL_COLS with
+# writeheader() only when the file is new, so adding columns to the live fills
+# CSV would misalign every subsequent row against the existing header. This is
+# also read by nothing in the trading path.
+RUNGLOG              = os.path.expanduser("~/data/nba_rung_choice.csv")
+RUNG_COLS = ["ts_utc","mode","strategy","game","event","dir","ref_line","mu_hat",
+             "mu_mkt","sigma_mkt","n_cands","n_gated","rule","ticker","strike",
+             "offset_pts","price","p_model","edge","is_traded","rules_agree",
+             "would_gate"]
 FILL_COLS = ["ts_utc","mode","strategy","game","event","ticker","strike","side",
              "count","limit_price","p_model","p_market","edge","mu_hat","mu_mkt",
              "sigma_mkt","ref_line","http","order_id","client_order_id","note"]
@@ -482,6 +491,73 @@ def _decline(s, game, ev, note, **extra):
     return r
 
 
+def _log_rungs(rows):
+    """Append the rung-choice sidecar. REPORTING ONLY -- never consulted by
+    candidates(), gate() or run(), so it cannot alter what is traded."""
+    if not rows:
+        return
+    new = not os.path.exists(RUNGLOG)
+    os.makedirs(os.path.dirname(RUNGLOG), exist_ok=True)
+    with open(RUNGLOG, "a", newline="") as f:
+        w = csv.DictWriter(f, RUNG_COLS)
+        if new:
+            w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k, "") for k in RUNG_COLS})
+
+
+def _rung_choice_rows(s, game, ev, ref, mu_hat, mu_mkt, sig_mkt, cands, state, mode):
+    """Both candidate rung rules for one signal, for later settlement.
+
+    WHY THIS EXISTS. The trader buys the MAX-EDGE rung. That rule's advantage was
+    measured in maker framing on synthetic boards where the pricing model was
+    correct by construction (maker_figure_provenance.py draws truth and market
+    from the same normal with the same sigma), so maximising modelled EV had to
+    win. On real 2025-26 books as a taker it did WORSE than simply buying the
+    rung nearest the line -- crewshock -7.89% vs -4.73%, final7 -1.81% vs
+    +5.96% -- but the paired test over one season is not significant (t +0.79
+    and +1.16). Logging both choices settles it out of sample at zero cost.
+
+    The counterfactual is NOT traded. gate() is evaluated against a COPY of the
+    cap state so no budget is consumed by the rung that is only recorded.
+    """
+    st = dict(state)
+    gated = [c for c in cands if gate(c, st) is None]
+    if not gated:
+        return []
+    maxedge = gated[0]                                   # cands is sorted by -edge
+    nearline = min(gated, key=lambda c: abs(c["strike"] - ref))
+    # THIRD RULE, and testing is why it is here. `nearline` is the nearest rung
+    # AMONG THOSE PASSING MIN_EDGE, and on a ladder where the at-the-line rung
+    # fails that gate it falls back to something far away -- a synthetic check
+    # put it +3.50 pts out. The variant that actually performed best in
+    # RUNG_SELECTION_TAKER.md was nearest-line with the gate BYPASSED
+    # ("nearest-line, always": crewshock -4.67%, final7 +4.97%), which is also
+    # the faithful translation of a sportsbook strategy that always bets the
+    # line. Log it too; `would_gate` records whether it was tradeable.
+    inband = [c for c in cands if MIN_PRICE <= c["price"] <= MAX_PRICE]
+    nearline_all = (min(inband, key=lambda c: abs(c["strike"] - ref))
+                    if inband else None)
+    ts = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    agree = int(maxedge["ticker"] == nearline["ticker"])
+    out = []
+    trio = [("maxedge", maxedge), ("nearline", nearline)]
+    if nearline_all is not None:
+        trio.append(("nearline_all", nearline_all))
+    for rule, c in trio:
+        out.append(dict(ts_utc=ts, mode=mode, strategy=s["strategy"], game=game,
+                        event=ev, dir=s["dir"], ref_line=ref,
+                        mu_hat=round(mu_hat, 2), mu_mkt=round(mu_mkt, 2),
+                        sigma_mkt=round(sig_mkt, 2), n_cands=len(cands),
+                        n_gated=len(gated), rule=rule, ticker=c["ticker"],
+                        strike=c["strike"], offset_pts=round(c["strike"] - ref, 2),
+                        price=c["price"], p_model=round(c["p_model"], 4),
+                        edge=round(c["edge"], 4),
+                        is_traded=int(rule == "maxedge"), rules_agree=agree,
+                        would_gate=int(gate(c, dict(state)) is None)))
+    return out
+
+
 def _log(rows):
     new = not os.path.exists(FILLS)
     os.makedirs(os.path.dirname(FILLS), exist_ok=True)
@@ -530,6 +606,7 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
     board = {e["event_ticker"]: e for e in k.open_events()}
     state = dict(day_contracts=0, day_notional=0.0)
     rows, placed, claimed = [], 0, {}
+    rung_rows = []
 
     for s in sigs:
         a, h = ab.get(s["away"], s["away"]), ab.get(s["home"], s["home"])
@@ -588,6 +665,11 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
 
         state["game_contracts"] = 0
         cands = candidates(rungs, mu_hat, sig_mkt, (s["dir"],), take=take)
+        # REPORTING ONLY: record both rung rules before anything is placed, so a
+        # dry run accumulates the comparison too. Does not touch `cands`, the
+        # cap state, or the placement loop below.
+        rung_rows += _rung_choice_rows(s, game, ev, ref, mu_hat, mu_mkt,
+                                       sig_mkt, cands, state, mode)
         if verbose:
             print(f"  {s['strategy']:<10} {game:<9} {s['dir']:<5} "
                   f"ref {ref:6.1f}  mu_hat {mu_hat:6.2f}  mkt {mu_mkt:6.2f}"
@@ -634,8 +716,14 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
             print("      no rung inside the validated span")
 
     _log(rows)
+    _log_rungs(rung_rows)
     print(f"\n{mode}: {placed} order(s), {state['day_contracts']} contracts, "
           f"${state['day_notional']:.2f} premium.  log -> {FILLS}")
+    if rung_rows:
+        _n = len({(r["event"], r["strategy"]) for r in rung_rows})
+        _ag = len({(r["event"], r["strategy"]) for r in rung_rows if r["rules_agree"]})
+        print(f"rung-choice sidecar: {_n} signal(s), maxedge==nearline on "
+              f"{_ag}/{_n}  ->  {RUNGLOG}")
     if not live and not demo:
         print("DRY RUN -- nothing was sent. Add --arm to trade.")
     return 0
