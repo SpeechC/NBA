@@ -234,18 +234,25 @@ FILL_COLS = ["ts_utc","mode","strategy","game","event","ticker","strike","side",
 
 
 # ------------------------------------------------------------ ladder inversion
-def fit_ladder(rungs):
-    """Recover (mu, sigma) the MARKET is using, from its own mid prices.
+TICK_SLACK = 0.005     # +/-0.5c: KXNBATOTAL is linear_cent, so a quote cannot
+                       # express a probability more finely than half a tick
+_MU_GRID = np.arange(-15.0, 15.001, 0.25)      # offset from the strike mean
+_SG_GRID = np.arange(9.0, 30.001, 0.25)
 
-    Least squares of Phi^-1(1 - p_mid) on strike: the slope is 1/sigma and the
-    intercept gives mu. Reading the market's sigma instead of assuming one is
-    what makes the edge comparison apples-to-apples -- an assumed sigma would
-    show edge wherever our assumption differed from theirs.
 
-    Needs >= 4 two-sided rungs inside the identified price band. Returns
-    (None, None) rather than a number it cannot stand behind: this programme
-    has one withdrawal on record (sigma=18.94 on |spread| 0.5-3) from exactly
-    the failure of pushing an inversion into a region where it is unidentified.
+def fit_ladder_mid(rungs):
+    """*** DO NOT USE. MID-BASED. Retained only so the error stays legible. ***
+
+    This was the live anchor until 2026-10-07. It regressed Phi^-1(1 - p_MID) on
+    strike, and because signals() passes ref=None for crewshock and final7,
+    `ref = mu_mkt` meant the ANCHOR OF THE ENTIRE BET for both close-settled
+    strategies was a midpoint -- not merely the drift guard.
+
+    A midpoint is not a price anyone can trade. Measured against the
+    bounds-identified anchor on the 951 fittable 2025-26 ladders it runs
+    +0.058 pts high on average with an sd of 0.360 pts, which at 2.187 pp of
+    win rate per point is 0.79 pp of probability injected by a number that does
+    not exist in the book.
     """
     from scipy.stats import norm
     xs, ys = [], []
@@ -262,11 +269,81 @@ def fit_ladder(rungs):
     m, c = np.polyfit(np.array(xs), np.array(ys), 1)
     if m <= 1e-6:
         return None, None
-    sigma = 1.0 / m
-    mu = -c * sigma
+    sigma, mu = 1.0 / m, -c / m
     if not (8.0 < sigma < 40.0) or not (150.0 < mu < 300.0):
-        return None, None      # a fit outside plausible NBA totals is a bad fit
+        return None, None
     return float(mu), float(sigma)
+
+
+def fit_ladder(rungs):
+    """Recover (mu, sigma) from the EXECUTABLE BOOK. No midpoint anywhere.
+
+    The book is an interval, not a point: a rung with bid b and ask a says only
+    that the market's probability lies in [b, a]. So the estimator is the set of
+    (mu, sigma) whose implied survival curve sits inside EVERY rung's quote,
+
+        b_j - slack  <=  1 - Phi((K_j - mu)/sigma)  <=  a_j + slack
+
+    with slack = half a tick, because a 1c grid cannot express a probability
+    more finely than that. Closed form per rung, so no mu grid is needed in the
+    feasible case: the constraint is
+
+        mu  in  [K_j - sigma*Phi^-1(1-b_j),  K_j - sigma*Phi^-1(1-a_j)]
+
+    and a sigma is feasible iff those intervals intersect. The estimate is the
+    centre of the feasible region.
+
+    WHEN NOTHING IS FEASIBLE -- and that is about a third of real ladders, since
+    no single normal fits inside the quotes -- it falls back to the (mu, sigma)
+    MINIMISING THE HINGE LOSS, which is zero inside each quote and quadratic in
+    the violation outside it. That keeps the estimator always defined. Returning
+    (None, None) there would silently drop a third of all signals for a
+    numerical reason, which is a worse failure than an approximate anchor.
+
+    Returns (mu, sigma). Use fit_ladder_detail() when the feasibility flag
+    matters -- it reports whether the hinge-loss fallback was needed.
+    """
+    mu, sg, _ = fit_ladder_detail(rungs)
+    return mu, sg
+
+
+def fit_ladder_detail(rungs):
+    """(mu, sigma, feasible). See fit_ladder(). feasible is False when the
+    hinge-loss fallback was used, i.e. no normal fits inside the quotes."""
+    from scipy.stats import norm
+    K, LO, UP = [], [], []
+    for r in rungs:
+        b, a = r.get("yes_bid"), r.get("yes_ask")
+        if b is None or a is None or a <= b:
+            continue
+        K.append(r["strike"])
+        LO.append(min(max(b - TICK_SLACK, 1e-9), 1 - 1e-9))
+        UP.append(min(max(a + TICK_SLACK, 1e-9), 1 - 1e-9))
+    if len(K) < 4:
+        return None, None, False
+    K = np.asarray(K, float)
+    zL = norm.ppf(1.0 - np.asarray(LO)); zU = norm.ppf(1.0 - np.asarray(UP))
+    zL = np.where(np.isfinite(zL), zL, 1e9); zU = np.where(np.isfinite(zU), zU, -1e9)
+
+    lo = (K[None, :] - _SG_GRID[:, None] * zL[None, :]).max(axis=1)
+    hi = (K[None, :] - _SG_GRID[:, None] * zU[None, :]).min(axis=1)
+    ok = np.where(lo <= hi + 1e-9)[0]
+    if len(ok):
+        i = ok[len(ok) // 2]
+        mu, sg = float((lo[i] + hi[i]) / 2.0), float(_SG_GRID[i])
+        if 150.0 < mu < 300.0:
+            return mu, sg, True
+
+    mus = K.mean() + _MU_GRID
+    z = (K[None, None, :] - mus[None, :, None]) / _SG_GRID[:, None, None]
+    p = 1.0 - norm.cdf(z)
+    loss = (np.maximum(0.0, np.asarray(LO)[None, None, :] - p) ** 2
+            + np.maximum(0.0, p - np.asarray(UP)[None, None, :]) ** 2).sum(axis=2)
+    si, mi = np.unravel_index(np.argmin(loss), loss.shape)
+    mu, sg = float(mus[mi]), float(_SG_GRID[si])
+    if not (150.0 < mu < 300.0) or not (8.0 < sg < 40.0):
+        return None, None, False
+    return mu, sg, False
 
 
 def _quote(r, side):
