@@ -350,17 +350,35 @@ class NBAKalshi:
                                      "exchange_index": self.shard()}) or {}
         return d.get("orders", [])
 
-    def cancel(self, order_id):
-        """DELETE /portfolio/orders/{id}. MANDATORY before tip.
+    def cancel(self, order_id, ticker=None):
+        """DELETE /portfolio/events/orders/{id} -- the V2 path. MANDATORY before tip.
 
-        NBA totals markets do NOT close at tipoff -- they trade in-play. A
-        resting pregame bid left open is a free option sold to anyone watching
-        the game: it fills precisely when the score has already moved against
-        it. Cancelling is not tidying up, it is the position limit.
+        *** THE V1 PATH IS DEAD AND SILENTLY BROKE CANCELLATION. *** Until
+        2026-10-07 this used `DELETE /portfolio/orders/{id}`, which now returns
+
+            410 deprecated_v1_order_endpoint -- "Please switch to the V2 endpoints"
+
+        so cancel_stale() could never cancel anything. It had been reporting
+        "0/0 of our resting orders cancelled" twice an hour, which reads as
+        "nothing to do" and is indistinguishable from success. Found only by
+        leaving a real resting order and trying to pull it.
+
+        That mattered: NBA totals do NOT close at tipoff, they trade IN-PLAY. A
+        resting pregame order left open is a free option sold to anyone watching
+        the game -- it fills precisely when the score has moved against it.
+        Cancelling is not tidying up, it is the position limit.
+
+        `market_ticker` is required when exchange_index is -1 (auto-routing),
+        and NBA is not on the default shard, so the ticker is passed through.
         """
-        url = f"{self.c.base_url}/portfolio/orders/{order_id}"
-        h = self.c._auth_headers("DELETE", url)
-        r = self.c.session.delete(url, headers=h, timeout=10)
+        url = f"{self.c.base_url}/portfolio/events/orders/{order_id}"
+        params = {"exchange_index": -1}
+        if ticker:
+            params["market_ticker"] = ticker
+        q = "&".join(f"{k}={v}" for k, v in params.items())
+        full = f"{url}?{q}"
+        h = self.c._auth_headers("DELETE", full)
+        r = self.c.session.delete(full, headers=h, timeout=10)
         try:
             return r.status_code, (r.json() if r.content else {})
         except Exception:

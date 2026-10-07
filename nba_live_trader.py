@@ -175,6 +175,12 @@ STRATS = {
                       window=("15:00", "23:59"), source="crewshock_live_log.csv"),
 }
 # Last 7 days of the regular season, inclusive. Override for a schedule change.
+# SEASON GATE. Every strategy here is validated on REGULAR-SEASON games only.
+# Preseason boards are listed under the same KXNBATOTAL tickers and are
+# indistinguishable to the trader, so without this gate an armed cron would
+# trade preseason games on an unvalidated rule. Discovered 2026-10-07, when the
+# cron was armed on 2026-10-07 and 5 preseason events were open.
+SEASON_START = os.environ.get("NBA_SEASON_START", "2026-10-20")
 FINAL7_LAST_REGULAR = os.environ.get("NBA_LAST_REGULAR", "2027-04-11")
 FINAL7_DAYS         = int(os.environ.get("NBA_FINAL7_DAYS", "7"))
 # days_left <= FINAL7_DAYS, so 7 means EIGHT calendar days. That is the
@@ -650,6 +656,22 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
         print(f"HALT  kill switch present: {KILL_SWITCH}")
         return 2
     live = arm and not demo
+    # SEASON GATE -- before anything else, so it cannot be bypassed by an early
+    # return. Every strategy is validated on REGULAR-SEASON games only, and
+    # preseason boards carry the same KXNBATOTAL tickers, so an armed cron would
+    # otherwise trade them on an unvalidated rule.
+    if live:
+        try:
+            if dt.date.fromisoformat(str(day)[:10]) < dt.date.fromisoformat(SEASON_START):
+                print(f"REFUSED: {day} is before the regular season opens "
+                      f"({SEASON_START}).\n  Every strategy here is validated on "
+                      f"REGULAR-SEASON games only and preseason boards carry the "
+                      f"same tickers.\n  Dry runs are fine -- drop --arm. Override "
+                      f"deliberately with NBA_SEASON_START.")
+                return 1
+        except ValueError:
+            print("REFUSED: cannot parse the run date or NBA_SEASON_START")
+            return 1
     mode = ("LIVE" if live else ("DEMO" if demo else "DRY")) + ("/take" if take else "/make")
     k = NK.NBAKalshi(demo=demo)
     code, who = k.whoami()
@@ -947,6 +969,21 @@ def verify_no_side(arm=False, demo=False):
                   f"{idx} first;\n  intra-exchange transfers are active. The NO side "
                   f"stays UNVERIFIED either way.")
             return 1
+
+    # SAME SEASON GATE AS run(). This path POSTs a real order and was not gated
+    # when run() was, which is how two preseason orders went out on 2026-10-07
+    # while "testing the gate". Any code path that can place an order needs it,
+    # and a gate must be verified by reading the file -- never by firing an
+    # order to see what happens.
+    try:
+        if dt.date.today() < dt.date.fromisoformat(SEASON_START):
+            print(f"REFUSED: today is before the regular season opens "
+                  f"({SEASON_START}); no live order on a preseason board.\n"
+                  f"  Override deliberately with NBA_SEASON_START.")
+            return 1
+    except ValueError:
+        print("REFUSED: cannot parse NBA_SEASON_START")
+        return 1
 
     print(f"ARMED: buying 1 NO @ {target['no_ask']:.2f}")
     http, resp = k.buy_no(target["ticker"], 1, target["no_ask"], tag="verify")
