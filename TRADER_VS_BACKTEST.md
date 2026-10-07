@@ -88,3 +88,57 @@ evidence is now measured: nearest-line reproduces the backtest to within
 0.42pp of hit rate; max-edge has no out-of-sample support of any kind.
 
 Script: `trader_vs_backtest.py`.
+
+---
+
+# CHANGE MADE 2026-10-07: `RUNG_RULE = "nearline"`
+
+`nba_live_trader.RUNG_RULE` now defaults to `nearline`, overridable with
+`NBA_RUNG_RULE=maxedge`. Verified by inspection and by a unit test on a ladder
+constructed so the two rules diverge (max-edge picked +9.50 pts, nearline picked
++0.50; the live selection block chose +0.50).
+
+**One rung is considered, and a failure declines the game.** Under `nearline`
+the trader evaluates only the rung nearest the reference line; if that rung
+fails the gate the game is **declined rather than substituted** with a farther
+strike. Substituting would quietly reintroduce exactly what this rule exists to
+prevent — the backtest bets the line or it does not bet.
+
+## 2025-26 under the new rule
+
+| strategy | sig | traded | declined | hit% | mean off | P&L | ROI |
+|---|---|---|---|---|---|---|---|
+| crewshock | 238 | 192 | 44 | **52.60%** | +0.14 | +$1.33 | **+1.34%** |
+| final7 | 69 | 68 | 1 | **55.88%** | −0.07 | +$2.31 | **+6.46%** |
+
+Against max-edge: crewshock **−4.13% → +1.34%**, final7 **−1.61% → +6.46%**.
+
+## Attributing that honestly — two effects, not one
+
+| configuration | crewshock | final7 |
+|---|---|---|
+| backtest, bet the line at −110 | −3.74% | +5.14% |
+| nearline, **no gate** (backtest-faithful) | −4.67% | +4.97% |
+| **nearline + MIN_EDGE gate (live)** | **+1.34%** | **+6.46%** |
+| max-edge + gate (previous live) | −4.13% | −1.61% |
+
+**The rung change is what brings the rule back to the backtest** — the
+gate-free nearline row sits within 0.9pp and 0.2pp of the −110 backtest.
+
+**The extra improvement comes from the MIN_EDGE gate**, which declined 44 of
+236 crewshock games and lifted the hit rate 50.42% → 52.60%. That is 2.2pp
+against an se of 3.3pp, so it is **within noise**, and `MIN_EDGE` is itself in
+the NO-BACKTEST column. **Do not read +1.34% as evidence the gate adds edge.**
+The defensible claim is the first one: nearline reproduces the validated bet.
+
+## What is now settled, and what is not
+
+**Settled:** the live rung rule matches the eight-season validation. Of the five
+divergences with no backtest, the one that mattered is removed.
+
+**Not settled:** whether `MIN_EDGE` (and the price band, σ-distance and
+book-size gates) should exist at all. They are currently near-inert for final7
+(1 decline of 69) and materially active for crewshock (44 of 236), and their
+effect on crewshock's 2025-26 numbers is favourable but unproven. The
+rung-choice sidecar logs all three rules per signal and will settle it on
+out-of-sample data.

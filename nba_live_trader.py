@@ -196,6 +196,23 @@ NO_SIDE_VERIFIED     = os.environ.get("NBA_NO_SIDE_VERIFIED") == "1"
 # roughly its own size. A larger MIN_EDGE would not be a risk control, it would
 # just be a filter tuned until something traded. It is here to reject rungs with
 # NO edge, not to certify the ones that pass.
+# WHICH RUNG. "nearline" buys the rung closest to the strategy's own reference
+# line; "maxedge" buys the highest modelled edge.
+#
+# NEARLINE IS THE DEFAULT BECAUSE IT IS THE BET THAT WAS BACKTESTED. The
+# eight-season records (crewshock +4.66%, final7 +8.68%) are records of betting
+# THE LINE; nothing in them speaks to a strike 1.9 points away. Measured on
+# 2025-26 boards, nearest-line reproduces the backtest hit rate to within
+# 0.42pp (crewshock, 50.00 vs 50.42) and 0.00pp (final7, 55.07 vs 55.07), while
+# max-edge sat +1.58/+1.93 pts off the line and lost 4.2pp and 8.7pp of hit
+# rate -- for final7 the difference between +4.97% and -1.61% ROI.
+#
+# max-edge's only support was a 400,000-board simulation that drew truth and
+# market from the SAME normal with the SAME sigma, so the pricing model was
+# correct by construction and maximising modelled EV had to win; it was also
+# priced at bid+1c, a maker price we are not approved to use. See
+# TRADER_VS_BACKTEST.md.
+RUNG_RULE            = os.environ.get("NBA_RUNG_RULE", "nearline")
 MIN_EDGE             = 0.01
 # LIVE TRADING TEST SIZE = 1 CONTRACT.
 # The point of the first live season is to prove the plumbing -- auth, signal
@@ -636,7 +653,7 @@ def _rung_choice_rows(s, game, ev, ref, mu_hat, mu_mkt, sig_mkt, cands, state, m
                         strike=c["strike"], offset_pts=round(c["strike"] - ref, 2),
                         price=c["price"], p_model=round(c["p_model"], 4),
                         edge=round(c["edge"], 4),
-                        is_traded=int(rule == "maxedge"), rules_agree=agree,
+                        is_traded=int(rule == RUNG_RULE), rules_agree=agree,
                         would_gate=int(gate(c, dict(state)) is None)))
     return out
 
@@ -773,8 +790,21 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
             print(f"  {s['strategy']:<10} {game:<9} {s['dir']:<5} "
                   f"ref {ref:6.1f}  mu_hat {mu_hat:6.2f}  mkt {mu_mkt:6.2f}"
                   f"/{sig_mkt:4.1f}  drift {mu_mkt-ref:+5.2f}")
+        # RUNG SELECTION. Under "nearline" exactly ONE rung is considered -- the
+        # one nearest the reference line -- and if it fails the gate the game is
+        # DECLINED rather than substituted with a farther strike. Substituting
+        # would quietly reintroduce the thing this rule exists to avoid: the
+        # backtest bets the line or it does not bet.
+        if RUNG_RULE == "nearline":
+            _inband = [c for c in cands
+                       if MIN_PRICE <= c["price"] <= MAX_PRICE]
+            tryme = ([min(_inband, key=lambda c: abs(c["strike"] - ref))]
+                     if _inband else [])
+        else:
+            tryme = cands                      # maxedge: cands is sorted by -edge
+
         took = False
-        for c in cands:
+        for c in tryme:
             why = gate(c, state)
             n = 0 if why else size_for(c, state)
             if why is None and n < 1:
