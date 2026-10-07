@@ -89,9 +89,30 @@ costs 2.76pp against −110's 2.381pp — Kalshi is the *worse* venue for a take
 Resting a bid earns the half-spread instead of paying it, which turns a wider
 book from a penalty into a premium.
 
-**So the default execution is passive, and that is a design consequence of a
+~~**So the default execution is passive, and that is a design consequence of a
 measurement, not a preference.** `--take` exists and is gated by the same
-`MIN_EDGE`, which refuses most of what it is offered.
+`MIN_EDGE`, which refuses most of what it is offered.~~
+
+> **AMENDED 2026-10-07 — THE DEFAULT IS NOW TAKER.** The passage above is a
+> correct measurement and a non-actionable conclusion. **We are not approved for
+> market making on Kalshi**, so the maker edge it identifies cannot be
+> collected, however favourable the arithmetic. `--make` is retained for
+> reproducing historical maker figures and `--make --arm` is **refused
+> outright** by both `nba_live_trader.py` and `nba_auto_trader.py`.
+>
+> Two further reasons the maker figure flattered itself, independent of
+> approval: NBA totals **trade in-play**, so a resting pregame bid is a free
+> option that fills exactly when the score has moved against it (which is why
+> `cancel_stale()` runs every 30 minutes near tip); and the projection assumed
+> instant fills with no adverse selection and no fill-rate haircut on a
+> synthetic uniform 2¢ book.
+>
+> The taker numbers, measured at the ask on real books with the empirical
+> OT-skewed outcome distribution: **+$6.35/season at 1 contract, ~306 trades,
+> ROI +4.35%**. The superseded maker figure was $19.70. PaceGap being
+> "negative-EV as a taker at the median spread" is confirmed and survives as a
+> live caveat — its median best edge at the ask is 0.33¢ against a 1¢
+> `MIN_EDGE`. See `TAKER_ECONOMICS_2026_27.md`.
 
 **The three strategies cannot share a clock.** Kalshi settles on the actual
 total against a fixed strike; a sportsbook wager settles against a line. This

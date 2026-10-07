@@ -140,7 +140,7 @@ def phase_feed(day, strict=True):
     return _log("bdb_feed", rc == 0, f"rc={rc}")
 
 
-def phase_early(day, arm=False, take=False, force_crewshock=False):
+def phase_early(day, arm=False, take=True, force_crewshock=False):
     """09:00 ET. Opener-settled strategies: PaceGap and MOVE_COMBINED."""
     if os.path.exists(KILL):
         return _log("early", False, f"kill switch present: {KILL}")
@@ -198,12 +198,12 @@ def phase_early(day, arm=False, take=False, force_crewshock=False):
     for s in strats:
         cmd = [PY, os.path.join(HERE, "nba_live_trader.py"), "--date", day, "--strategy", s]
         if arm:  cmd.append("--arm")
-        if take: cmd.append("--take")
+        if not take: cmd.append("--make")   # TAKER is the default
         ok &= _run(f"trade_{s}", cmd, cwd=HERE, required=False)
     return ok
 
 
-def phase_late(day, arm=False, take=False):
+def phase_late(day, arm=False, take=True):
     """~2h before first tip. CrewShock only: it is graded at the close."""
     if os.path.exists(KILL):
         return _log("late", False, f"kill switch present: {KILL}")
@@ -230,7 +230,7 @@ def phase_late(day, arm=False, take=False):
     for s in strats:
         cmd = [PY, os.path.join(HERE, "nba_live_trader.py"), "--date", day, "--strategy", s]
         if arm:  cmd.append("--arm")
-        if take: cmd.append("--take")
+        if not take: cmd.append("--make")   # TAKER is the default
         ok &= _run(f"trade_{s}", cmd, cwd=HERE, required=False)
     return ok
 
@@ -360,13 +360,25 @@ def preflight(day):
     return 0 if not hard else 1
 
 
+def _take(a):
+    """Taker unless --make is given. --make --arm is refused outright: we are
+    not approved for market making on Kalshi, so the maker path may be measured
+    but must never be armed."""
+    if getattr(a, "make", False) and a.arm:
+        sys.exit("REFUSED: --make --arm is market making, which is not approved.")
+    return not getattr(a, "make", False)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("phase", choices=["preflight", "feed", "early", "late",
                                       "cancel", "dashboard", "all"])
     ap.add_argument("--date", default=dt.date.today().isoformat())
     ap.add_argument("--arm", action="store_true", help="place real orders")
-    ap.add_argument("--take", action="store_true", help="cross the spread (usually negative-EV)")
+    ap.add_argument("--take", action="store_true",
+                    help="(default, kept for compatibility) cross the spread")
+    ap.add_argument("--make", action="store_true",
+                    help="NOT APPROVED -- rest at the bid. Analysis only, never arm.")
     ap.add_argument("--force-crewshock", action="store_true",
                     help="run CrewShock in the early phase (NOT the backtested bet)")
     ap.add_argument("--no-publish", action="store_true")
@@ -374,11 +386,11 @@ if __name__ == "__main__":
     d = a.date
     if a.phase == "preflight":  sys.exit(preflight(d))
     if a.phase == "feed":       sys.exit(0 if phase_feed(d) else 1)
-    if a.phase == "early":      sys.exit(0 if phase_early(d, a.arm, a.take, a.force_crewshock) else 1)
-    if a.phase == "late":       sys.exit(0 if phase_late(d, a.arm, a.take) else 1)
+    if a.phase == "early":      sys.exit(0 if phase_early(d, a.arm, _take(a), a.force_crewshock) else 1)
+    if a.phase == "late":       sys.exit(0 if phase_late(d, a.arm, _take(a)) else 1)
     if a.phase == "cancel":     sys.exit(0 if phase_cancel(a.arm) else 1)
     if a.phase == "dashboard":  sys.exit(0 if phase_dashboard(not a.no_publish) else 1)
-    ok = phase_early(d, a.arm, a.take, a.force_crewshock)
-    ok &= phase_late(d, a.arm, a.take)
+    ok = phase_early(d, a.arm, _take(a), a.force_crewshock)
+    ok &= phase_late(d, a.arm, _take(a))
     phase_dashboard(not a.no_publish)
     sys.exit(0 if ok else 1)

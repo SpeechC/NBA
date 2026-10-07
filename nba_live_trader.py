@@ -90,8 +90,25 @@ wider book from a penalty into a premium. This is the same conclusion the
 programme reached on Kalshi microstructure generally -- taking is dead, making
 is not -- now quantified for NBA totals specifically.
 
-So MAKE is the default. `--take` exists for completeness and is gated by the
-same MIN_EDGE, which simply refuses most of what it is offered.
+*** TAKE IS THE DEFAULT, AND THE PARAGRAPH ABOVE IS NOT ACTIONABLE (2026-10-07).
+*** WE ARE NOT APPROVED FOR MARKET MAKING ON KALSHI. Resting is the better
+business on every number this programme has produced, and that is irrelevant:
+liquidity provision is not a permitted activity here, so the maker edge above
+cannot be collected. `--make` still exists to reproduce historical maker
+figures, but it must never be armed.
+
+Two further reasons the maker number was never as good as it looked, both
+independent of approval:
+  * NBA totals trade IN-PLAY. A resting pregame bid is a free option sold to
+    whoever is watching the game -- it fills precisely when the score has moved
+    against it. That is why cancel_stale() exists and runs every 30 minutes
+    near tip; it is a position limit, not tidying.
+  * The maker projection assumed instant fills with no adverse selection and no
+    fill-rate haircut on a synthetic uniform 2c book.
+
+Measured at the ASK on real books, with the empirical OT-skewed outcome
+distribution: +$6.35/season at 1 contract over ~306 trades, ROI +4.35%. The
+superseded maker figure was $19.70. See TAKER_ECONOMICS_2026_27.md.
 
 Fee is charged on entry only; settlement is free. Fee at 50c on a 25-lot is
 1.76c/contract. For reference, -110 costs 2.381pp; crossing a 2c Kalshi board
@@ -256,17 +273,19 @@ def _quote(r, side):
             None if yb is None else round(1.0 - yb, 2))
 
 
-def candidates(rungs, mu_hat, sigma, allowed_sides, take=False):
+def candidates(rungs, mu_hat, sigma, allowed_sides, take=True):
     """Rungs worth buying, in OUR strategy's direction only.
 
     Direction is a hard gate, not a preference. Letting the pricer take the
     opposite side of a rung because it looks cheap would be a new model with no
     backtest -- the strategy said OVER, so we buy OVER.
 
-    MAKE (default): post at the bid, or bid+1c when the spread is wide enough to
-    pay for jumping the queue. Edge is measured against THAT price, so a wider
-    book raises the edge instead of eating it.
-    TAKE (--take):  lift the ask, and eat the half-spread.
+    TAKE (default): lift the ask and eat the half-spread. Edge is measured
+    against the price we actually pay, which is the only number we are allowed
+    to act on -- we are not approved for market making.
+    MAKE (--make):  post at the bid, or bid+1c when the spread is wide enough to
+    pay for jumping the queue. Retained to reproduce historical maker figures.
+    NEVER ARM IT.
     """
     from scipy.stats import norm
     out = []
@@ -449,7 +468,7 @@ def _log(rows):
             w.writerow({k: r.get(k, "") for k in FILL_COLS})
 
 
-def run(day, arm=False, demo=False, only=None, take=False, verbose=True):
+def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
     if os.path.exists(KILL_SWITCH):
         print(f"HALT  kill switch present: {KILL_SWITCH}")
         return 2
@@ -738,7 +757,9 @@ if __name__ == "__main__":
     p.add_argument("--arm", action="store_true", help="place real orders")
     p.add_argument("--demo", action="store_true", help="Kalshi demo (fake money)")
     p.add_argument("--take", action="store_true",
-                   help="cross the spread instead of resting (usually negative-EV)")
+                   help="(default, kept for compatibility) cross the spread")
+    p.add_argument("--make", action="store_true",
+                   help="NOT APPROVED -- rest at the bid. Analysis only, never arm.")
     p.add_argument("--cancel", action="store_true",
                    help="pull resting orders on games near tip (own cron entry)")
     p.add_argument("--verify-no-side", action="store_true")
@@ -747,4 +768,7 @@ if __name__ == "__main__":
         sys.exit(verify_no_side(arm=a.arm, demo=a.demo))
     if a.cancel:
         sys.exit(cancel_stale(arm=a.arm, demo=a.demo))
-    sys.exit(run(a.date, arm=a.arm, demo=a.demo, only=a.strategy, take=a.take))
+    take = not a.make
+    if a.make and a.arm:
+        sys.exit("REFUSED: --make --arm is market making, which is not approved.")
+    sys.exit(run(a.date, arm=a.arm, demo=a.demo, only=a.strategy, take=take))
