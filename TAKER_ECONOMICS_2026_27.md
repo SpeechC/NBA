@@ -66,3 +66,57 @@ Collecting 09:00 ET books forward (`nba_xmarket_collect.py` already captures
 
 Scripts: `taker_pnl_2026_27.py`, `taker_pnl_opener_phase.py`,
 `expected_trade_count_2026_27.py`.
+
+---
+
+## Provenance check: was the $19.70 really a maker number? YES — confirmed 3 ways
+
+The original script is preserved as `maker_figure_provenance.py`.
+
+**1. The pricing line.** With `ask = bid + 0.02`:
+```python
+bid = clip(round(pmkt - 0.01, 2), 0.01, None)
+ask = clip(round(bid + 0.02, 2), None, 0.99)
+px  = round(minimum(bid + 0.01, ask - 0.01), 2)      # == bid + 1c
+```
+`px` is one cent **above the bid**, inside the spread. The ask is never lifted.
+
+**2. Its own printed header:** `"400,000 boards each. 1 contract, resting bid, 2c book."`
+
+**3. Re-running it both ways.** Identical simulation, only `px` changed:
+
+| | bets | premium | P&L | ROI | hit% |
+|---|---|---|---|---|---|
+| **as written — `px = bid+1c` (MAKER)** | 988 | $492.41 | **+$19.70** | 4.0% | 51.8% |
+| **same sim — `px = ask` (TAKER)** | 988 | $531.59 | **+$9.49** | 1.8% | 54.8% |
+
+The half-spread alone costs **$10.21 per season** — it halves the figure.
+
+Per strategy at the ask, max-EV rung: crewshock +1.76¢, final7 +2.85¢,
+move +1.04¢, **pacegap +0.18¢** — and pacegap on the **line rung is −0.18¢,
+outright negative**.
+
+### Reconciling $19.70 → $9.49 → $6.35
+
+| step | figure | what changed |
+|---|---|---|
+| original | $19.70 | maker price, 988 bets, synthetic uniform 2¢ book, normal outcomes |
+| priced at the ask | $9.49 | the half-spread |
+| today's measurement | **$6.35** | 306 trades not 988 (one-per-game claiming, NO-side block, `MIN_EDGE` gate); real books; **empirical OT-skewed** outcomes; 09:00 ET book for the opener strategies; stale-reference guard applied |
+
+Note the gate *improves* per-trade quality while cutting volume: 988 bets at
+0.96¢ vs 306 at ~2.1¢. Fewer, better trades.
+
+## A separate caution about the same message
+
+The "points of edge vs the 1.12 bar" table (crewshock 1.925/+0.805,
+move 1.573/+0.453, pacegap 1.184/+0.064) is a **sportsbook** calculation — 1.12
+is the measured sportsbook juice hurdle in points of line error, and those hit
+rates are against the line, not Kalshi rung win rates. It is **neither maker nor
+taker on Kalshi** and must not be read as Kalshi economics, which is how it
+looked sitting next to the $19.70.
+
+The one thing that message got right: *"PaceGap … survives only because resting
+beats crossing."* The taker variant confirms it — pacegap is non-viable as a
+taker, consistent with its median best edge at the ask being 0.33¢, below the
+1¢ `MIN_EDGE`.
