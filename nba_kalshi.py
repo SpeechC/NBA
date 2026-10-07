@@ -122,6 +122,7 @@ class NBAKalshi:
             self.c.base_url = self.c.probe_base_urls()
         self.demo = demo
         self.session_id = uuid.uuid4().hex[:12]
+        self._shard = None
 
     # ---------------- read ----------------
     def whoami(self):
@@ -130,6 +131,30 @@ class NBAKalshi:
             return 200, self.c.get("/portfolio/balance")
         except Exception as e:
             return None, {"error": str(e)}
+
+    def shard(self):
+        """exchange_index for this series, resolved once and cached.
+
+        *** EVERY PORTFOLIO READ IS SHARD-SCOPED. *** Verified 2026-10-07: after
+        a real NBA fill, /portfolio/fills and /portfolio/positions on shard 0
+        returned ZERO NBA rows; only exchange_index=3 showed them. The parameter
+        defaults to 0, so without it the dashboard would report an empty NBA book
+        all season and cancel_stale() would never see an NBA order to pull --
+        which matters because NBA totals trade IN-PLAY and an uncancelled resting
+        bid is a free option.
+
+        Note -1 auto-routes ORDERS but is REJECTED on reads
+        ("ExchangeIndex failed on the 'gte' tag"), so reads need a concrete index.
+        """
+        if self._shard is None:
+            try:
+                idx = self.series_shard()
+            except Exception:
+                idx = None
+            if idx is None:
+                idx = int(os.environ.get("NBA_EXCHANGE_INDEX", "3"))
+            self._shard = int(idx)
+        return self._shard
 
     def shard_balance(self):
         """{exchange_index: dollars} from /portfolio/balance.
@@ -321,7 +346,8 @@ class NBAKalshi:
         return r.status_code, out
 
     def resting_orders(self, status="resting"):
-        d = self.c.get("/portfolio/orders", {"limit": 200, "status": status}) or {}
+        d = self.c.get("/portfolio/orders", {"limit": 200, "status": status,
+                                     "exchange_index": self.shard()}) or {}
         return d.get("orders", [])
 
     def cancel(self, order_id):
@@ -341,11 +367,13 @@ class NBAKalshi:
             return r.status_code, {"raw": r.text[:200]}
 
     def positions(self):
-        d = self.c.get("/portfolio/positions", {"limit": 200}) or {}
+        d = self.c.get("/portfolio/positions", {"limit": 200,
+                                        "exchange_index": self.shard()}) or {}
         return d.get("market_positions", [])
 
     def fills(self, limit=200):
-        d = self.c.get("/portfolio/fills", {"limit": limit}) or {}
+        d = self.c.get("/portfolio/fills", {"limit": limit,
+                                    "exchange_index": self.shard()}) or {}
         return d.get("fills", [])
 
     def settlements(self, limit=200):
@@ -356,7 +384,8 @@ class NBAKalshi:
         the dashboard reports; anything computed from marks would be an estimate
         wearing a P&L's clothes.
         """
-        d = self.c.get("/portfolio/settlements", {"limit": limit}) or {}
+        d = self.c.get("/portfolio/settlements", {"limit": limit,
+                                          "exchange_index": self.shard()}) or {}
         return d.get("settlements", [])
 
 

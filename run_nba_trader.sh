@@ -20,6 +20,10 @@ LOG=${NBA_LOG:-$HOME/logs/nba_auto.log}
 export AWS_SHARED_CREDENTIALS_FILE=${AWS_SHARED_CREDENTIALS_FILE:-/mnt/c/Users/rando/.aws/credentials}
 export AWS_CONFIG_FILE=${AWS_CONFIG_FILE:-/mnt/c/Users/rando/.aws/config}
 export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+# NO side PROVEN 2026-10-07 against the live exchange: order 01a116d0-37f8,
+# fill 07254d0c, outcome_side="no", no_price_dollars=0.4400 at our 0.44 limit,
+# is_taker=true. side='ask' buys NO. UNDER is enabled.
+export NBA_NO_SIDE_VERIFIED=${NBA_NO_SIDE_VERIFIED:-1}
 export NBA_S3_BUCKET=${NBA_S3_BUCKET:-kalshi-strat}
 export NBA_S3_KEY=${NBA_S3_KEY:-nba.html}
 mkdir -p "$(dirname "$LOG")"

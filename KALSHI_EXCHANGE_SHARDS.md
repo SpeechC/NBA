@@ -149,3 +149,73 @@ season at ~$0.48 is ~$147 of cumulative turnover. **$10–15 funds the
 
 Transfers are reversible — the same call with source and destination swapped
 moves it back.
+
+---
+
+# NO SIDE VERIFIED (2026-10-07)
+
+Transfer sent ($5.00, shard 0 → 3, `transfer_id 9f370172-024f-41b2-a0b9-11b477e261aa`,
+HTTP 200). **The transfer is asynchronous** — a balance read immediately after
+still showed `3=$0.00`; it appeared within a few seconds. Do not read that as a
+failed transfer.
+
+Probe: `KXNBATOTAL-26OCT07GSWPOR-213`, 1 contract NO at 0.44, HTTP **201**,
+`fill_count 1.00`.
+
+## The order response is YES-denominated — do not misread it
+
+```json
+{"average_fill_price": "0.5600", "average_fee_paid": "0.0173", "fill_count": "1.00"}
+```
+
+0.5600 is the **YES** price. We sent a NO limit of 0.44 and 0.44 + 0.56 = 1.00,
+so this is a reporting convention, not the wrong side. The fill record proves it:
+
+```json
+{"outcome_side": "no", "side": "no", "action": "sell", "book_side": "ask",
+ "no_price_dollars": "0.4400", "yes_price_dollars": "0.5600",
+ "is_taker": true, "fee_cost": "0.017300"}
+```
+
+Position: `position_fp "-1.00"`, `market_exposure_dollars "0.440000"`.
+
+**Three things established at once:**
+
+1. **`side='ask'` buys NO**, at the NO price, at our exact limit. The one
+   unproven call in the stack is now proven against the real exchange.
+2. **`is_taker: true`** — it crossed. The taker default (`2a86820`) works end
+   to end against a live book.
+3. The NO quote derivation is right: NO ask 0.44 = 1 − YES bid 0.56.
+
+## A third shard trap: PORTFOLIO READS ARE SHARD-SCOPED
+
+After a confirmed NBA fill, `exchange_index=0` returned **zero** NBA fills and
+**zero** NBA positions. Only `exchange_index=3` showed them.
+
+Without this, all season:
+- the dashboard would have reported an **empty NBA book** — it reads fills and
+  settlements;
+- **`cancel_stale()` would never have found an NBA order to pull**, which
+  matters because NBA totals trade **in-play** and an uncancelled resting bid is
+  a free option sold to whoever is watching the game.
+
+Note `-1` auto-routes **orders** but is **rejected on reads**
+(`ExchangeIndex failed on the 'gte' tag`), so reads need a concrete index.
+
+Fixed: `NBAKalshi.shard()` resolves the index once from a live event (falling
+back to `NBA_EXCHANGE_INDEX`, default 3) and `positions()`, `fills()`,
+`settlements()` and `resting_orders()` all pass it. Verified: 1 fill, 1
+position, 0 resting orders, all on shard 3.
+
+## Status
+
+`NBA_NO_SIDE_VERIFIED=1` is now set in `run_nba_trader.sh`, so **UNDER is
+enabled**. Preflight is down to **1 FAILING** — the BigDataBall feed, which
+needs the Dropbox folder to exist.
+
+Open position: **1 NO contract of `KXNBATOTAL-26OCT07GSWPOR-213` at $0.44**,
+left to settle tonight. Shard 3 holds $4.54 after the probe and its fee.
+
+**Sizing note:** `MAX_NOTIONAL_DAY` is **$30** and shard 3 has $4.54. That caps
+a live day well below the configured limit — fund shard 3 further before running
+a real slate, or lower the cap deliberately.
