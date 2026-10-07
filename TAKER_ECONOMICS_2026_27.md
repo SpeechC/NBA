@@ -25,6 +25,13 @@ the final answer for crewshock and final7 (gate pass 88.9% and 97.3%). They
 diverge for pacegap and move for three reasons no sportsbook backtest can see:
 one-strategy-per-game claiming, the NO-side block, and `MIN_EDGE` at the ask.
 
+> **SUPERSEDED 2026-10-07 — see `TAKER_PNL_NEW_ANCHOR.md`.** The table below is
+> an EV projection under each strategy's *published* hit rate, and it used a
+> mid-derived reference line. Both are now fixed: the anchor is bounds-only
+> (`77879a6`) and the realised 2025-26 result for the armed configuration is
+> **−$4.72 on 306 trades, ROI −3.22%** — against the sportsbook's −3.18% on the
+> same games, so the venue is neutral and the loss is the season.
+
 ## Taker P&L at 1 contract
 
 | strategy | trades | EV/contract | season EV | outlay | **ROI** |
