@@ -87,3 +87,90 @@ the strength of a reconstruction that does not reproduce the registered figures
 would be the wrong move; the discrepancy needs resolving first.
 
 Scripts: `pacegap_backfill_all.py`, `pacegap_backfill.py`.
+
+---
+
+# Attempt to find or rebuild the discovery script (2026-10-11)
+
+## It was never committed, and it is not on the filesystem
+
+The prereg's fitted model `logit p_win = +0.0388 + 0.01606·|E_pace|` gives a
+distinctive search string. `git log -S"0.01606" --all` returns three commits,
+and in each the only files carrying it are **`MARKET_MODEL_SPEC.md`,
+`PREREG_2026_27_PROSPECTIVE.md`** and two unrelated CSVs where the digits occur
+as data. **No `.py` file in any commit in the repository's history contains it.**
+
+A filesystem search across `/mnt/c/NBA2`, `/mnt/d/Kalshi` and
+`/home/dpope/projects` for scripts referencing `E_pace`, `PaceGapPoints` or
+`4.77` returns only the live trader. The discovery code does not exist.
+
+## The distributions share shape and differ only in scale
+
+If `E_pace` were normal with mean zero, each threshold implies an sd. Comparing
+the registered grid with mine over the same 3,488-game universe:
+
+| threshold | registered frac | implied sd | my frac | implied sd | ratio |
+|---|---|---|---|---|---|
+| \|E\| ≥ 2 | 65.6% | 4.490 | 61.2% | 3.947 | 0.875 |
+| \|E\| ≥ 5 | 27.9% | 4.619 | 22.1% | 4.088 | 0.885 |
+| \|E\| ≥ 8 | 8.9% | 4.704 | 5.5% | 4.175 | 0.887 |
+
+Both distributions fatten with threshold by a similar amount, so **the shape
+agrees**; the scale differs by a near-uniform **0.88×**. That is the signature
+of a single input being scaled differently, not of a different model.
+
+Since `E = D·EffSum/100` and `EffSum` is near-constant (the programme measured
+the possession channel at 99.38% of variance), a 12% scale difference in `E`
+is a 12% scale difference in `D = P_hat − P_book`. With
+`corr(P_hat, P_book) ≈ 0.83`, `D` is a small difference of two large correlated
+quantities, so its scale is **very** sensitive to a small change in either
+input. A 12% move in sd(D) needs only a slight difference in how `P_hat` or
+`P_book` is formed.
+
+## Constructions tested and ruled out
+
+| construction | sd(E), 2023-25 | selectivity | verdict |
+|---|---|---|---|
+| registered (inferred) | ~4.70 | 30.3% | target |
+| **daily PIT — what the live path does** | **4.19** | **24.2%** | closest; 0.88× |
+| states at season START (prior seasons only) | **9.99** | 63.2% | far too wide |
+| states at season END (look-ahead) | 7.0–8.6 | 50–61% | far too wide |
+| rescaling `b` alone | — | 94%+ | invalid test — shifts P_book's *level*, not scale |
+
+Also ruled out:
+
+- **The universe.** 3,488 eligible and 8 pushes match the registered counts
+  exactly.
+- **a,b drifting within a season.** One distinct `a` and `b` per season,
+  confirming the prior-seasons-only fit behaves as documented.
+- **An incomplete history.** `load_history()` filters to Regular Season across
+  `dfMaster_OT_2017-2026.csv` plus `dfMaster_2027.csv`; its 9,489 rows reconcile
+  with the 9,487 regular-season games in my own slate counts.
+
+Every alternative construction is **far wider**, not slightly wider. Nothing I
+can build lands at 4.70.
+
+## Conclusion
+
+**The original discovery script cannot be found or rebuilt.** The registered
+figures (30.3% of slate, 53.31% hit, the threshold grid, the fitted logit) are
+**not reproducible** from the frozen engine as the live path invokes it, and the
+residual is a clean ~0.88× scale factor on `E_pace` that cannot be attributed
+without the original code.
+
+**What to use instead.** The live-path reconstruction is the operative backtest.
+It is strictly point-in-time, it is exactly what `capture_openers.py` runs each
+morning, and it now has a seven-season record: **1,615 bets, 54.74%, +4.50%,
+6/7 seasons positive, season-block CI [+2.19%, +8.02%]**. That is a better
+record than the registered one, on fewer bets.
+
+**Two things follow, and neither is mine to decide.**
+
+1. `PREREG_2026_27_PROSPECTIVE.md`'s registered expectations should be marked
+   unreproducible rather than relied on. They are the stated basis of the frozen
+   evaluation, so amending them is a preregistration decision.
+2. `STRATS["pacegap"]["hit"] = 0.5259` implies `delta = 1.184 pts`, while the
+   live path measures 54.74% → `delta ≈ 2.17 pts`. The trader understates its
+   own edge by about a point. Conservative, but wrong.
+
+I have changed neither.
