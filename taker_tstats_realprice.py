@@ -253,23 +253,42 @@ for k in A:
           f"   {'SIGN FLIPS -- unsafe' if flip else 'agrees in sign'}")
 
 print()
-print("=" * 104)
-print("WHAT THE PRICE ITSELF IS WORTH -- selected games vs the league")
-print("=" * 104)
-print(f"  {'strategy':>10}{'mean BE of its bets':>22}{'league mean BE':>17}{'edge from price':>18}")
-allp = priced('pacegap')
+print("=" * 118)
+print("WHAT THE PRICE ITSELF IS WORTH -- against BOTH benchmarks, which differ")
+print("=" * 118)
+# The REALISED league mean break-even, not the -110 nominal. These are not the
+# same number and conflating them was an error in an earlier version of this
+# file: the league itself is priced DEARER than -110, which is the established
+# reason the totals bar is 1.123 rather than the long-assumed 1.079.
+_lgm = raw[(raw.season >= PRICED_FROM) & raw.parse_ok & raw.pjuice.notna()]
+LEAGUE_BE = _lgm.pjuice.map(amer_to_p).mean()
+NOMINAL_BE = 110.0 / 210.0
+print(f"  realised league mean price  {_lgm.pjuice.mean():.2f}  -> break-even "
+      f"{100*LEAGUE_BE:.4f}%   (n={len(_lgm):,})")
+print(f"  nominal -110                        -> break-even {100*NOMINAL_BE:.4f}%")
+print(f"  THE LEAGUE IS DEARER THAN -110 BY {100*(LEAGUE_BE-NOMINAL_BE):.4f}pp: "
+      f"{(_lgm.pjuice<-110).sum():,} games worse than -110 vs "
+      f"{(_lgm.pjuice>-110).sum():,} better.")
+print()
+print(f"  {'strategy':>10}{'rule mean BE':>15}{'vs league':>13}{'vs -110':>11}")
 for strat in ('crewshock', 'final7', 'move', 'pacegap'):
     g = priced(strat)
     if len(g) < 30:
         continue
-    lg = 110.0 / 210.0
-    print(f"  {strat:>10}{100*g.p_ours.mean():>21.3f}%{100*lg:>16.3f}%"
-          f"{100*(lg-g.p_ours.mean()):>17.3f}pp")
+    print(f"  {strat:>10}{100*g.p_ours.mean():>14.4f}%"
+          f"{100*(g.p_ours.mean()-LEAGUE_BE):>12.4f}pp"
+          f"{100*(g.p_ours.mean()-NOMINAL_BE):>10.4f}pp")
 print()
-print("  A positive 'edge from price' means the rule happens to select games priced")
-print("  CHEAPER than -110; negative means it is paying up. This is a property of")
-print("  the selection, not a skill, and it is why a flat -110 grade can mislead")
-print("  in either direction.")
+print("  NEGATIVE = the rule selects games priced CHEAPER than that benchmark.")
+print()
+print("  TWO SMALL OPPOSING EFFECTS THAT CANCEL, which is why the flat--110 grade")
+print("  survived. The league is 0.064pp dearer than -110, so grading at -110 is")
+print("  optimistic; but all four rules select games 0.011-0.100pp cheaper than the")
+print("  league, which gives most of it back. Net against -110 is -0.036 to")
+print("  +0.053pp, and the realised ROI difference is within 0.12pp. The flat grade")
+print("  was not biased for THESE rules -- not because price does not vary, but")
+print("  because two effects of similar size point opposite ways. That is a")
+print("  coincidence of this selection, not a general licence to assume -110.")
 
 print()
 print("=" * 104)
