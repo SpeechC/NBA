@@ -27,6 +27,14 @@ liveball_sample.csv
 # regenerable possession/lineup caches (rebuilt by their extractors from the
 # PBP parquet; oreb_possessions.csv alone is 107 MB)
 oreb_possessions.csv
+
+# injury_status_panel.csv is 108 MB — OVER GitHub's 100 MB hard pre-receive
+# limit. It was committed on 2026-08-26 and blocked every push of this repo
+# until it was stripped from all 312 commits on 2026-10-11. It stays ON DISK
+# (injury/late-scratch is one of the few predictors still outside the closed
+# boxscore conditional-difficulty hypothesis), but it must never be tracked:
+# re-adding it makes main unpushable again and needs another history rewrite.
+injury_status_panel.csv
 bonus_game_team.csv
 rotation_game_team.csv
 outputs/
