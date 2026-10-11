@@ -516,7 +516,11 @@ def _read_csv(path):
 
 
 def team_games_played(day):
-    """{team: COMPLETED regular-season games this season, strictly before `day`}.
+    """{team: TOTAL completed regular-season games this season, before `day`}.
+
+    TOTAL means home AND away combined -- every game that team has played.
+    Both teams are incremented on every game below, so there is no home/away
+    split anywhere in this count.
 
     Source is CURRENT -- the season-to-date file nba_bdb_feed.py writes from the
     BigDataBall feed -- because that is the only file that says which games have
@@ -572,7 +576,22 @@ def _to_iso(v):
 
 
 def apply_gp_gate(sigs, day, verbose=True):
-    """Drop gated strategies' signals when either team is below GP_GATE_MIN."""
+    """Require BOTH TEAMS to have played GP_GATE_MIN TOTAL games this season.
+
+    TOTAL GAMES PER TEAM -- home and away COMBINED. This is worth spelling out
+    because the obvious misreading of the old variable names (`a`, `h`) was
+    "games played away" versus "games played at home". It never meant that.
+    team_games_played() increments BOTH teams on every game, so the count for
+    a team is its full season-to-date schedule: verified on 2025-12-11, Boston
+    10 home + 10 away = 20 = the count used, and all 30 teams agree with an
+    independent home/away split.
+
+    min() of the two teams' totals is how "BOTH teams have played 20+" is
+    expressed -- the lower of the two is the binding one. It is NOT a minimum
+    over home/away games. The model predicts a game total from BOTH teams'
+    pace/efficiency state, so the less-observed team is what limits it; using
+    the average would let a 40-game team mask a 2-game one.
+    """
     if not GP_GATE_MIN or not GP_GATED:
         return sigs
     if not any(s["strategy"] in GP_GATED for s in sigs):
@@ -584,18 +603,21 @@ def apply_gp_gate(sigs, day, verbose=True):
             kept.append(s); continue
         # the team names in the signal files are the CURRENT file's own
         # convention (capture_openers writes full names, as does the pivot)
-        a, h = gp.get(s["away"]), gp.get(s["home"])
-        lo = min(a if a is not None else 0, h if h is not None else 0)
-        if lo >= GP_GATE_MIN:
+        gp_away_team = gp.get(s["away"])          # that TEAM's total games
+        gp_home_team = gp.get(s["home"])          # that TEAM's total games
+        fewer = min(gp_away_team if gp_away_team is not None else 0,
+                    gp_home_team if gp_home_team is not None else 0)
+        if fewer >= GP_GATE_MIN:
             kept.append(s)
         else:
-            dropped.append((s, lo, a, h))
+            dropped.append((s, fewer, gp_away_team, gp_home_team))
     if verbose and dropped:
-        print(f"  GP GATE  min {GP_GATE_MIN} games, applies to "
-              f"{','.join(GP_GATED)}  [{why}]")
-        for s, lo, a, h in dropped:
+        print(f"  GP GATE  both teams need {GP_GATE_MIN}+ TOTAL games played "
+              f"(home+away); applies to {','.join(GP_GATED)}  [{why}]")
+        for s, fewer, ga, gh in dropped:
             print(f"    declined {s['strategy']:>9} {s['away']} @ {s['home']}"
-                  f"   min GP {lo} (away {a}, home {h}) < {GP_GATE_MIN}")
+                  f"   total games played: {s['away']}={ga}, {s['home']}={gh}"
+                  f"  -> fewer of the two = {fewer} < {GP_GATE_MIN}")
         print(f"    {len(dropped)} declined, {len(kept)} remain. CrewShock and "
               f"final7 are NOT gated.")
     return kept

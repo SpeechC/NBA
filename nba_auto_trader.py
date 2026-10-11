@@ -393,7 +393,7 @@ def preflight(day):
             n_ready = sum(1 for v in gp.values() if v >= LT.GP_GATE_MIN)
             open_now = lo >= LT.GP_GATE_MIN
             chk("GP gate", True,
-                f"min {LT.GP_GATE_MIN} for {','.join(LT.GP_GATED)}; "
+                f"both teams need {LT.GP_GATE_MIN}+ TOTAL games (home+away) for {chr(44).join(LT.GP_GATED)}; "
                 f"{n_ready}/{len(gp) or 0} teams at/over, lowest {lo} -> "
                 f"{'OPEN for every matchup' if open_now else 'WITHHOLDING some or all'}"
                 f"  [{why}]")
