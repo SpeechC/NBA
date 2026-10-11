@@ -124,43 +124,85 @@ def cluster_se(x, groups):
     return np.sqrt(G / (G - 1.0) * np.sum(S ** 2)) / n, G
 
 
+STAKE = 100.0          # $ per bet, flat -- the unit every -110 table in this
+                       # repo uses, so these P&L figures are comparable to them
+
+
 def report(title, pick):
+    """One panel. EVERY strategy's own date span is printed, not assumed.
+
+    The window is NOT common across strategies and must not be labelled as if
+    it were: MOVE's signal file starts in 2021-22, and juice coverage starts
+    in 2020-21, so each rule's priced sample begins where its own inputs do.
+    Printing one blanket period over four different spans is how a table
+    acquires a caption that is false for three of its rows.
+    """
     print()
-    print("=" * 104)
+    print("=" * 118)
     print(title)
-    print("=" * 104)
-    print(f"  {'strategy':>10}{'bets':>6}{'nights':>8}{'hit%':>8}{'BE%':>8}"
-          f"{'ROI':>9}{'t P&L':>9}{'z hit':>8}{'p (P&L)':>10}{'-110 ROI':>10}{'delta':>8}")
+    print("=" * 118)
     out = {}
+    rows = []
     for strat in ('crewshock', 'final7', 'move', 'pacegap'):
         g = pick(priced(strat))
         if len(g) < 30:
-            print(f"  {strat:>10}{len(g):>6}   too few priced bets")
-            continue
+            rows.append((strat, None)); continue
         n, h = len(g), g.won.mean()
         be = g.p_ours.mean()
-        roi = g.pnl.mean()
+        roi = g.pnl.mean()                      # per $1 staked
         se, G = cluster_se(g.pnl, g.ds)
         t = roi / se
         p = 2 * stats.t.sf(abs(t), G - 1)
-        se_h = np.sqrt(h * (1 - h) / n)
-        z = (h - be) / se_h
+        z = (h - be) / np.sqrt(h * (1 - h) / n)
         r110 = h * (100.0 / 110.0) - (1 - h)
-        out[strat] = dict(n=n, h=h, be=be, roi=roi, t=t, p=p, z=z, G=G)
-        print(f"  {strat:>10}{n:>6}{G:>8}{100*h:>7.2f}%{100*be:>7.2f}%"
-              f"{100*roi:>+8.2f}%{t:>+9.2f}{z:>+8.2f}{p:>10.3f}"
-              f"{100*r110:>+9.2f}%{100*(roi-r110):>+8.2f}%")
+        pnl = STAKE * g.pnl.sum()               # $ at $100/bet
+        out[strat] = dict(n=n, h=h, be=be, roi=roi, t=t, p=p, z=z, G=G,
+                          pnl=pnl, ds0=g.ds.min(), ds1=g.ds.max(),
+                          nsea=g.season.nunique())
+        rows.append((strat, out[strat]))
+
+    print(f"  {'strategy':>10}{'seasons':>9}{'from':>13}{'to':>13}"
+          f"{'bets':>6}{'hit%':>8}{'BE%':>8}{'ROI':>9}"
+          f"{'P&L $':>11}{'$/bet':>8}{'t P&L':>8}{'p':>8}")
+    for strat, r in rows:
+        if r is None:
+            print(f"  {strat:>10}   too few priced bets"); continue
+        print(f"  {strat:>10}{r['nsea']:>9}{r['ds0']:>13}{r['ds1']:>13}"
+              f"{r['n']:>6}{100*r['h']:>7.2f}%{100*r['be']:>7.2f}%"
+              f"{100*r['roi']:>+8.2f}%{r['pnl']:>+11,.0f}"
+              f"{r['pnl']/r['n']:>+8.2f}{r['t']:>+8.2f}{r['p']:>8.3f}")
+    tot = sum(r['pnl'] for _, r in rows if r)
+    totn = sum(r['n'] for _, r in rows if r)
+    print(f"  {'TOTAL':>10}{'':>9}{min(r['ds0'] for _,r in rows if r):>13}"
+          f"{max(r['ds1'] for _,r in rows if r):>13}{totn:>6}{'':>8}{'':>8}"
+          f"{100*tot/(STAKE*totn):>+8.2f}%{tot:>+11,.0f}{tot/totn:>+8.2f}")
+    print(f"  stake ${STAKE:.0f} flat per bet; P&L $ is the dollar total over that "
+          f"strategy's own span; $/bet is P&L/bets.")
+    print(f"  TOTAL pools four overlapping rules on the same games -- a portfolio "
+          f"figure, not an additional test.")
     return out
 
 
-print("=" * 104)
-print("REAL-PRICE TAKER t-STATS -- the recorded juice, 2020-21 onward")
-print("=" * 104)
-chk = priced('pacegap')
+print("=" * 118)
+print("REAL-PRICE t-STATS -- SPORTSBOOK, at the price actually recorded for each game")
+print("=" * 118)
+print("  PERIOD: 2020-12-22 to 2026-04-12 at the widest, but the span DIFFERS BY")
+print("  STRATEGY and each row below prints its own. Two different things bound it:")
+print(f"    - juice coverage starts in {PRICED_FROM}-21 (2017-18 is 4.8% and 2018-19")
+print("      7.6%, so a priced result there would describe the ~60 games that")
+print("      happened to carry a price, not the rule). Those two seasons are OUT.")
+print("    - MOVE's own signal file starts in 2021-22, so it has 5 seasons, not 6.")
+print("    - final7 occupies only the last 8 days of each season, so its 6 seasons")
+print("      are 6 short windows, not a continuous span.")
+print()
+print("  THIS IS A TAKER PRICE. A sportsbook quote is take-it-or-leave-it, so the")
+print("  recorded -110/-112/-105 IS what a taker pays there; the maker/taker")
+print("  distinction only exists on Kalshi. It is NOT a Kalshi figure: Kalshi has")
+print("  one season of books and the rest are purged, which is why this table uses")
+print("  the book instead of extrapolating one season of rungs to six.")
+print()
 print(f"  overround assumed for imputation: {OVERROUND:.6f}  (the -110/-110 benchmark)")
-print(f"  seasons used: {PRICED_FROM}-21 onward (2017-18 4.8% and 2018-19 7.6% juice")
-print(f"  coverage -- a priced result there would describe the 60 games that had a price)")
-print(f"  parse validated: the number read equals CLOSING TOTAL_H on every game kept")
+print("  parse validated: the number read equals CLOSING TOTAL_H on every game kept")
 
 A = report("ALL PRICED BETS -- recorded side used directly, opposite side IMPUTED",
            lambda g: g)
@@ -168,9 +210,37 @@ S = report("NO IMPUTATION -- only bets whose RECORDED side IS the side taken",
            lambda g: g[g.same_side])
 
 print()
-print("=" * 104)
+print("=" * 118)
+print("BY SEASON ON REAL PRICES -- bets, hit%, ROI and P&L at $100 flat per bet")
+print("  (all priced bets, imputed where the recorded side is not ours)")
+print("=" * 118)
+for strat in ('crewshock', 'final7', 'move', 'pacegap'):
+    g = priced(strat)
+    if len(g) < 30:
+        continue
+    print(f"\n  {strat.upper()}   {g.ds.min()} to {g.ds.max()}   "
+          f"settles on the {T.STRATS[strat]['line'].upper()}")
+    print(f"      {'season':>9}{'from':>13}{'to':>13}{'bets':>6}{'hit%':>8}"
+          f"{'BE%':>8}{'ROI':>9}{'P&L $':>10}{'t':>7}")
+    for s in sorted(g.season.unique()):
+        x = g[g.season == s]
+        se, G = cluster_se(x.pnl, x.ds)
+        tt = x.pnl.mean() / se if se and np.isfinite(se) else np.nan
+        lbl = f"{s}-{str(s+1)[2:]}"
+        print(f"      {lbl:>9}{x.ds.min():>13}{x.ds.max():>13}{len(x):>6}"
+              f"{100*x.won.mean():>7.2f}%{100*x.p_ours.mean():>7.2f}%"
+              f"{100*x.pnl.mean():>+8.2f}%{STAKE*x.pnl.sum():>+10,.0f}"
+              f"{tt:>+7.2f}")
+    se, G = cluster_se(g.pnl, g.ds)
+    print(f"      {'ALL':>9}{g.ds.min():>13}{g.ds.max():>13}{len(g):>6}"
+          f"{100*g.won.mean():>7.2f}%{100*g.p_ours.mean():>7.2f}%"
+          f"{100*g.pnl.mean():>+8.2f}%{STAKE*g.pnl.sum():>+10,.0f}"
+          f"{g.pnl.mean()/se:>+7.2f}")
+
+print()
+print("=" * 118)
 print("DOES THE IMPUTATION DO THE WORK?")
-print("=" * 104)
+print("=" * 118)
 print(f"  {'strategy':>10}{'all n':>8}{'all ROI':>10}{'all t':>8}"
       f"{'same n':>9}{'same ROI':>10}{'same t':>8}   verdict")
 for k in A:
