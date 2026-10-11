@@ -380,6 +380,26 @@ def preflight(day):
     except Exception as e:
         chk("NO-side verified", False, str(e))
 
+    # The GP gate is otherwise INVISIBLE until a signal happens to hit it, so a
+    # withheld PaceGap/MOVE slate looks identical to a quiet night. Report the
+    # live GP count so "declined" is never confused with "no signals".
+    try:
+        import nba_live_trader as LT
+        if not LT.GP_GATE_MIN or not LT.GP_GATED:
+            chk("GP gate", True, "disabled (NBA_GP_GATE_MIN=0)")
+        else:
+            gp, why = LT.team_games_played(day)
+            lo = min(gp.values()) if gp else 0
+            n_ready = sum(1 for v in gp.values() if v >= LT.GP_GATE_MIN)
+            open_now = lo >= LT.GP_GATE_MIN
+            chk("GP gate", True,
+                f"min {LT.GP_GATE_MIN} for {','.join(LT.GP_GATED)}; "
+                f"{n_ready}/{len(gp) or 0} teams at/over, lowest {lo} -> "
+                f"{'OPEN for every matchup' if open_now else 'WITHHOLDING some or all'}"
+                f"  [{why}]")
+    except Exception as e:
+        chk("GP gate", False, f"{type(e).__name__}: {str(e)[:70]}")
+
     try:
         import boto3
         s = boto3.client("s3")
