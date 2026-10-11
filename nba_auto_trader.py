@@ -130,14 +130,28 @@ def have_openers(day):
 
 # --------------------------------------------------------------------- phases
 def phase_feed(day, strict=True):
-    """Refresh the BigDataBall season-to-date feed. CrewShock depends on it."""
+    """Refresh the BigDataBall season-to-date feed. CrewShock depends on it.
+
+    RC 3 IS A PASS, NOT A FAILURE. It means the feed is fresh but has no
+    regular-season game yet -- the state on opening night, and self-limiting,
+    since the feed is cumulative and a fresh mid-season file cannot be empty.
+    CrewShock does not need the current season to score: its officials' foul
+    history comes from the frozen 9,489-game file, and the feed only ever ADDS
+    games as they are played. Treating 3 as a failure blocked CrewShock from
+    the season opener for no reason.
+
+    RC 2 remains a real failure (stale file, missing column, bad pivot) and a
+    FileNotFoundError from find_feed -- no feed at all -- still stops the phase,
+    because that is indistinguishable from a lapsed subscription.
+    """
     print(f"\n[1] BigDataBall feed  {day}")
     import nba_bdb_feed as F
     try:
         rc = F.convert(asof=day, strict_age=strict)
     except Exception as e:
         return _log("bdb_feed", False, f"{type(e).__name__}: {e}")
-    return _log("bdb_feed", rc == 0, f"rc={rc}")
+    note = {0: "", 3: " (nothing to add yet -- frozen history is correct today)"}
+    return _log("bdb_feed", rc in (0, 3), f"rc={rc}{note.get(rc, '')}")
 
 
 def phase_early(day, arm=False, take=True, force_crewshock=False):

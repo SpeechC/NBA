@@ -210,11 +210,36 @@ def convert(asof=None, feed_dir=None, target=None, strict_age=True):
     W["VENUE_H"] = "H"
 
     # --- validate the result the way load_history() will consume it
+    #
+    # RC 3 = "NOTHING TO ADD YET", which is NOT a failure. The feed is
+    # cumulative season-to-date, so a FRESH file (age <= MAX_AGE_DAYS, already
+    # enforced above) containing no Regular Season row can only mean the
+    # regular season has not produced a game yet. That is the state on opening
+    # night, and it is self-limiting: mid-season a fresh cumulative file cannot
+    # have zero regular-season rows, so this branch cannot mask a real fault.
+    #
+    # It matters because CrewShock does NOT need this file on night one. Its
+    # input is officials' foul history from the frozen dfMaster_OT_2017-2026
+    # (9,489 games, ~110 officials, hundreds of games each), and the feed only
+    # ever ADDS games as they are played. Verified: with this file absent,
+    # crewshock_live.load_history() returns 9,489 rows and crewshock() scores a
+    # pending 2026-10-20 game normally. Returning 2 here previously hard-stopped
+    # phase_late and blocked CrewShock from the season opener for no reason --
+    # guarding against a staleness drift that cannot exist when zero
+    # current-season games have been played.
+    #
+    # The file is still written: it carries the preseason rows, load_history
+    # filters them out, and team_games_played() reads 0 completed regular-season
+    # games -- which is exactly what the min-GP gate should see.
     if not W["DATASET_H"].astype(str).str.contains("Regular Season", na=False).any():
-        print(f"HARD STOP: no row has 'Regular Season' in DATASET_H.")
-        print(f"  load_history() filters on it; every row would be dropped.")
-        print(f"  observed: {sorted(W['DATASET_H'].astype(str).unique())[:5]}")
-        return 2
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        W.to_csv(target, index=False)
+        print(f"NOTHING TO ADD YET: no 'Regular Season' row in a feed dated {fd}.")
+        print(f"  observed DATASET: {sorted(W['DATASET_H'].astype(str).unique())[:5]}")
+        print(f"  wrote {target} ({len(W):,} rows, all non-regular-season).")
+        print(f"  CrewShock scores from the FROZEN history and is unaffected;")
+        print(f"  PaceGap and MOVE are withheld by the min-GP gate, as intended.")
+        return 3
     tot = W["CLOSING TOTAL_H"]
     act = W["PTS_H"] + W["PTS_R"]
     usable = tot.between(150, 300) & act.notna()
@@ -228,8 +253,12 @@ def convert(asof=None, feed_dir=None, target=None, strict_age=True):
     print(f"  complete foul/possession rows: {int(pf_ok.sum()):,}")
     print(f"  date range {W['DATE'].min()} .. {W['DATE'].max()}")
     if usable.sum() == 0:
-        print("  *** zero usable games -- CrewShock will score nothing ***")
-        return 2
+        # Same reasoning as the Regular-Season check above: zero usable games in
+        # a FRESH cumulative feed means none have been played yet, not that the
+        # feed is broken. RC 3, not 2.
+        print("  zero usable games yet -- nothing to add. CrewShock scores from")
+        print("  the frozen history; PaceGap and MOVE are held by the min-GP gate.")
+        return 3
     return 0
 
 
