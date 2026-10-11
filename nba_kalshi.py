@@ -111,6 +111,31 @@ def event_ticker(game_date, away_abbr, home_abbr):
     return f"{SERIES}-{d:%y}{_MON[d.month-1]}{d:%d}{away_abbr}{home_abbr}"
 
 
+def event_date(ticker):
+    """The GAME date out of a ticker, the exact inverse of event_ticker().
+
+    KXNBATOTAL-26OCT07GSWPOR-213 -> date(2026, 10, 7). Returns None rather
+    than guessing if the ticker is not this series' shape.
+
+    THE GAME DATE, NOT settled_time. A game on the 20th settles in the early
+    hours of the 21st, so filtering a report by settlement timestamp puts a
+    game in the wrong day and, at a season boundary, in the wrong season.
+    """
+    s = str(ticker or "")
+    if not s.startswith(SERIES + "-"):
+        return None
+    tail = s[len(SERIES) + 1:]
+    if len(tail) < 7:
+        return None
+    yy, mon, dd = tail[:2], tail[2:5].upper(), tail[5:7]
+    if mon not in _MON:
+        return None
+    try:
+        return dt.date(2000 + int(yy), _MON.index(mon) + 1, int(dd))
+    except ValueError:
+        return None
+
+
 class NBAKalshi:
     def __init__(self, demo=False):
         if KalshiClient is None:

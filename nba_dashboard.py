@@ -53,6 +53,38 @@ def _rows(path):
         return list(csv.DictReader(f))
 
 
+def _in_season(ticker):
+    """Is this NBA ticker a REGULAR-SEASON game, by the trader's own window?
+
+    The bounds are LT.SEASON_START and LT.FINAL7_LAST_REGULAR -- the same two
+    constants the trader gates on -- so the dashboard reports exactly the set
+    of games the trader is permitted to trade. One definition, not two.
+
+    WHY THIS EXISTS. Preseason boards carry the same KXNBATOTAL tickers as
+    regular-season ones and are indistinguishable by ticker shape alone. On
+    2026-10-07 a NO-side verification probe was filled on a PRESEASON board
+    (KXNBATOTAL-26OCT07GSWPOR-213, 1 contract at 0.44, settled worthless).
+    That wager was placed in error, before the season gate existed. It is not
+    a result of any strategy -- no strategy generated it and none is validated
+    on preseason games -- so counting it would put a -$0.46 loss and an 0-for-1
+    hit rate into CrewShock's record, which never placed it.
+
+    Excluded rows are kept in d["excluded"] and shown on the page. A dropped
+    trade that leaves no trace is how a report starts lying.
+
+    A ticker from another series returns True: the weather and mention systems
+    share this account and this is not the place to filter them.
+    """
+    d = NK.event_date(ticker)
+    if d is None:
+        return True
+    try:
+        return (dt.date.fromisoformat(LT.SEASON_START) <= d
+                <= dt.date.fromisoformat(LT.FINAL7_LAST_REGULAR))
+    except (ValueError, TypeError):
+        return True
+
+
 def collect(demo=False):
     """Everything the page needs. Live account state wins over any local log."""
     d = dict(built=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -69,6 +101,15 @@ def collect(demo=False):
         d["resting"]     = k.resting_orders()
         d["fills"]       = [f for f in k.fills()
                             if str(f.get("ticker", "")).startswith(NK.SERIES)]
+        # REGULAR SEASON ONLY -- see _in_season(). Applied here, once, so every
+        # panel downstream (P&L, hit rate, fill stats) shares one scope and no
+        # two cards on the page can disagree about which trades count.
+        d["excluded"] = ([s for s in d["settlements"]
+                          if str(s.get("ticker", "")).startswith(NK.SERIES)
+                          and not _in_season(s.get("ticker"))]
+                         + [f for f in d["fills"] if not _in_season(f.get("ticker"))])
+        d["settlements"] = [s for s in d["settlements"] if _in_season(s.get("ticker"))]
+        d["fills"]       = [f for f in d["fills"]       if _in_season(f.get("ticker"))]
     except Exception as e:
         d["ok"], d["err"] = False, str(e)[:300]
     try:
@@ -352,6 +393,24 @@ def render(d):
         p.append('<div style="margin-top:8px"><span class="pill bad">'
                  'unattributed settlements &mdash; a ticker settled that is in neither the '
                  'local order log nor a tagged fill. Reconcile before trusting this table.'
+                 '</span></div>')
+    # Excluded rows are NAMED, not just counted. The table above is scoped to
+    # the regular season, and the reader is entitled to see what that removed.
+    exc = d.get("excluded") or []
+    if exc:
+        seen, items = set(), []
+        for x in exc:
+            tk = str(x.get("ticker", ""))
+            if tk in seen:
+                continue
+            seen.add(tk)
+            gd = NK.event_date(tk)
+            items.append(f"{tk} ({gd})" if gd else tk)
+        p.append('<div style="margin-top:8px"><span class="pill">'
+                 f'excluded from every figure on this page: {len(seen)} non-regular-season '
+                 f'ticker(s) &mdash; {", ".join(items)}. Outside the trader\'s own window '
+                 f'{LT.SEASON_START} to {LT.FINAL7_LAST_REGULAR}; no strategy generated '
+                 'them and none is validated on preseason or playoff games.'
                  '</span></div>')
     p.append("</div>")
 
