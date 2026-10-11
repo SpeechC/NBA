@@ -169,10 +169,28 @@ for i, (p, s) in enumerate(ps, 1):
     print(f"      {s:>10}{p:>9.3f}{min(1, p*m):>12.3f}{min(1, bh):>9.3f}"
           f"  {'yes' if bh < 0.05 else 'no'}")
 print()
-print("  AND THE CUT SEARCH ON TOP OF THAT. The GP cut was swept over 8 values")
-print("  before 20 was chosen, so PaceGap's gated p must also carry that search:")
+print("  THE TWO SEARCHES MUST BE COUNTED TOGETHER, NOT SEPARATELY.")
+print("  The table above corrects for testing 4 strategies. On top of that the GP")
+print("  cut was swept over 8 values before 20 was chosen. Correcting for one and")
+print("  then the other and calling each a pass is double-counting the budget:")
 pg = PR['pacegap']['p']
-print(f"      pacegap gated p {pg:.3f}  x 8 cuts = {min(1, pg*8):.3f}"
-      f"  -> {'significant' if pg*8 < 0.05 else 'NOT significant'}")
+for mm, lab in ((4,  "the 4 gated headline tests only"),
+                (8,  "the 8 GP cuts for pacegap only"),
+                (16, "2 mechanism-named strategies x 8 cuts"),
+                (24, "3 applicable strategies x 8 cuts"),
+                (32, "4 strategies x 8 cuts")):
+    print(f"      m={mm:>2}  {lab:<42} -> {min(1, pg*mm):.3f}  "
+          f"{'significant' if pg*mm < 0.05 else 'NOT significant'}")
+print()
+print("  PaceGap's gated p survives EITHER search alone and NEITHER jointly. The")
+print("  honest reading is BORDERLINE, not significant: m=16 is the smallest")
+print("  defensible joint space (the mechanism named pacegap and move in advance,")
+print("  but the cut was searched in both) and it gives 0.058.")
+print()
+print("  An earlier version of this file printed the 8-cut correction on its own")
+print("  and concluded 'significant'. That was wrong -- it spent the 4-test and")
+print("  the 8-cut budget twice over.")
+print()
 print("  The gate is justified by the excluded cell being unprofitable, not by")
-print("  this p-value. Treat the UNGATED column as the forecast for 2026-27.")
+print("  any of these p-values. Treat the UNGATED column as the forecast for")
+print("  2026-27.")
