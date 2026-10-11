@@ -185,6 +185,40 @@ FINAL7_LAST_REGULAR = os.environ.get("NBA_LAST_REGULAR", "2027-04-11")
 FINAL7_DAYS         = int(os.environ.get("NBA_FINAL7_DAYS", "7"))
 # days_left <= FINAL7_DAYS, so 7 means EIGHT calendar days. That is the
 # validated definition (monitor_season_pnl.py:64), not an off-by-one.
+
+# =============================================================================
+# MIN-GP GATE -- PaceGap and MOVE only
+# =============================================================================
+# Both rules read CURRENT-SEASON team state and are worthless before it exists.
+# PaceGap's build_states() carries the prior season forward at CARRY = 0.42 and
+# then updates from games played this season; MOVE's f_pace/f_oeff/f_deff are
+# rolling windows grouped by ["season","team"], so they RESET each season.
+# CrewShock is NOT gated: its input is officials' foul history pooled over 8
+# seasons and 9,489 games, which 20 games cannot move. final7 is not gated: it
+# bets the last 8 days, where min GP is already ~75.
+#
+# MEASURED (gp_gate_all_strategies.py, recorded price 2020-21+), LATE - EARLY
+# in ROI at this cut:
+#     pacegap   +12.99%  t +2.43  p 0.015   early cell 437 bets at -4.31%
+#     move      +11.17%  t +1.63  p 0.102   early cell 254 bets at -7.44%
+#     crewshock  -1.89%  t -0.28  p 0.776   <- NOT gated, and its early cell
+#                                              RETURNS +7.10%. Gating CrewShock
+#                                              would discard 276 good bets.
+# The dissociation is the evidence: the effect appears in both current-season-
+# state rules and is absent in the cross-season one, which is what the
+# mechanism said in advance.
+#
+# 20 IS A ROUND NUMBER IN A RANGE, NOT A MEASURED CLIFF. Swept 5..40, the gap
+# widens monotonically to cut 35 (+16.33%, p 0.001). Having searched 8 cuts,
+# pacegap's p 0.015 is 0.12 under Bonferroni. What justifies the gate is not
+# that 20 is optimal -- it is that the early cell is NEVER profitable at any
+# cut >= 20 (-4.4% to -2.2%) and only break-even below 15, so declining those
+# bets forgoes nothing demonstrable. 20 is the LEAST restrictive end of the
+# supported range. Raise it with NBA_GP_GATE_MIN; 0 disables.
+GP_GATE_MIN = int(os.environ.get("NBA_GP_GATE_MIN", "20"))
+GP_GATED    = tuple(x.strip() for x in
+                    os.environ.get("NBA_GP_GATED", "pacegap,move").split(",")
+                    if x.strip())
 for _k, _v in STRATS.items():
     _v["delta"] = delta_points(_v["hit"])
 
@@ -481,6 +515,92 @@ def _read_csv(path):
         return list(csv.DictReader(f))
 
 
+def team_games_played(day):
+    """{team: COMPLETED regular-season games this season, strictly before `day`}.
+
+    Source is CURRENT -- the season-to-date file nba_bdb_feed.py writes from the
+    BigDataBall feed -- because that is the only file that says which games have
+    actually been PLAYED. The schedule is not a substitute: it lists games that
+    were scheduled, and a postponement would credit a team with a game it never
+    played, which is exactly the state the gate is trying to measure.
+
+    Returns ({}, reason) when it cannot tell. The caller must then DECLINE, not
+    assume: an unknown GP is not a GP of 20. On opening night CURRENT does not
+    exist yet, every team reads 0, and the gated strategies are refused -- which
+    is the intended behaviour arrived at honestly rather than special-cased.
+
+    STRICTLY BEFORE `day`, so a team's own game today never counts toward its
+    own gate. Same point-in-time rule as build_states().
+    """
+    path = os.environ.get("NBA_CURRENT_CSV", "/mnt/c/NBA2/dfMaster_2027.csv")
+    if not os.path.exists(path):
+        return {}, f"{path} not found (no completed games recorded this season)"
+    gp = {}
+    n = 0
+    try:
+        with open(path) as f:
+            for r in csv.DictReader(f):
+                if "Regular Season" not in str(r.get("DATASET_H", "")):
+                    continue
+                ds = _to_iso(r.get("DATE"))
+                if ds is None or ds >= day:        # strictly before `day`
+                    continue
+                if not (str(r.get("PTS_H", "")).strip()
+                        and str(r.get("PTS_R", "")).strip()):
+                    continue                        # not a completed game
+                for key in ("TEAM_H", "TEAM_R"):
+                    t = str(r.get(key, "")).strip()
+                    if t:
+                        gp[t] = gp.get(t, 0) + 1
+                n += 1
+    except Exception as e:
+        return {}, f"{type(e).__name__} reading {path}: {e}"
+    return gp, f"{n} completed regular-season games before {day}"
+
+
+def _to_iso(v):
+    """MM/DD/YYYY (the CURRENT file's format) or YYYY-MM-DD -> YYYY-MM-DD."""
+    s = str(v or "").strip()
+    if not s:
+        return None
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m/%d/%y"):
+        try:
+            return dt.datetime.strptime(s[:10], fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return None
+
+
+def apply_gp_gate(sigs, day, verbose=True):
+    """Drop gated strategies' signals when either team is below GP_GATE_MIN."""
+    if not GP_GATE_MIN or not GP_GATED:
+        return sigs
+    if not any(s["strategy"] in GP_GATED for s in sigs):
+        return sigs
+    gp, why = team_games_played(day)
+    kept, dropped = [], []
+    for s in sigs:
+        if s["strategy"] not in GP_GATED:
+            kept.append(s); continue
+        # the team names in the signal files are the CURRENT file's own
+        # convention (capture_openers writes full names, as does the pivot)
+        a, h = gp.get(s["away"]), gp.get(s["home"])
+        lo = min(a if a is not None else 0, h if h is not None else 0)
+        if lo >= GP_GATE_MIN:
+            kept.append(s)
+        else:
+            dropped.append((s, lo, a, h))
+    if verbose and dropped:
+        print(f"  GP GATE  min {GP_GATE_MIN} games, applies to "
+              f"{','.join(GP_GATED)}  [{why}]")
+        for s, lo, a, h in dropped:
+            print(f"    declined {s['strategy']:>9} {s['away']} @ {s['home']}"
+                  f"   min GP {lo} (away {a}, home {h}) < {GP_GATE_MIN}")
+        print(f"    {len(dropped)} declined, {len(kept)} remain. CrewShock and "
+              f"final7 are NOT gated.")
+    return kept
+
+
 def signals(day):
     """[(strategy, away, home, side, ref_line_or_None)] for `day`.
 
@@ -701,6 +821,12 @@ def run(day, arm=False, demo=False, only=None, take=True, verbose=True):
     sigs = [s for s in signals(day) if only in (None, s["strategy"])]
     if not sigs:
         print(f"no signals for {day}")
+        return 0
+    # BEFORE the ranking sort, so a gated signal can never claim a game and
+    # then be dropped -- that would silently hand the game to nobody.
+    sigs = apply_gp_gate(sigs, day)
+    if not sigs:
+        print(f"no signals for {day} after the GP gate")
         return 0
     # PREREGISTERED FIRST, then highest measured edge. Both keys matter.
     #
