@@ -547,7 +547,17 @@ def team_games_played(day):
                 if "Regular Season" not in str(r.get("DATASET_H", "")):
                     continue
                 ds = _to_iso(r.get("DATE"))
-                if ds is None or ds >= day:        # strictly before `day`
+                # THIS SEASON ONLY, AND THE LOWER BOUND IS THE SAFETY ONE.
+                # ds >= day is the point-in-time rule. ds < SEASON_START is the
+                # FAIL-CLOSED guard: without it, a CURRENT file that somehow
+                # carried a PRIOR season's rows (a wrong vendor folder, a
+                # concatenation, a season rollover not cleaned up) would read
+                # 70+ games for every team and open the gate immediately --
+                # putting PaceGap into exactly the early-season cell the gate
+                # exists to avoid. Every other failure here already fails
+                # closed (missing file, unreadable file, unknown team -> 0
+                # games -> declined); this was the one path that failed OPEN.
+                if ds is None or ds >= day or ds < SEASON_START:
                     continue
                 if not (str(r.get("PTS_H", "")).strip()
                         and str(r.get("PTS_R", "")).strip()):
